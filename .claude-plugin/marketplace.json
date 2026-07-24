@@ -1,0 +1,14 @@
+{
+  "name": "homebase",
+  "owner": { "name": "Elias Kyler", "email": "elias.kyler@me.com" },
+  "metadata": {
+    "description": "Homebase: a cross-project engineering lead for Claude Code, plus its safety net and plugin curator."
+  },
+  "plugins": [
+    {
+      "name": "homebase",
+      "source": "./",
+      "description": "Discovers your projects and plans/dispatches/verifies work across them, with a bundled safety net and a plugin curator that keeps only the plugins a session needs."
+    }
+  ]
+}

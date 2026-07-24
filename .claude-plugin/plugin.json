@@ -1,0 +1,8 @@
+{
+  "name": "homebase",
+  "version": "0.1.0",
+  "description": "Cross-project engineering lead for Claude Code: /setup discovers your projects and plans, dispatches, and verifies work across them. Bundles a safety net (secret-scan, protected-path + snapshot guards, checkpoint reminder, context meter) and curates which plugins load so tokens stay focused.",
+  "author": { "name": "Elias Kyler", "email": "elias.kyler@me.com" },
+  "license": "MIT",
+  "keywords": ["orchestration", "multi-project", "safety", "hooks", "secret-scan", "checkpoint", "context", "plugin-management"]
+}
