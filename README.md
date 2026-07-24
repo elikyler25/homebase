@@ -20,8 +20,10 @@ directions.
 
 ## Install
 
+Inside **Claude Code** (not your shell), run:
+
 ```
-/plugin marketplace add <your-git-url-or-path>/homebase
+/plugin marketplace add elikyler25/homebase
 /plugin install homebase@homebase
 ```
 
