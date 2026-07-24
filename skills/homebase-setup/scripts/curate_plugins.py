@@ -24,6 +24,7 @@ SETTINGS = os.path.expanduser("~/.claude/settings.json")
 CORE = {
     "homebase@homebase",                 # this plugin (self)
     "ponytail@ponytail",                 # laziness reflex, wanted on every coding turn
+    "obsidian-second-brain@obsidian-second-brain",  # knowledge vault (when installed as a plugin)
     "claude-mem@thedotmack",             # cross-session memory / observations
     "superpowers@claude-plugins-official",  # the skills engine (brainstorming, TDD, ...)
     "security-guidance@claude-plugins-official",  # cheap safety guidance

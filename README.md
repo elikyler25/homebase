@@ -38,10 +38,14 @@ outside this plugin.
 
 ## The core plugins it keeps
 
-- **ponytail** — a "lazy senior dev" reflex: the simplest solution that works. Reuse before
-  writing, stdlib before a dependency, one line before fifty. Fires on every coding turn.
-- **obsidian-second-brain** — a self-rewriting knowledge vault (decisions, people, projects,
-  research), kept reconciled. It's a *skill*, always available.
+On first `/setup`, homebase adds each marketplace and installs these if they're missing:
+
+- **ponytail** ([DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)) — a
+  "lazy senior dev" reflex: the simplest solution that works. Reuse before writing, stdlib
+  before a dependency, one line before fifty. Fires on every coding turn.
+- **obsidian-second-brain**
+  ([eugeniughelbur/obsidian-second-brain](https://github.com/eugeniughelbur/obsidian-second-brain))
+  — a self-rewriting knowledge vault (decisions, people, projects, research), kept reconciled.
 
 ## Layout
 

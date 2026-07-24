@@ -31,18 +31,29 @@ the whole system exists to prevent. **Learn each user** into a per-user memory p
 
 Run this once at the start of a session, before discovery.
 
-1. **Ensure the core is installed.** Two things must always be available:
-   - **ponytail** (`ponytail@ponytail`) — a "lazy senior dev" reflex that forces the
-     simplest solution that works: reuse before writing, stdlib before dependency, one line
-     before fifty. It runs on every coding turn and keeps the codebase from bloating.
-   - **obsidian-second-brain** — a self-rewriting knowledge vault: it saves decisions,
-     people, projects and research to Obsidian and keeps them reconciled. It's a *skill*
-     (not a plugin), so it's always available with no toggle.
+1. **Ensure the core is installed.** Two companion plugins must always be available.
+   Check `claude plugin list` first; only install what's missing. Each needs its
+   marketplace added **before** it can be installed (a fresh user has neither):
 
-   Check with `claude plugin list`. If `ponytail@ponytail` is missing, install it
-   (`claude plugin install ponytail@ponytail`) and, in one plain-terms paragraph each,
-   tell the user what ponytail and obsidian-second-brain are and when they'll fire. Only
-   explain on first install or when the user asks — don't re-explain every session.
+   - **ponytail** — a "lazy senior dev" reflex that forces the simplest solution that works:
+     reuse before writing, stdlib before dependency, one line before fifty. Runs on every
+     coding turn and keeps the codebase from bloating.
+     ```
+     claude plugin marketplace add DietrichGebert/ponytail
+     claude plugin install ponytail@ponytail
+     ```
+   - **obsidian-second-brain** — a self-rewriting knowledge vault: saves decisions, people,
+     projects and research to Obsidian and keeps them reconciled (45 slash commands).
+     ```
+     claude plugin marketplace add eugeniughelbur/obsidian-second-brain
+     claude plugin install obsidian-second-brain@obsidian-second-brain
+     ```
+   (On Elias's own machine obsidian-second-brain is a skills-dir *skill*, already always-on —
+   `claude plugin list` will show it; don't reinstall.)
+
+   After installing anything new, tell the user in one plain-terms paragraph each what
+   ponytail and obsidian-second-brain are and when they'll fire. Only explain on first
+   install or when the user asks — don't re-explain every session.
 
 2. **Curate what loads.** Run
    `python3 "${CLAUDE_SKILL_DIR}/scripts/curate_plugins.py"` (dry run). It reports the
