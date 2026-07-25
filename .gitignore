@@ -3,3 +3,7 @@ __pycache__/
 .DS_Store
 settings.json.bak
 .snapshots/
+
+# imagegen: generated images + local model cache should never be committed
+imagegen/outputs/
+*.png
