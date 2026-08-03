@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ASHFALL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#08070a; --ash:#141118; --ash2:#1e1a24; --bone:#e6e0d2; --dim:#8a8296;
+  --hex:#9d6bff; --ember:#ff7a18; --vit:#e0335a; --mana:#3aa0ff; --gold:#e8c25a;
+  --line:#2c2634;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none;}
+html,body{height:100%;background:var(--ink);overflow:hidden;font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--bone);}
+body{position:fixed;inset:0;touch-action:none;overscroll-behavior:none;}
+#app{position:absolute;inset:0;}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
+.pix{font-family:'Silkscreen',monospace;letter-spacing:.02em;}
+
+/* ---------- HUD ---------- */
+#hud{position:absolute;inset:0;pointer-events:none;}
+#meters{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);left:8px;right:8px;display:flex;flex-direction:column;gap:3px;}
+.bar{height:9px;background:#000a;border:1px solid var(--line);position:relative;overflow:hidden;}
+.bar > i{position:absolute;inset:0;transform-origin:left;display:block;transition:transform .09s linear;}
+.bar > b{position:absolute;right:3px;top:-2px;font-size:7px;font-family:'Silkscreen',monospace;color:var(--bone);opacity:.75;font-weight:400;text-shadow:0 0 3px #000;}
+#hp > i{background:linear-gradient(90deg,#8c1030,var(--vit));}
+#mp > i{background:linear-gradient(90deg,#12406e,var(--mana));}
+#fl{height:5px;} #fl > i{background:linear-gradient(90deg,#5a4a86,var(--hex));}
+#topline{display:flex;justify-content:space-between;align-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:var(--dim);margin-bottom:1px;text-shadow:0 0 4px #000;}
+#biome{color:var(--bone);opacity:.85;}
+#gold{color:var(--gold);}
+
+/* ---------- tape (signature) ---------- */
+#tape{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 132px);display:flex;gap:2px;justify-content:center;pointer-events:none;}
+.tcell{width:15px;height:15px;border:1px solid var(--line);background:#000c;position:relative;flex:0 0 auto;}
+.tcell .g{position:absolute;inset:1px;opacity:.55;}
+.tcell.head{border-color:var(--bone);box-shadow:0 0 8px var(--hex);}
+.tcell.spent{opacity:.22;}
+.tcell.fired .g{opacity:1;}
+#tapewand{position:absolute;left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);font-family:'Silkscreen',monospace;font-size:8px;color:var(--dim);}
+
+/* ---------- sticks ---------- */
+.stick{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);width:118px;height:118px;border-radius:50%;pointer-events:auto;}
+#sL{left:10px;} #sR{right:10px;}
+.ring{position:absolute;inset:0;border-radius:50%;border:1px solid var(--line);background:radial-gradient(circle,#ffffff08,#0000);opacity:.5;}
+.knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:1px solid #ffffff30;background:#ffffff12;backdrop-filter:blur(2px);}
+#sR .knob{border-color:var(--hex);background:#9d6bff22;}
+.stick.on .ring{opacity:1;}
+.slabel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:'Silkscreen',monospace;font-size:7px;color:var(--dim);pointer-events:none;}
+
+/* ---------- buttons ---------- */
+.btn{pointer-events:auto;font-family:'Silkscreen',monospace;background:var(--ash2);border:1px solid var(--line);color:var(--bone);padding:9px 12px;font-size:10px;text-align:center;}
+.btn:active{background:var(--hex);color:#000;border-color:var(--hex);}
+.btn.ghost{background:#0000;color:var(--dim);}
+#wandbar{position:absolute;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 136px);display:flex;flex-direction:column;gap:5px;pointer-events:auto;}
+.wslot{width:38px;height:30px;border:1px solid var(--line);background:#000a;font-family:'Silkscreen',monospace;font-size:8px;color:var(--dim);display:flex;align-items:center;justify-content:center;}
+.wslot.sel{border-color:var(--hex);color:var(--bone);background:#9d6bff22;}
+#pausebtn{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);right:8px;pointer-events:auto;width:26px;height:26px;border:1px solid var(--line);background:#000a;color:var(--dim);font-size:9px;display:none;align-items:center;justify-content:center;font-family:'Silkscreen',monospace;}
+
+/* ---------- screens ---------- */
+.screen{position:absolute;inset:0;background:var(--ink);display:none;flex-direction:column;z-index:20;padding:calc(env(safe-area-inset-top,0px) + 10px) 10px calc(env(safe-area-inset-bottom,0px) + 10px);}
+.screen.show{display:flex;}
+.stitle{font-family:'Silkscreen',monospace;font-size:13px;color:var(--bone);letter-spacing:.08em;}
+.ssub{font-size:9px;color:var(--dim);margin-top:3px;line-height:1.5;}
+.hr{height:1px;background:var(--line);margin:9px 0;}
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0;touch-action:pan-y;}
+
+/* title */
+#title{justify-content:center;align-items:center;text-align:center;gap:0;}
+#logo{font-family:'Silkscreen',monospace;font-weight:700;font-size:34px;letter-spacing:.14em;color:var(--bone);text-shadow:0 0 22px #9d6bff66;}
+#logosub{font-family:'Silkscreen',monospace;font-size:8px;color:var(--dim);letter-spacing:.3em;margin-top:6px;}
+#tagline{font-size:10px;color:var(--dim);margin:16px 24px 22px;line-height:1.7;max-width:320px;}
+#tagline em{color:var(--hex);font-style:normal;}
+#titlecanvas{position:absolute;inset:0;z-index:-1;opacity:.5;}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div id="meters">
+      <div id="topline"><span id="biome">THE MINES</span><span id="depth">0m</span><span id="gold">0</span></div>
+      <div class="bar" id="hp"><i style="transform:scaleX(1)"></i><b>100</b></div>
+      <div class="bar" id="mp"><i style="transform:scaleX(1)"></i><b></b></div>
+      <div class="bar" id="fl"><i style="transform:scaleX(1)"></i></div>
+    </div>
+    <div id="tapewand"></div>
+    <div id="tape"></div>
+    <div id="wandbar"></div>
+    <div id="pausebtn" class="pix">||</div>
+    <div class="stick" id="sL"><div class="ring"></div><div class="slabel">MOVE / FLY</div><div class="knob"></div></div>
+    <div class="stick" id="sR"><div class="ring"></div><div class="slabel">AIM / CAST</div><div class="knob"></div></div>
+  </div>
+</div>
+<script>
+"use strict";
+/* =========================================================================
+   ASHFALL — an original falling-sand roguelite built in the spirit of Noita.
+   Not affiliated with Nolla Games. No assets or code from Noita are used.
+   ========================================================================= */
+
+// ---------------------------------------------------------------- materials
+const AIR=0, STONE=1, SAND=2, COAL=3, WOOD=4, WATER=5, OIL=6, LAVA=7, ACID=8,
+      BLOOD=9, FIRE=10, SMOKE=11, STEAM=12, ICE=13, GUNPOWDER=14, SNOW=15,
+      BRICK=16, SLUDGE=17, GOLD=18, FUNGUS=19, EMBER=20, GLASS=21;
+
+const T_EMPTY=0, T_SOLID=1, T_POWDER=2, T_LIQUID=3, T_GAS=4;
+
+function pal(hex, n, spread){ // build n color variants around a base
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  const out=[];
+  for(let i=0;i<n;i++){
+    const d=((i/(n-1))*2-1)*spread;
+    out.push([clamp8(r+d), clamp8(g+d), clamp8(b+d)]);
+  }
+  return out;
+}
+const clamp8=v=>v<0?0:v>255?255:v|0;
+
+const M = [];
+function mat(id,o){ M[id]=Object.assign({id,type:T_SOLID,density:9,burn:0,burnTime:0,acid:1,colors:pal('#888888',4,10),name:'?'},o); }
+
+mat(AIR,      {name:'air',       type:T_EMPTY, density:0, acid:0, colors:[[0,0,0]]});
+mat(STONE,    {name:'stone',     type:T_SOLID, density:20,acid:0.30, colors:pal('#4a4550',5,13)});
+mat(BRICK,    {name:'brick',     type:T_SOLID, density:20,acid:0.14, colors:pal('#6d4a3c',5,12)});
+mat(GLASS,    {name:'glass',     type:T_SOLID, density:20,acid:0.05, colors:pal('#9fd6e0',4,16)});
+mat(WOOD,     {name:'wood',      type:T_SOLID, density:20,acid:0.55, burn:0.14, burnTime:70, colors:pal('#6b4526',5,14)});
+mat(FUNGUS,   {name:'fungus',    type:T_SOLID, density:20,acid:0.9,  burn:0.5,  burnTime:24, colors:pal('#4f7a3a',5,16)});
+mat(ICE,      {name:'ice',       type:T_SOLID, density:20,acid:0.6,  colors:pal('#7fb6d8',5,16)});
+mat(SAND,     {name:'sand',      type:T_POWDER,density:12, acid:0.8, colors:pal('#b39055',5,15)});
+mat(COAL,     {name:'coal',      type:T_POWDER,density:13, acid:0.5, burn:0.09, burnTime:120, colors:pal('#26232b',5,9)});
+mat(GUNPOWDER,{name:'gunpowder', type:T_POWDER,density:11, acid:0.9, burn:1.0, burnTime:2, colors:pal('#5a5140',5,10)});
+mat(SNOW,     {name:'snow',      type:T_POWDER,density:6,  acid:0.9, colors:pal('#dbe7f0',4,10)});
+mat(GOLD,     {name:'gold',      type:T_POWDER,density:19, acid:0.2, colors:pal('#d7a92e',5,18)});
+mat(WATER,    {name:'water',     type:T_LIQUID,density:10, acid:0.9, disp:5, colors:pal('#2a5fa8',4,14)});
+mat(BLOOD,    {name:'blood',     type:T_LIQUID,density:11, acid:0.9, disp:3, colors:pal('#7a1024',4,12)});
+mat(OIL,      {name:'oil',       type:T_LIQUID,density:8,  acid:0.9, disp:4, burn:0.35, burnTime:40, colors:pal('#2f2a1c',4,8)});
+mat(ACID,     {name:'acid',      type:T_LIQUID,density:9,  acid:0,   disp:5, colors:pal('#8ee02a',4,18)});
+mat(SLUDGE,   {name:'sludge',    type:T_LIQUID,density:11, acid:0.6, disp:2, colors:pal('#5f3f7a',4,14)});
+mat(LAVA,     {name:'lava',      type:T_LIQUID,density:14, acid:0.1, disp:2, colors:pal('#e0521a',5,30)});
+mat(FIRE,     {name:'fire',      type:T_GAS,   density:2,  acid:0, colors:pal('#ff8a1e',5,44)});
+mat(EMBER,    {name:'ember',     type:T_GAS,   density:3,  acid:0, colors:pal('#ff4d10',4,30)});
+mat(SMOKE,    {name:'smoke',     type:T_GAS,   density:1,  acid:0, colors:pal('#3a3640',4,10)});
+mat(STEAM,    {name:'steam',     type:T_GAS,   density:1,  acid:0, colors:pal('#8f9aa6',4,12)});
+
+const isSolidM = m => M[m].type===T_SOLID || M[m].type===T_POWDER;
+const isBlocking = m => m!==AIR && (M[m].type===T_SOLID || M[m].type===T_POWDER);
+
+// ---------------------------------------------------------------- grid
+const GW=300, GH=2560;            // world in cells
+const SURFACE=56;                 // y of the starting cavern floor: depth 0 is measured here
+const CH=32;                      // chunk size
+const CX=Math.ceil(GW/CH), CY=Math.ceil(GH/CH);  // ceil: |0 left the right margin outside the chunk map
+const grid  = new Uint8Array(GW*GH);   // material id
+const shade = new Uint8Array(GW*GH);   // color variant index
+const life  = new Uint8Array(GW*GH);   // burn / decay timer
+const moved = new Uint8Array(GW*GH);   // "already stepped this frame"
+let dirty   = new Uint8Array(CX*CY);
+let dirtyNext = new Uint8Array(CX*CY);
+
+const idx=(x,y)=>y*GW+x;
+const inB=(x,y)=>x>=0&&x<GW&&y>=0&&y<GH;
+function gget(x,y){ return (x<0||x>=GW||y<0||y>=GH)?STONE:grid[y*GW+x]; }
+
+// Wake a chunk and its neighbours. Marks BOTH buffers: `dirty` so a change made
+// mid-frame still cascades this frame, and `dirtyNext` so a change made between
+// frames (a spell impact, blood, worldgen) survives into the next one.
+function touch(x,y){
+  const cx=(x/CH)|0, cy=(y/CH)|0;
+  for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){
+    const a=cx+i,b=cy+j;
+    if(a>=0&&a<CX&&b>=0&&b<CY){ const k=b*CX+a; dirty[k]=1; dirtyNext[k]=1; }
+  }
+}
+function setc(x,y,m,l){
+  if(x<0||x>=GW||y<0||y>=GH) return;
+  const i=y*GW+x;
+  grid[i]=m; shade[i]=(Math.random()*M[m].colors.length)|0; life[i]=l||0;
+  touch(x,y);
+}
+function swap(a,b){
+  const t=grid[a]; grid[a]=grid[b]; grid[b]=t;
+  const s=shade[a]; shade[a]=shade[b]; shade[b]=s;
+  const l=life[a]; life[a]=life[b]; life[b]=l;
+  moved[b]=1;
+}
+
+// ---------------------------------------------------------------- sim
+let frame=0;
+let simL=0,simR=GW,simT=0,simB=GH;   // active window (set by camera)
+
+function simulate(){
+  frame++;
+  const cx0=Math.max(0,(simL/CH|0)-1), cx1=Math.min(CX-1,(simR/CH|0)+1);
+  const cy0=Math.max(0,(simT/CH|0)-1), cy1=Math.min(CY-1,(simB/CH|0)+1);
+  const wx0=cx0*CH, wx1=Math.min(GW,(cx1+1)*CH);
+  const wy0=cy0*CH, wy1=Math.min(GH,(cy1+1)*CH);
+  for(let y=wy0;y<wy1;y++) moved.fill(0, y*GW+wx0, y*GW+wx1);
+  const dir = (frame&1)?1:-1;
+  for(let cy=cy1;cy>=cy0;cy--){
+    for(let ci=0;ci<=cx1-cx0;ci++){
+      const cx = dir>0 ? cx0+ci : cx1-ci;
+      if(!dirty[cy*CX+cx]) continue;
+      stepChunk(cx,cy,dir);
+    }
+  }
+  const t=dirty; dirty=dirtyNext; dirtyNext=t;
+  dirtyNext.fill(0);
+}
+
+function stepChunk(cx,cy,dir){
+  const x0=cx*CH, x1=Math.min(GW,x0+CH);
+  const y0=cy*CH, y1=Math.min(GH,y0+CH);
+  for(let y=y1-1;y>=y0;y--){
+    for(let k=0;k<x1-x0;k++){
+      const x = dir>0 ? x0+k : x1-1-k;
+      const i=y*GW+x;
+      const m=grid[i];
+      if(m===AIR || moved[i]) continue;
+      stepCell(x,y,i,m);
+    }
+  }
+}
+
+function stepCell(x,y,i,m){
+  const t=M[m].type;
+  // ---- reactive / temporal materials
+  if(m===FIRE || m===EMBER){ stepFire(x,y,i,m); return; }
+  if(m===LAVA){ if(!lavaReact(x,y,i)) return; }
+  if(m===ACID){ if(acidEat(x,y,i)) return; }
+  if(m===ICE||m===SNOW){ if(meltCheck(x,y,i,m)) return; }
+  if(m===SMOKE||m===STEAM){ if(gasDecay(x,y,i,m)) return; }
+  if(M[m].burn>0 && life[i]>0){ if(ignite(x,y,i,m)) return; }
+
+  if(t===T_SOLID) return;
+  if(t===T_POWDER) stepPowder(x,y,i,m);
+  else if(t===T_LIQUID) stepLiquid(x,y,i,m);
+  else if(t===T_GAS) stepGas(x,y,i,m);
+}
+
+// density-aware move: can we enter cell (nx,ny)?
+function canEnter(m,nx,ny){
+  if(nx<0||nx>=GW||ny<0||ny>=GH) return false;
+  const o=grid[ny*GW+nx];
+  if(o===AIR) return true;
+  const to=M[o].type;
+  if(to===T_SOLID||to===T_POWDER) return false;
+  // Fire and embers hold their ground. If fluids may swap with them, the scan
+  // shuttles the fire into a column it has already passed, so stepFire never
+  // runs on it: a firebolt sunk in an oil pool sits at full life forever and
+  // never lights the slick. Fire moves only under its own power (it rises).
+  if(o===FIRE||o===EMBER) return false;
+  return M[m].density > M[o].density;   // sink through lighter fluids
+}
+function tryMove(x,y,i,m,nx,ny){
+  if(!canEnter(m,nx,ny)) return false;
+  swap(i, ny*GW+nx); touch(x,y); touch(nx,ny); return true;
+}
+
+function stepPowder(x,y,i,m){
+  if(tryMove(x,y,i,m,x,y+1)) return;
+  const d = Math.random()<0.5?1:-1;
+  if(tryMove(x,y,i,m,x+d,y+1)) return;
+  if(tryMove(x,y,i,m,x-d,y+1)) return;
+  // sand piles slump in liquid
+  const b=gget(x,y+1);
+  if(b!==AIR && M[b].type===T_LIQUID && Math.random()<0.15){
+    if(tryMove(x,y,i,m,x+d,y)) return;
+  }
+}
+
+function stepLiquid(x,y,i,m){
+  if(tryMove(x,y,i,m,x,y+1)) return;
+  const d = Math.random()<0.5?1:-1;
+  if(tryMove(x,y,i,m,x+d,y+1)) return;
+  if(tryMove(x,y,i,m,x-d,y+1)) return;
+  const disp=M[m].disp||3;
+  for(let s=1;s<=disp;s++){
+    if(!canEnter(m,x+d*s,y)) break;
+    if(canEnter(m,x+d*s,y+1)){ tryMove(x,y,i,m,x+d*s,y+1); return; }
+    if(s===disp || !canEnter(m,x+d*(s+1),y)){ tryMove(x,y,i,m,x+d*s,y); return; }
+  }
+  for(let s=1;s<=disp;s++){
+    if(!canEnter(m,x-d*s,y)) break;
+    if(s===disp || !canEnter(m,x-d*(s+1),y)){ tryMove(x,y,i,m,x-d*s,y); return; }
+  }
+}
+
+function stepGas(x,y,i,m){
+  if(Math.random()<0.35) return;
+  if(tryMove(x,y,i,m,x,y-1)) return;
+  const d=Math.random()<0.5?1:-1;
+  if(tryMove(x,y,i,m,x+d,y-1)) return;
+  if(tryMove(x,y,i,m,x+d,y)) return;
+  if(tryMove(x,y,i,m,x-d,y)) return;
+}
+
+// ---- fire: burns neighbours, dies into smoke
+function stepFire(x,y,i,m){
+  const l=life[i];
+  if(l<=1){ setc(x,y, Math.random()<0.55?SMOKE:AIR, 90); return; }
+  life[i]=l-1; touch(x,y);
+  for(let k=0;k<4;k++){
+    const nx=x+((Math.random()*3|0)-1), ny=y+((Math.random()*3|0)-1);
+    if(!inB(nx,ny)) continue;
+    const j=ny*GW+nx, o=grid[j];
+    if(o===AIR) continue;
+    if(o===WATER||o===BLOOD){ setc(nx,ny,STEAM,110); setc(x,y,Math.random()<0.5?SMOKE:AIR,80); return; }
+    if(o===ICE||o===SNOW){ setc(nx,ny,WATER,0); continue; }
+    if(o===GUNPOWDER){ explode(nx,ny, 7, 0); return; }
+    if(M[o].burn>0 && life[j]===0 && Math.random()<M[o].burn){ life[j]=M[o].burnTime; touch(nx,ny); }
+  }
+  // rise
+  if(Math.random()<0.5) tryMove(x,y,i,m,x,y-1);
+}
+// a burning solid/liquid: emits fire, then is consumed
+function ignite(x,y,i,m){
+  life[i]--; touch(x,y);
+  if(life[i]<=0){ setc(x,y, Math.random()<0.3?EMBER:(Math.random()<0.5?SMOKE:AIR), 40); return true; }
+  for(let k=0;k<2;k++){
+    const nx=x+((Math.random()*3|0)-1), ny=y-((Math.random()*2|0));
+    if(!inB(nx,ny)) continue;
+    const j=ny*GW+nx;
+    if(grid[j]===AIR && Math.random()<0.5) setc(nx,ny,FIRE,10+(Math.random()*14|0));
+    else if(M[grid[j]].burn>0 && life[j]===0 && Math.random()<M[grid[j]].burn*0.7){ life[j]=M[grid[j]].burnTime; touch(nx,ny); }
+    else if(grid[j]===WATER){ setc(x,y,AIR,0); return true; }
+  }
+  return false;
+}
+// lava: cools with water, ignites everything
+function lavaReact(x,y,i){
+  let hit=false;
+  for(let k=0;k<3;k++){
+    const nx=x+((Math.random()*3|0)-1), ny=y+((Math.random()*3|0)-1);
+    if(!inB(nx,ny)) continue;
+    const j=ny*GW+nx, o=grid[j];
+    if(o===WATER||o===BLOOD||o===ACID){ setc(nx,ny,STEAM,120); setc(x,y,STONE,0); return false; }
+    if(o===ICE||o===SNOW){ setc(nx,ny,WATER,0); hit=true; }
+    if(M[o].burn>0 && life[j]===0){ life[j]=M[o].burnTime; touch(nx,ny); }
+    if(o===AIR && Math.random()<0.06) setc(nx,ny,FIRE,14);
+  }
+  return true;
+}
+// acid: dissolves by material resistance, consumes itself
+function acidEat(x,y,i){
+  const nx=x+((Math.random()*3|0)-1), ny=y+((Math.random()*3|0)-1);
+  if(!inB(nx,ny)) return false;
+  const j=ny*GW+nx, o=grid[j];
+  if(o===AIR||o===ACID) return false;
+  const r=M[o].acid;
+  if(r>0 && Math.random()<r*0.25){
+    setc(nx,ny, Math.random()<0.25?SMOKE:AIR, 40);
+    if(Math.random()<0.35){ setc(x,y,AIR,0); return true; }
+  }
+  return false;
+}
+function meltCheck(x,y,i,m){
+  for(let k=0;k<2;k++){
+    const nx=x+((Math.random()*3|0)-1), ny=y+((Math.random()*3|0)-1);
+    if(!inB(nx,ny)) continue;
+    const o=grid[ny*GW+nx];
+    if(o===FIRE||o===LAVA||o===EMBER){ setc(x,y,WATER,0); return true; }
+  }
+  if(m===SNOW) stepPowder(x,y,i,m);
+  return m===SNOW;
+}
+function gasDecay(x,y,i,m){
+  if(life[i]<=1){ setc(x,y, m===STEAM&&Math.random()<0.45?WATER:AIR, 0); return true; }
+  life[i]--; touch(x,y);
+  return false;
+}
+
+// ---------------------------------------------------------------- explosion
+function explode(cx,cy,r,dmg){
+  const r2=r*r;
+  for(let y=cy-r;y<=cy+r;y++){
+    if(y<0||y>=GH) continue;
+    for(let x=cx-r;x<=cx+r;x++){
+      if(x<0||x>=GW) continue;
+      const dx=x-cx,dy=y-cy,d2=dx*dx+dy*dy;
+      if(d2>r2) continue;
+      const m=grid[y*GW+x];
+      if(m===AIR) { if(Math.random()<0.25) setc(x,y,FIRE,8+(Math.random()*10|0)); continue; }
+      const hard = (m===STONE?0.55:m===BRICK?0.75:0.05);
+      if(Math.random()>hard) setc(x,y, Math.random()<0.2?FIRE:AIR, 12);
+    }
+  }
+  if(typeof onExplode==='function') onExplode(cx,cy,r,dmg);
+}
+// ================================================================ SPELLS
+// type: proj | mat | mod | multi | trigger | util
+const SP = {};
+function sp(id,o){ SP[id]=Object.assign({id,type:'proj',mana:10,cd:0,rc:0,dmg:0,speed:60,spread:0,life:120,r:1,col:'#fff',glyph:'*',tier:1,desc:''},o); }
+
+// --- projectiles
+sp('SPARK',  {name:'SPARK BOLT',    mana:5,  cd:3,  rc:5,  dmg:3,  speed:70, life:90,  col:'#ffe36b', glyph:'.', tier:1, desc:'Cheap, fast, endless.'});
+sp('ARROW',  {name:'MAGIC ARROW',   mana:9,  cd:9,  rc:20, dmg:8,  speed:95, life:100, col:'#c9a2ff', glyph:'>', tier:1, desc:'Straight and mean.'});
+sp('BOUNCE', {name:'BOUNCING BURST',mana:14, cd:11, rc:25, dmg:7,  speed:60, life:180, col:'#7de0c8', glyph:'o', tier:1, bounce:4, boom:4, desc:'Ricochets. Small blast.'});
+sp('SPITTER',{name:'SPITTER BOLT',  mana:12, cd:14, rc:26, dmg:11, speed:55, life:110, col:'#a8ff6b', glyph:'q', tier:2, boom:3, desc:'Lobbed acidic glob.'});
+sp('FIREB',  {name:'FIREBALL',      mana:26, cd:24, rc:45, dmg:16, speed:52, life:120, col:'#ff8a2e', glyph:'@', tier:2, boom:9, ignite:1, desc:'Blast, then burning.'});
+sp('BOMB',   {name:'BOMB',          mana:38, cd:30, rc:70, dmg:22, speed:34, life:150, col:'#d8d0c0', glyph:'B', tier:2, boom:16, grav:1, uses:8, desc:'Heavy. Falls. Levels rooms.'});
+sp('DIGBLST',{name:'DIGGING BLAST', mana:8,  cd:5,  rc:9,  dmg:2,  speed:78, life:44,  col:'#b8b0a0', glyph:'d', tier:1, dig:5, desc:'Chews rock, not flesh.'});
+sp('DIGBOLT',{name:'LUMINOUS DRILL',mana:16, cd:2,  rc:22, dmg:5,  speed:150,life:30,  col:'#e8f4ff', glyph:'|', tier:2, dig:3, pierce:1, desc:'A beam. Almost no cast delay.'});
+sp('ORB',    {name:'ENERGY ORB',    mana:50, cd:34, rc:80, dmg:34, speed:36, life:220, col:'#7de8ff', glyph:'0', tier:3, boom:11, pierce:3, uses:5, desc:'Drifts through everything.'});
+sp('CROSS',  {name:'DEATH CROSS',   mana:44, cd:28, rc:60, dmg:19, speed:64, life:120, col:'#ff4d78', glyph:'+', tier:3, cross:1, desc:'Fires a cross of four.'});
+sp('BLACK',  {name:'BLACK HOLE',    mana:70, cd:40, rc:110,dmg:0,  speed:26, life:200, col:'#b07dff', glyph:'8', tier:3, hole:14, uses:3, desc:'Eats matter. Not enemies.'});
+sp('CHAIN',  {name:'CHAINSAW',      mana:1,  cd:-9, rc:-9, dmg:6,  speed:26, life:8,   col:'#ffd0d0', glyph:'x', tier:2, melee:1, desc:'Point blank. Negative cast delay.'});
+sp('LANCE',  {name:'LANCE',         mana:30, cd:20, rc:40, dmg:26, speed:170,life:60,  col:'#fff2b0', glyph:'!', tier:3, pierce:6, dig:2, desc:'Impales a whole line.'});
+
+// --- material sprays
+sp('WSPRAY', {name:'WATER SPRAY',   type:'mat', mana:12, cd:6, rc:14, speed:60, life:40, paint:WATER, col:'#3a7fd8', glyph:'~', tier:1, desc:'Douses fire. Makes mud of you.'});
+sp('OSPRAY', {name:'OIL SPRAY',     type:'mat', mana:12, cd:6, rc:14, speed:60, life:40, paint:OIL,   col:'#4a4030', glyph:'~', tier:1, desc:'Slick. Eager to burn.'});
+sp('ASPRAY', {name:'ACID SPRAY',    type:'mat', mana:22, cd:8, rc:22, speed:60, life:40, paint:ACID,  col:'#8ee02a', glyph:'~', tier:2, desc:'Dissolves the floor. And you.'});
+sp('LSPRAY', {name:'LAVA SPRAY',    type:'mat', mana:34, cd:10,rc:30, speed:56, life:40, paint:LAVA,  col:'#e0521a', glyph:'~', tier:3, desc:'Do not aim down.'});
+
+// --- modifiers
+sp('DMG',    {name:'DAMAGE PLUS',   type:'mod', mana:6,  cd:2,  col:'#ff6b6b', glyph:'^', tier:1, mod:{dmg:+6}, desc:'+6 damage to the next spell.'});
+sp('CRIT',   {name:'CRITICAL PLUS', type:'mod', mana:5,  cd:1,  col:'#ff9ecb', glyph:'%', tier:2, mod:{crit:+0.15}, desc:'+15% chance to triple damage.'});
+sp('SPEED',  {name:'SPEED UP',      type:'mod', mana:4,  cd:1,  col:'#8ee8ff', glyph:'»', tier:1, mod:{speedMul:2.0}, desc:'Doubles projectile speed.'});
+sp('HEAVY',  {name:'HEAVY SHOT',    type:'mod', mana:8,  cd:4,  col:'#c0a080', glyph:'#', tier:1, mod:{dmg:+4,speedMul:0.6,grav:1}, desc:'Slower, heavier, it drops.'});
+sp('HOME',   {name:'HOMING',        type:'mod', mana:10, cd:3,  col:'#ffd166', glyph:'&', tier:2, mod:{home:1}, desc:'Curves toward the living.'});
+sp('BOUNCY', {name:'BOUNCING',      type:'mod', mana:7,  cd:2,  col:'#7de0c8', glyph:'v', tier:1, mod:{bounce:5}, desc:'Adds 5 bounces.'});
+sp('FIREMOD',{name:'FIRE TRAIL',    type:'mod', mana:9,  cd:2,  col:'#ff7a18', glyph:'f', tier:1, mod:{trail:FIRE}, desc:'Leaves fire behind it.'});
+sp('OILMOD', {name:'OIL TRAIL',     type:'mod', mana:6,  cd:2,  col:'#4a4030', glyph:'f', tier:1, mod:{trail:OIL}, desc:'Leaves oil behind it.'});
+sp('BOOM',   {name:'EXPLOSIVE PLUS',type:'mod', mana:14, cd:4,  col:'#ff8a2e', glyph:'*', tier:2, mod:{boom:+6}, desc:'+6 blast radius.'});
+sp('SPREAD', {name:'REDUCE SPREAD', type:'mod', mana:3,  cd:1,  col:'#a0e0a0', glyph:'-', tier:1, mod:{spread:-12}, desc:'Tightens the cone.'});
+sp('SCATTER',{name:'SCATTER CAST',  type:'mod', mana:3,  cd:1,  col:'#e0a0a0', glyph:'+', tier:1, mod:{spread:+18}, desc:'Widens the cone. On purpose.'});
+sp('MANA',   {name:'ADD MANA',      type:'mod', mana:-28,cd:6,  col:'#3aa0ff', glyph:'m', tier:2, mod:{}, desc:'Costs -28 mana. Pays for the spell it holds.'});
+sp('LIGHT',  {name:'LIGHT SHOT',    type:'mod', mana:5,  cd:-6, rc:-6, col:'#fff', glyph:'~', tier:2, mod:{speedMul:1.4}, desc:'Negative cast delay and recharge.'});
+sp('PIERCE', {name:'PIERCING SHOT', type:'mod', mana:16, cd:4,  col:'#dcd0ff', glyph:'I', tier:2, mod:{pierce:+3}, desc:'Passes through 3 more bodies.'});
+sp('DIGMOD', {name:'DIGGING PLUS',  type:'mod', mana:8,  cd:2,  col:'#b8b0a0', glyph:'D', tier:2, mod:{dig:+4}, desc:'The next spell tunnels.'});
+
+// --- multicast
+sp('DOUBLE', {name:'DOUBLE SPELL',  type:'multi', count:2, mana:5,  cd:6,  col:'#ffffff', glyph:'2', tier:1, desc:'Casts the next 2 spells at once.'});
+sp('TRIPLE', {name:'TRIPLE SPELL',  type:'multi', count:3, mana:10, cd:10, col:'#ffffff', glyph:'3', tier:2, desc:'Casts the next 3 spells at once.'});
+sp('QUAD',   {name:'QUADRUPLE',     type:'multi', count:4, mana:18, cd:14, col:'#ffffff', glyph:'4', tier:3, desc:'Casts the next 4 spells at once.'});
+
+// --- triggers
+sp('TRIG',   {name:'ADD TRIGGER',   type:'trigger', mode:'hit',   mana:4, cd:3, col:'#9d6bff', glyph:'T', tier:2, desc:'The next spell casts its payload on impact.'});
+sp('TIMER',  {name:'ADD TIMER',     type:'trigger', mode:'timer', mana:4, cd:3, col:'#9d6bff', glyph:'t', tier:2, desc:'The next spell casts its payload after a beat.'});
+
+// --- utility
+sp('TELE',   {name:'TELEPORT BOLT', type:'proj', mana:24, cd:16, rc:40, dmg:0, speed:90, life:70, col:'#b07dff', glyph:'^', tier:2, tp:1, desc:'You go where it lands. Mind the lava.'});
+sp('HEAL',   {name:'CIRCLE OF VIGOUR',type:'util',mana:60, cd:30, rc:120, col:'#6bff9d', glyph:'+', tier:3, heal:25, uses:3, desc:'Heals 25. Three uses.'});
+sp('SHIELD', {name:'PERSONAL SHIELD',type:'util',mana:50, cd:26, rc:100, col:'#7de8ff', glyph:'O', tier:3, shield:300, desc:'Blocks shots for 5 seconds.'});
+
+const ALL_SPELLS = Object.keys(SP);
+const SPELLS_BY_TIER = t => ALL_SPELLS.filter(k=>SP[k].tier===t);
+
+// ================================================================ WAND
+const MAX_GROUPS=24;
+let uid=1;
+function makeWand(o){
+  return Object.assign({
+    uid: uid++, name:'WAND', shuffle:false, cap:6, perCast:1,
+    castDelay:14, recharge:30, manaMax:180, manaChg:60, mana:180, spread:2,
+    spells: new Array(6).fill(null),
+    // runtime
+    deck:[], ptr:0, delayT:0, reloadT:0, fresh:true, lastFired:[]
+  }, o);
+}
+
+function wandReload(w){
+  w.deck = w.spells.filter(s=>s);
+  if(w.shuffle) for(let i=w.deck.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; const t=w.deck[i];w.deck[i]=w.deck[j];w.deck[j]=t; }
+  w.ptr=0; w.fresh=false;
+}
+
+// Resolve one firing of the wand into a list of cast groups.
+// Mirrors Noita's Deck/Draw model: modifiers and multicasts draw to their right
+// and WRAP to the start of the wand when they run out. A wrap forces a recharge.
+function wandResolve(w, trace){
+  if(w.fresh || w.ptr>=w.deck.length) wandReload(w);
+  if(!w.deck.length) return null;
+
+  let wrapped=false, manaCost=0, delay=0, recharge=0;
+  const drawn=[], drawnIdx=[];
+  const out=[];
+  let guard=0, lastIdx=0;
+  const tr = (i,id,act)=>{ if(trace) trace.push({i,id,act}); };
+
+  function drawNext(allowWrap){
+    if(guard++>48) return null;
+    if(w.ptr>=w.deck.length){
+      // A cast may wrap only ONCE. Without this, a multicast that wraps onto
+      // itself re-expands forever ([SPARK,TRIPLE,ARROW] fired 43 projectiles).
+      if(!allowWrap || wrapped) return null;
+      wrapped=true; w.ptr=0;
+      tr(-1,null,'wrap');
+      if(!w.deck.length) return null;
+    }
+    lastIdx=w.ptr;
+    drawnIdx.push(w.ptr);
+    const id=w.deck[w.ptr++];
+    drawn.push(id);
+    const s=SP[id];
+    manaCost+=s.mana; delay+=s.cd||0; recharge+=s.rc||0;
+    return s;
+  }
+
+  function read(mods, sink, allowWrap){
+    const s=drawNext(allowWrap);
+    if(!s) return false;
+    const di=lastIdx;
+    if(s.type==='mod'){
+      tr(di,s.id,'mod');
+      return read(mods.concat([s]), sink, true);
+    }
+    if(s.type==='multi'){
+      tr(di,s.id,'multi');
+      let got=0;
+      for(let i=0;i<s.count;i++) if(read(mods.slice(), sink, true)) got++;
+      return got>0;
+    }
+    if(s.type==='trigger'){
+      tr(di,s.id,'trigger');
+      const carrier=[];
+      if(!read(mods, carrier, true)) return false;
+      const payload=[];
+      read([], payload, true);
+      carrier[0].trigger={mode:s.mode, payload};
+      for(const c of carrier) sink.push(c);
+      return true;
+    }
+    if(out.length>=MAX_GROUPS) return false;
+    tr(di,s.id,'cast');
+    sink.push({spell:s, mods:mods.slice()});
+    return true;
+  }
+
+  for(let k=0;k<w.perCast;k++){
+    // the wand's own spells/cast cannot cause a wrap
+    if(w.ptr>=w.deck.length) break;
+    read([], out, false);
+  }
+  if(!out.length) return null;
+
+  const needsReload = wrapped || w.ptr>=w.deck.length;
+  return {groups:out, manaCost, delay, recharge, wrapped, needsReload, drawn, drawnIdx};
+}
+
+// ================================================================ NOISE
+let SEED=1;
+function rnd(){ SEED=(SEED*1664525+1013904223)>>>0; return SEED/4294967296; }
+function srnd(s){ SEED=s>>>0; }
+// Math.imul, not `*`: x*374761393 and *1274126177 overflow 2^53, so the doubles
+// lose their low bits before ^ coerces to int32. The hash came out biased low —
+// fbm never exceeded 0.435 against cave thresholds of 0.46-0.50, so `n > B.cave`
+// was never true and the game generated NO CAVES AT ALL: five biomes of solid
+// rock with one wandering shaft punched through them.
+function hash2(x,y){ let h=Math.imul(x,374761393)+Math.imul(y,668265263); h=Math.imul(h^(h>>>13),1274126177); return ((h^(h>>>16))>>>0)/4294967296; }
+const smooth=t=>t*t*(3-2*t);
+function vnoise(x,y){
+  const xi=Math.floor(x), yi=Math.floor(y), xf=x-xi, yf=y-yi;
+  const a=hash2(xi,yi), b=hash2(xi+1,yi), c=hash2(xi,yi+1), d=hash2(xi+1,yi+1);
+  const u=smooth(xf), v=smooth(yf);
+  return (a*(1-u)+b*u)*(1-v) + (c*(1-u)+d*u)*v;
+}
+function fbm(x,y,oct){ let s=0,a=0.5,f=1,n=0; for(let i=0;i<oct;i++){ s+=vnoise(x*f,y*f)*a; n+=a; a*=0.5; f*=2; } return s/n; }
+
+// ================================================================ BIOMES
+const BIOMES=[
+  {name:'THE MINES',    h:400, base:STONE, fill:[[SAND,.30],[COAL,.10],[WOOD,.05]], liq:[[WATER,.55]], cave:.50, mobs:['grub','grub','flyer'],           tint:'#5a4f42'},
+  {name:'THE COAL PITS',h:400, base:STONE, fill:[[COAL,.42],[WOOD,.06]],            liq:[[OIL,.60],[WATER,.25]], cave:.49, mobs:['grub','shooter','flyer'], tint:'#2c2a2e'},
+  {name:'THE COLD VAULT',h:400,base:ICE,   fill:[[SNOW,.30],[STONE,.22]],           liq:[[WATER,.50]], cave:.47, mobs:['flyer','shooter','brute'],        tint:'#3c5668'},
+  {name:'THE SLAG FORGE',h:400,base:BRICK, fill:[[GUNPOWDER,.10],[STONE,.24],[COAL,.10]], liq:[[LAVA,.50]], cave:.50, mobs:['shooter','bomber','brute'],  tint:'#6d3a26'},
+  {name:'THE SUMP',     h:400, base:STONE, fill:[[FUNGUS,.20],[SAND,.14]],          liq:[[SLUDGE,.55],[ACID,.30]], cave:.46, mobs:['flyer','bomber','brute'], tint:'#3f2f52'},
+];
+const SANCT_H=52;
+const bands=[]; // {y0,y1,type:'bio'|'sanct'|'heart',i}
+(function(){ let y=0;
+  for(let i=0;i<BIOMES.length;i++){ bands.push({y0:y,y1:y+BIOMES[i].h,type:'bio',i}); y+=BIOMES[i].h;
+    bands.push({y0:y,y1:y+SANCT_H,type:'sanct',i}); y+=SANCT_H; }
+  bands.push({y0:y,y1:GH,type:'heart',i:BIOMES.length});
+})();
+function bandAt(y){ for(const b of bands) if(y>=b.y0&&y<b.y1) return b; return bands[bands.length-1]; }
+function biomeName(y){ const b=bandAt(y); return b.type==='sanct'?'SANCTUM':b.type==='heart'?'THE HEART':BIOMES[b.i].name; }
+
+const sanctums=bands.filter(b=>b.type==='sanct').map(b=>({y0:b.y0,y1:b.y1,used:false}));
+
+// ================================================================ WORLDGEN
+function pick(list){ let r=rnd(); for(const [m,p] of list){ if(r<p) return m; r-=p; } return null; }
+
+function genWorld(seed){
+  srnd(seed);
+  grid.fill(STONE);
+  const ox=rnd()*1000, oy=rnd()*1000;
+
+  for(const b of bands){
+    if(b.type==='sanct'){ genSanctum(b); continue; }
+    if(b.type==='heart'){ genHeart(b); continue; }
+    const B=BIOMES[b.i];
+    for(let y=b.y0;y<b.y1;y++){
+      for(let x=0;x<GW;x++){
+        const i=y*GW+x;
+        const n=fbm((x+ox)*0.030,(y+oy)*0.030,3);
+        const n2=fbm((x+ox)*0.011+55,(y+oy)*0.011,2);
+        let m;
+        if(n > B.cave && n2>0.36) m=AIR;
+        else if(n > B.cave-0.05) m = pick(B.fill) || B.base;
+        else m = B.base;
+        grid[i]=m; shade[i]=(hash2(x,y)*4)|0;
+      }
+    }
+  }
+  // Guaranteed descent: a wandering shaft down to the heart. It starts BELOW the
+  // starting cavern and off to one side — begin it at the surface under the spawn
+  // and the witch simply falls down the chute the instant she exists, skipping the
+  // first biome entirely and making the "DIG DOWN" prompt a lie. She should have to
+  // open the floor herself.
+  let sx=(GW/2+26)|0;
+  for(let y=58;y<GH-8;y++){
+    sx += (rnd()<0.5?-1:1)*(rnd()<0.35?1:0);
+    sx = Math.max(14, Math.min(GW-14, sx));
+    const b=bandAt(y);
+    const w = b.type==='sanct' ? 0 : (3 + (fbm(y*0.05,3.3,2)*5|0));
+    for(let x=sx-w;x<=sx+w;x++) if(x>0&&x<GW) grid[y*GW+x]=AIR;
+  }
+  // liquid pools sit in the low spots of each biome
+  for(const b of bands){
+    if(b.type!=='bio') continue;
+    const B=BIOMES[b.i];
+    const pools = 5+(rnd()*5|0);
+    for(let k=0;k<pools;k++){
+      const px=10+(rnd()*(GW-20)|0), py=b.y0+30+(rnd()*(B.h-60)|0);
+      const m=pick(B.liq); if(m===null) continue;
+      const rr=6+(rnd()*11|0);
+      for(let y=py-rr;y<py+rr;y++)for(let x=px-rr;x<px+rr;x++){
+        if(!inB(x,y)||bandAt(y).type!=='bio') continue;
+        const d=(x-px)*(x-px)+(y-py)*(y-py);
+        if(d<rr*rr && grid[y*GW+x]===AIR) grid[y*GW+x]=m;
+      }
+    }
+    // ore + treasure
+    for(let k=0;k<26;k++){
+      const px=6+(rnd()*(GW-12)|0), py=b.y0+10+(rnd()*(B.h-20)|0);
+      const rr=1+(rnd()*3|0);
+      for(let y=py-rr;y<=py+rr;y++)for(let x=px-rr;x<=px+rr;x++)
+        if(inB(x,y)&&grid[y*GW+x]!==AIR) grid[y*GW+x]=GOLD;
+    }
+  }
+  // starting cavern — wide enough to learn to fly, aim and shoot in.
+  // (was a squashed ellipse only ~12 cells across at floor level: you spawned
+  //  wedged in a pocket with the wall two cells off your muzzle)
+  for(let y=8;y<56;y++) for(let x=GW/2-44;x<GW/2+44;x++){
+    if(!inB(x,y)) continue;
+    const dx=(x-GW/2)/40, dy=(y-30)/22;
+    if(dx*dx+dy*dy < 1) grid[y*GW+x]=AIR;
+  }
+  for(let x=0;x<GW;x++) for(let y=0;y<5;y++) grid[y*GW+x]=STONE;
+  for(let y=0;y<GH;y++){ for(let k=0;k<3;k++){ grid[y*GW+k]=STONE; grid[y*GW+GW-1-k]=STONE; } }
+  for(let i=0;i<grid.length;i++) shade[i]=(hash2(i%GW,(i/GW)|0)*4)|0;
+  life.fill(0); dirty.fill(1); dirtyNext.fill(1);
+}
+
+function genSanctum(b){
+  for(let y=b.y0;y<b.y1;y++) for(let x=0;x<GW;x++){
+    const i=y*GW+x;
+    const edge = y<b.y0+5 || y>=b.y1-5;
+    grid[i]= edge?BRICK:AIR;
+  }
+  // altar plinth
+  const cx=GW/2|0;
+  for(let x=cx-9;x<=cx+9;x++) for(let y=b.y1-9;y<b.y1-5;y++) if(inB(x,y)) grid[y*GW+x]=BRICK;
+  for(let x=cx-2;x<=cx+2;x++) for(let y=b.y1-12;y<b.y1-9;y++) if(inB(x,y)) grid[y*GW+x]=GLASS;
+  // let the player fall in from above
+  for(let x=cx-6;x<=cx+6;x++) for(let y=b.y0;y<b.y0+5;y++) if(inB(x,y)) grid[y*GW+x]=AIR;
+}
+
+function genHeart(b){
+  for(let y=b.y0;y<b.y1;y++) for(let x=0;x<GW;x++){
+    const i=y*GW+x;
+    const n=fbm(x*0.02+11,y*0.02+9,2);
+    grid[i]= (y<b.y0+6)?BRICK : (n>0.42? AIR : BRICK);
+    if(n>0.66 && y>b.y0+60) grid[i]=LAVA;
+  }
+  for(let x=GW/2-40;x<GW/2+40;x++) for(let y=b.y0+8;y<b.y0+90;y++) if(inB(x,y)) grid[y*GW+x]=AIR;
+}
+
+// ================================================================ ENTITIES
+const SPR = {
+  player:{w:5,h:7,k:{A:'#6b3fa8',B:'#e6d2b8',C:'#2f2742',D:'#9d6bff'},d:["..A..",".AAA.","AAAAA",".BBB.",".CDC.",".CCC.",".C.C."]},
+  grub:  {w:5,h:4,k:{A:'#8a5a3a',B:'#c08a5a',C:'#2a1a10'},d:[".AAA.","ABBBA","ACACA",".A.A."]},
+  flyer: {w:5,h:5,k:{A:'#5a3a6a',B:'#c86ba8',C:'#221428'},d:["A...A",".AAA.","ABCBA",".AAA.","A...A"]},
+  shooter:{w:5,h:7,k:{A:'#3a5a6a',B:'#8ad0e0',C:'#1a2a30'},d:[".AAA.","ABBBA","ACCCA",".AAA.",".ACA.",".A.A.","A...A"]},
+  bomber:{w:6,h:6,k:{A:'#6a5a2a',B:'#e0c060',C:'#2a2410'},d:[".AAAA.","ABBBBA","ACCCCA","ABBBBA",".A..A.","A....A"]},
+  brute: {w:8,h:9,k:{A:'#5a2a2a',B:'#a05050',C:'#1a0a0a'},d:["..AAAA..",".ABBBBA.","ABCBBCBA","ABBBBBBA","AABBBBAA",".ABBBBA.",".A.AA.A.",".A.AA.A.","AA....AA"]},
+  boss:  {w:14,h:12,k:{A:'#2a1a3a',B:'#9d6bff',C:'#ff4d78',D:'#e6d2b8'},d:["....AAAAAA....","..AABBBBBBAA..",".ABBCBBBBCBBA.","ABBBBBBBBBBBBA","ABBDBBBBBBDBBA","ABBBBBBBBBBBBA",".ABBBBBBBBBBA.","..AABBBBBBAA..","...A.AAAA.A...","..A...AA...A..",".A....AA....A.","A.....AA.....A"]},
+};
+const ENEMY={
+  grub:   {hp:14, spd:9,  touch:5,  fly:false, w:5,h:4, gold:2,  ai:'walk'},
+  flyer:  {hp:11, spd:22, touch:8,  fly:true,  w:5,h:5, gold:3,  ai:'chase'},
+  shooter:{hp:26, spd:12, touch:6,  fly:true,  w:5,h:7, gold:6,  ai:'shoot', shot:'SPARK', rate:70},
+  bomber: {hp:34, spd:10, touch:8,  fly:false, w:6,h:6, gold:9,  ai:'shoot', shot:'BOMB',  rate:150},
+  brute:  {hp:80, spd:8,  touch:16, fly:false, w:8,h:9, gold:14, ai:'walk'},
+  boss:   {hp:520,spd:14, touch:22, fly:true,  w:14,h:12,gold:120,ai:'boss', rate:36},
+};
+
+let P=null, mobs=[], shots=[], drops=[], parts=[];
+
+function newPlayer(){
+  return {x:GW/2, y:26, vx:0, vy:0, w:4, h:7, hp:100, hpMax:100,
+    fly:100, flyMax:100, onGround:false, burn:0, iframe:0, gold:0, shield:0,
+    poison:0, face:1, alive:true, perks:{}, lives:0};
+}
+
+// ---- collision against the grid
+function solidAt(x,y){ return isBlocking(gget(x|0,y|0)); }
+function boxHit(e,x,y){
+  const x0=Math.floor(x-e.w/2), x1=Math.floor(x+e.w/2-0.01);
+  const y0=Math.floor(y-e.h/2), y1=Math.floor(y+e.h/2-0.01);
+  for(let j=y0;j<=y1;j++) for(let i=x0;i<=x1;i++) if(isBlocking(gget(i,j))) return true;
+  return false;
+}
+function submerged(e){
+  const m=gget(e.x|0,(e.y)|0);
+  return (m!==AIR && M[m].type===T_LIQUID) ? m : 0;
+}
+function moveEnt(e, stepUp){
+  // x
+  let nx=e.x+e.vx;
+  if(boxHit(e,nx,e.y)){
+    let done=false;
+    if(stepUp){ for(let s=1;s<=2;s++){ if(!boxHit(e,nx,e.y-s)&&!boxHit(e,e.x,e.y-s)){ e.y-=s; e.x=nx; done=true; break; } } }
+    if(!done){ e.vx=0; while(!boxHit(e,e.x+Math.sign(nx-e.x)*0.2,e.y) && Math.abs(nx-e.x)>0.2) e.x+=Math.sign(nx-e.x)*0.2; }
+  } else e.x=nx;
+  // y
+  let ny=e.y+e.vy;
+  if(boxHit(e,e.x,ny)){
+    if(e.vy>0) e.onGround=true;
+    e.vy=0;
+    while(!boxHit(e,e.x, e.y+Math.sign(ny-e.y)*0.2) && Math.abs(ny-e.y)>0.2) e.y+=Math.sign(ny-e.y)*0.2;
+  } else { e.y=ny; e.onGround=false; }
+  e.x=Math.max(4,Math.min(GW-4,e.x));
+}
+
+// ---- damage
+// Damage-over-time ticks ignore iframes (otherwise standing in a fire would only
+// hurt every 18 frames) and grant none. Everything else does the opposite.
+// 'burn' is the fire DoT, 'poison' the sludge DoT — they are kept distinct so the
+// right perk can stop each: FIREPROOF used to block the lava that lit you but not
+// the burning that followed, and ACID BLOOD promised "sludge does nothing to you"
+// while sludge quietly ticked you down as generic 'burn' damage.
+const isDot = k => k==='burn' || k==='env' || k==='poison';
+function hurtPlayer(n, kind){
+  if(!P.alive) return;
+  const dot=isDot(kind);
+  if(P.iframe>0 && !dot) return;
+  if(P.shield>0 && kind==='shot') return;
+  if((kind==='fire'||kind==='burn') && P.perks.fireproof) return;
+  if(kind==='boom' && P.perks.blastproof) return;
+  if((kind==='tox'||kind==='poison') && P.perks.toxproof) return;
+  P.hp-=n; if(!dot) P.iframe=18;
+  shakeT=Math.min(14, shakeT+n*0.5);
+  for(let k=0;k<Math.min(8,n|0);k++) spurt(P.x,P.y,BLOOD);
+  if(P.hp<=0) killPlayer();
+}
+function killPlayer(){
+  if(P.lives>0){ P.lives--; P.hp=P.hpMax; P.iframe=90; toast('THE EXTRA LIFE SPENDS ITSELF'); return; }
+  P.alive=false; screenDeath();
+}
+function hurtMob(m, n, kind){
+  if(m.dead) return;
+  m.hp-=n; m.flash=6;
+  for(let k=0;k<Math.min(10,2+n/3|0);k++) spurt(m.x,m.y,BLOOD);
+  if(m.hp<=0){
+    m.dead=true;
+    for(let k=0;k<14;k++) spurt(m.x,m.y,BLOOD);
+    const g=Math.round(ENEMY[m.t].gold*(P.perks.rich?1.5:1));
+    for(let k=0;k<g;k++) drops.push({x:m.x+(Math.random()*4-2), y:m.y-2, vx:(Math.random()*2-1)*0.5, vy:-Math.random()*1.2, t:'gold', life:2400});
+    if(P.perks.vampire) { P.hp=Math.min(P.hpMax,P.hp+3); }
+    if(m.t==='boss') winRun();
+  }
+}
+// ghost=true -> cosmetic only: the particle never lands as a real cell.
+function spurt(x,y,mat,ghost){
+  parts.push({x:x+(Math.random()*3-1.5), y:y+(Math.random()*3-1.5), vx:(Math.random()*2-1)*0.8, vy:-Math.random()*1.1, m:mat, life:14+(Math.random()*16|0), ghost:!!ghost});
+}
+// hook used by explode() in the sim
+function onExplode(cx,cy,r,dmg){
+  if(dmg>0){
+    const d=Math.hypot(P.x-cx,P.y-cy);
+    if(d<r+3) hurtPlayer(Math.max(2,dmg*(1-d/(r+3))|0), 'boom');
+    for(const m of mobs){ const dm=Math.hypot(m.x-cx,m.y-cy); if(dm<r+3) hurtMob(m, Math.max(2,dmg*(1-dm/(r+3))|0), 'boom'); }
+  }
+  shakeT=Math.min(20, shakeT+r*0.5);
+}
+
+// ================================================================ PROJECTILES
+function castGroups(res, ox, oy, dx, dy, owner){
+  for(const g of res.groups){
+    const s=g.spell;
+    let dmg=s.dmg||0, speed=s.speed||60, spread=(s.spread||0)+(owner==='p'?curWand().spread:2);
+    let boom=s.boom||0, dig=s.dig||0, pierce=s.pierce||0, bounce=s.bounce||0;
+    let home=0, grav=s.grav||0, trail=0, crit=0, life=s.life||100;
+    for(const m of g.mods){
+      const q=m.mod||{};
+      if(q.dmg) dmg+=q.dmg;
+      if(q.speedMul) speed*=q.speedMul;
+      if(q.spread) spread+=q.spread;
+      if(q.boom) boom+=q.boom;
+      if(q.dig) dig+=q.dig;
+      if(q.pierce) pierce+=q.pierce;
+      if(q.bounce) bounce+=q.bounce;
+      if(q.home) home=1;
+      if(q.grav) grav=1;
+      if(q.trail) trail=q.trail;
+      if(q.crit) crit+=q.crit;
+    }
+    if(s.type==='util'){
+      if(s.heal){ P.hp=Math.min(P.hpMax,P.hp+s.heal); toast('+'+s.heal+' VIGOUR'); }
+      if(s.shield){ P.shield=s.shield; toast('SHIELD UP'); }
+      continue;
+    }
+    if(s.cross){
+      for(let k=0;k<4;k++){ const a=k*Math.PI/2; mkShot(ox,oy,Math.cos(a),Math.sin(a),{s,dmg,speed,spread:0,boom,dig,pierce,bounce,home,grav,trail,crit,life,owner,trigger:g.trigger}); }
+      continue;
+    }
+    mkShot(ox,oy,dx,dy,{s,dmg,speed,spread,boom,dig,pierce,bounce,home,grav,trail,crit,life,owner,trigger:g.trigger});
+  }
+}
+function mkShot(ox,oy,dx,dy,o){
+  const a=Math.atan2(dy,dx) + (Math.random()*2-1)*(o.spread||0)*Math.PI/180;
+  const sp=(o.speed||60)/60;
+  shots.push({x:ox, y:oy, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, s:o.s,
+    dmg:o.dmg, boom:o.boom, dig:o.dig, pierce:o.pierce, bounce:o.bounce,
+    home:o.home, grav:o.grav, trail:o.trail, crit:o.crit||0, life:o.life,
+    owner:o.owner, trigger:o.trigger, hitIds:[]});
+}
+function shotDie(s, hitX, hitY){
+  if(s.trigger && s.trigger.payload && s.trigger.payload.length){
+    const d=Math.hypot(s.vx,s.vy)||1;
+    castGroups({groups:s.trigger.payload}, hitX, hitY, s.vx/d, s.vy/d, s.owner);
+    s.trigger=null;
+  }
+  if(s.boom>0) explode(hitX|0, hitY|0, s.boom, s.dmg);
+  if(s.dig>0){
+    const r=s.dig;
+    for(let y=-r;y<=r;y++)for(let x=-r;x<=r;x++){
+      if(x*x+y*y>r*r) continue;
+      const gx=(hitX+x)|0, gy=(hitY+y)|0;
+      if(!inB(gx,gy)) continue;
+      const m=grid[gy*GW+gx];
+      if(m!==AIR && M[m].type!==T_LIQUID && M[m].type!==T_GAS) setc(gx,gy,AIR,0);
+    }
+  }
+  if(s.s.ignite) for(let k=0;k<10;k++) setc((hitX+Math.random()*8-4)|0,(hitY+Math.random()*8-4)|0,FIRE,20);
+  if(s.s.hole){
+    const r=s.s.hole;
+    for(let y=-r;y<=r;y++)for(let x=-r;x<=r;x++) if(x*x+y*y<=r*r) setc((hitX+x)|0,(hitY+y)|0,AIR,0);
+  }
+  if(s.s.tp && s.owner==='p'){
+    const tx=Math.max(5,Math.min(GW-5,hitX)), ty=Math.max(5,Math.min(GH-5,hitY));
+    if(!boxHit(P,tx,ty)){ P.x=tx; P.y=ty; P.vx=0; P.vy=0; }
+  }
+  s.dead=true;
+}
+function stepShots(){
+  for(const s of shots){
+    if(s.dead) continue;
+    if(--s.life<=0){ shotDie(s,s.x,s.y); continue; }
+    if(s.grav) s.vy+=0.035;
+    if(s.home){
+      let best=null,bd=1e9;
+      const list = s.owner==='p'?mobs:[P];
+      for(const m of list){ if(m.dead||m===undefined) continue; const d=Math.hypot(m.x-s.x,m.y-s.y); if(d<bd&&d<70){bd=d;best=m;} }
+      if(best){ const a=Math.atan2(best.y-s.y,best.x-s.x), sp=Math.hypot(s.vx,s.vy);
+        s.vx+= (Math.cos(a)*sp-s.vx)*0.09; s.vy+= (Math.sin(a)*sp-s.vy)*0.09; }
+    }
+    const steps=Math.max(1, Math.ceil(Math.hypot(s.vx,s.vy)));
+    for(let k=0;k<steps;k++){
+      s.x+=s.vx/steps; s.y+=s.vy/steps;
+      if(s.x<3||s.x>GW-3||s.y<3||s.y>GH-3){ shotDie(s,s.x,s.y); break; }
+      const gx=s.x|0, gy=s.y|0;
+      if(s.trail) setc(gx,gy,s.trail, s.trail===FIRE?16:0);
+      if(s.s.paint){ // material sprays write straight into the simulation
+        for(let q=0;q<2;q++) setc(gx+(Math.random()*3-1)|0, gy+(Math.random()*3-1)|0, s.s.paint, 0);
+        continue;
+      }
+      const m=gget(gx,gy);
+      const hard = m!==AIR && (M[m].type===T_SOLID||M[m].type===T_POWDER);
+      if(hard){
+        if(s.dig>0){ // drills eat terrain instead of stopping
+          setc(gx,gy,AIR,0);
+          if(!s.s.pierce && Math.random()<0.06){ shotDie(s,s.x,s.y); break; }
+        } else if(s.bounce>0){
+          // Back out of the wall along the sub-step we just took, THEN ask which
+          // axis is actually blocked. The old test probed (s.y - s.vy) — the whole
+          // frame's velocity, not this sub-step's — so a shot falling at vy=3 onto
+          // a floor sampled three cells up, found air, and concluded it had hit a
+          // WALL: it flipped vx, kept falling, and burned every bounce it had in a
+          // single frame. Bouncing shots never bounced off floors at all.
+          s.bounce--;
+          const sx=s.vx/steps, sy=s.vy/steps;
+          s.x-=sx; s.y-=sy;
+          const blockY=isBlocking(gget(s.x|0,(s.y+sy)|0));
+          const blockX=isBlocking(gget((s.x+sx)|0,s.y|0));
+          if(blockY) s.vy*=-1;
+          if(blockX) s.vx*=-1;
+          if(!blockX && !blockY){ s.vx*=-1; s.vy*=-1; }   // clipped a corner: reverse both
+        } else { shotDie(s,s.x,s.y); break; }
+      }
+      // entity hits
+      if(s.owner==='p'){
+        for(const e of mobs){
+          if(e.dead||s.hitIds.includes(e.id)) continue;
+          if(Math.abs(e.x-s.x)<e.w/2+1 && Math.abs(e.y-s.y)<e.h/2+1){
+            let d=s.dmg; if(s.crit&&Math.random()<s.crit) d*=3;
+            hurtMob(e,d,'shot'); s.hitIds.push(e.id);
+            if(s.pierce>0) s.pierce--; else { shotDie(s,s.x,s.y); }
+            break;
+          }
+        }
+      } else if(P.alive){
+        if(Math.abs(P.x-s.x)<P.w/2+1 && Math.abs(P.y-s.y)<P.h/2+1){
+          if(P.shield>0){ shotDie(s,s.x,s.y); }
+          else { hurtPlayer(s.dmg,'shot'); shotDie(s,s.x,s.y); }
+          break;
+        }
+      }
+      if(s.dead) break;
+      if(s.s.melee && Math.hypot(s.x-P.x,s.y-P.y)>10 && s.owner==='p'){ s.dead=true; break; }
+    }
+  }
+  shots=shots.filter(s=>!s.dead);
+  if(shots.length>260) shots.splice(0, shots.length-260);
+}
+
+// ================================================================ MOBS
+let mobId=1;
+function spawnMob(t,x,y){
+  const d=ENEMY[t];
+  mobs.push({id:mobId++, t, x, y, vx:0, vy:0, w:d.w, h:d.h, hp:d.hp, hpMax:d.hp,
+    onGround:false, cd:(Math.random()*60|0), burn:0, flash:0, dead:false, face:1});
+}
+function populate(){
+  for(const b of bands){
+    if(b.type!=='bio') continue;
+    const B=BIOMES[b.i];
+    let n=0, tries=0;
+    const want = 16+b.i*3;
+    while(n<want && tries++<3000){
+      const x=8+(rnd()*(GW-16)|0), y=b.y0+8+(rnd()*(B.h-16)|0);
+      if(gget(x,y)!==AIR || gget(x,y+1)!==AIR) continue;
+      spawnMob(B.mobs[rnd()*B.mobs.length|0], x, y); n++;
+    }
+  }
+  const hb=bands[bands.length-1];
+  spawnMob('boss', GW/2, hb.y0+40);
+}
+function stepMobs(){
+  for(const m of mobs){
+    if(m.dead) continue;
+    const d=ENEMY[m.t];
+    if(m.flash>0) m.flash--;
+    // far mobs sleep
+    if(Math.abs(m.y-P.y)>240 || Math.abs(m.x-P.x)>200){ continue; }
+    // environment
+    const cm=gget(m.x|0,m.y|0);
+    if(cm===FIRE||cm===LAVA||cm===EMBER){ m.burn=Math.max(m.burn,60); }
+    if(cm===ACID) hurtMob(m,0.5,'env');
+    if(m.burn>0){ m.burn--; hurtMob(m,0.14,'env'); if(Math.random()<0.25) setc(m.x|0,(m.y-2)|0,FIRE,10); }
+    if(m.dead) continue;
+
+    const dx=P.x-m.x, dy=P.y-m.y, dist=Math.hypot(dx,dy);
+    const sp=d.spd/60;
+    if(d.fly){
+      if(d.ai==='shoot'){
+        const want = dist>50?1:dist<28?-1:0;
+        m.vx += (Math.sign(dx)*sp*want - m.vx)*0.05;
+        m.vy += ((Math.sign(dy)*sp*0.6 + Math.sin(frame*0.03+m.id)*0.15) - m.vy)*0.05;
+      } else if(d.ai==='boss'){
+        m.vx += (Math.sign(dx)*sp*(dist>60?1:-0.4) - m.vx)*0.03;
+        m.vy += (Math.sign(dy)*sp*0.7 - m.vy)*0.03;
+      } else {
+        m.vx += (Math.sign(dx)*sp - m.vx)*0.06;
+        m.vy += (Math.sign(dy)*sp - m.vy)*0.06;
+      }
+      if(boxHit(m,m.x+m.vx,m.y)) m.vx*=-0.5;
+      if(boxHit(m,m.x,m.y+m.vy)) m.vy*=-0.5;
+      if(!boxHit(m,m.x+m.vx,m.y+m.vy)){ m.x+=m.vx; m.y+=m.vy; }
+    } else {
+      m.vy+=0.05; if(m.vy>1.6) m.vy=1.6;
+      if(dist<160) m.vx += (Math.sign(dx)*sp - m.vx)*0.08; else m.vx*=0.9;
+      if(m.onGround && boxHit(m,m.x+Math.sign(dx)*1.5,m.y) && Math.random()<0.2) m.vy=-0.85;
+      moveEnt(m,true);
+    }
+    m.face = m.vx<0?-1:1;
+    // attacks
+    if(d.ai==='shoot'||d.ai==='boss'){
+      if(--m.cd<=0 && dist<150){
+        m.cd=d.rate+(Math.random()*20|0);
+        const a=Math.atan2(dy,dx);
+        if(d.ai==='boss'){
+          for(let k=-2;k<=2;k++){ const aa=a+k*0.20;
+            mkShot(m.x,m.y,Math.cos(aa),Math.sin(aa),{s:SP.SPITTER,dmg:9,speed:60,spread:0,boom:2,owner:'e',life:150}); }
+          if(Math.random()<0.3) mkShot(m.x,m.y,Math.cos(a),Math.sin(a),{s:SP.FIREB,dmg:14,speed:44,spread:0,boom:8,owner:'e',life:160});
+        } else {
+          const q=SP[d.shot];
+          mkShot(m.x,m.y,Math.cos(a),Math.sin(a),{s:q,dmg:q===SP.BOMB?16:6,speed:q===SP.BOMB?38:58,spread:4,boom:q.boom||0,grav:q===SP.BOMB?1:0,owner:'e',life:160});
+        }
+      }
+    }
+    if(dist<(m.w+P.w)/2+1 && Math.abs(dy)<(m.h+P.h)/2 ){
+      const landed = P.iframe<=0;              // iframes gate the hit; only shove on a real one
+      hurtPlayer(d.touch/6,'touch');
+      if(landed){                              // a hit should shove you, not leak into you
+        const away=Math.sign(P.x-m.x)||(Math.random()<0.5?-1:1);
+        P.vx += away*(0.55+d.touch*0.035); P.vy -= 0.30;
+      }
+    }
+  }
+  mobs=mobs.filter(m=>!m.dead);
+}
+
+// ================================================================ PARTICLES / DROPS
+function stepParts(){
+  for(const p of parts){
+    p.vy+=0.06; p.x+=p.vx; p.y+=p.vy;
+    if(--p.life<=0 || isBlocking(gget(p.x|0,p.y|0))){
+      if(!p.ghost && inB(p.x|0,p.y|0) && gget(p.x|0,p.y|0)===AIR) setc(p.x|0,p.y|0,p.m,0);
+      p.dead=true;
+    }
+  }
+  parts=parts.filter(p=>!p.dead);
+  for(const d of drops){
+    d.vy+=0.06; 
+    if(!isBlocking(gget((d.x+d.vx)|0,d.y|0))) d.x+=d.vx; else d.vx*=-0.4;
+    if(!isBlocking(gget(d.x|0,(d.y+d.vy)|0))) d.y+=d.vy; else { d.vy*=-0.3; d.vx*=0.7; if(Math.abs(d.vy)<0.1) d.vy=0; }
+    // magnet — PROSPECTOR is the "much wider pull" half of the perk
+    const dd=Math.hypot(P.x-d.x,P.y-d.y), pull=P.perks.rich?34:14;
+    if(dd<pull){ d.x+=(P.x-d.x)*0.14; d.y+=(P.y-d.y)*0.14; }
+    if(dd<3){ P.gold++; d.dead=true; }
+    if(--d.life<=0) d.dead=true;
+  }
+  drops=drops.filter(d=>!d.dead);
+}
+
+// ================================================================ RENDER
+const cv=document.getElementById('game'), ctx=cv.getContext('2d',{alpha:false});
+let CELL=3, VW=0, VH=0, DPR=1, CSSW=0, CSSH=0;
+const off=document.createElement('canvas'), octx=off.getContext('2d');
+let img=null, buf=null;
+let camX=0, camY=0, shakeT=0;
+const glows=[];
+
+function resize(){
+  CSSW=window.innerWidth; CSSH=window.innerHeight;
+  DPR=Math.min(2, window.devicePixelRatio||1);
+  CELL = CSSW<360?3:CSSW>520?4:3;
+  VW=Math.ceil(CSSW/CELL)+2; VH=Math.ceil(CSSH/CELL)+2;
+  cv.width=Math.round(CSSW*DPR); cv.height=Math.round(CSSH*DPR);
+  off.width=VW; off.height=VH;
+  img=octx.createImageData(VW,VH); buf=img.data;
+  for(let i=3;i<buf.length;i+=4) buf[i]=255;
+  ctx.imageSmoothingEnabled=false;
+}
+window.addEventListener('resize',resize);
+
+function drawWorld(){
+  const cx0=Math.floor(camX), cy0=Math.floor(camY);
+  glows.length=0;
+  let gi=0;
+  for(let y=0;y<VH;y++){
+    const wy=cy0+y;
+    let o=(y*VW)<<2;
+    if(wy<0||wy>=GH){ for(let x=0;x<VW;x++){ buf[o]=6;buf[o+1]=5;buf[o+2]=8; o+=4; } continue; }
+    const row=wy*GW;
+    for(let x=0;x<VW;x++,o+=4){
+      const wx=cx0+x;
+      if(wx<0||wx>=GW){ buf[o]=6;buf[o+1]=5;buf[o+2]=8; continue; }
+      const i=row+wx;
+      const m=grid[i];
+      let c;
+      if(m===AIR){ buf[o]=9; buf[o+1]=8; buf[o+2]=12; continue; }
+      if(life[i]>0 && M[m].burn>0){          // burning matter keeps its own colour, lit from within
+        const f=M[FIRE].colors[(i+frame)&3], b0=M[m].colors[shade[i]%M[m].colors.length];
+        const k=0.55+0.35*Math.sin((i+frame)*0.7);
+        buf[o]=(b0[0]+(f[0]-b0[0])*k)|0; buf[o+1]=(b0[1]+(f[1]*0.7-b0[1])*k)|0; buf[o+2]=(b0[2]+(f[2]*0.35-b0[2])*k)|0;
+        if((gi++&23)===0) glows.push(x,y,3);
+        continue;
+      }
+      c=M[m].colors[shade[i]%M[m].colors.length];
+      buf[o]=c[0]; buf[o+1]=c[1]; buf[o+2]=c[2];
+      if(m===FIRE||m===LAVA||m===EMBER){ if((gi++&11)===0) glows.push(x,y, m===LAVA?4:3); }
+    }
+  }
+  octx.putImageData(img,0,0);
+}
+
+function px(wx){ return (wx-camX)*CELL; }
+function py(wy){ return (wy-camY)*CELL; }
+
+function drawSprite(name,x,y,face,flash){
+  const s=SPR[name]; if(!s) return;
+  const sx=px(x)-(s.w*CELL)/2, sy=py(y)-(s.h*CELL)/2;
+  for(let j=0;j<s.h;j++){
+    const row=s.d[j];
+    for(let i=0;i<s.w;i++){
+      const ch=row[face<0?(s.w-1-i):i];
+      if(!ch||ch==='.') continue;
+      ctx.fillStyle= flash? '#fff' : s.k[ch];
+      ctx.fillRect(Math.round(sx+i*CELL), Math.round(sy+j*CELL), CELL, CELL);
+    }
+  }
+}
+
+function render(){
+  const t=Date.now();
+  let sx=0,sy=0;
+  if(shakeT>0){ sx=(Math.random()*2-1)*shakeT*0.6; sy=(Math.random()*2-1)*shakeT*0.6; shakeT*=0.86; if(shakeT<0.3) shakeT=0; }
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.fillStyle='#08070a'; ctx.fillRect(0,0,CSSW,CSSH);
+  ctx.save();
+  ctx.translate(sx,sy);
+  drawWorld();
+  const fx=-(camX-Math.floor(camX))*CELL, fy=-(camY-Math.floor(camY))*CELL;
+  ctx.drawImage(off, 0,0,VW,VH, fx, fy, VW*CELL, VH*CELL);
+
+  // drops
+  ctx.fillStyle='#e8c25a';
+  for(const d of drops) ctx.fillRect(Math.round(px(d.x)),Math.round(py(d.y)),CELL,CELL);
+  // mobs
+  for(const m of mobs){
+    if(m.dead) continue;
+    if(m.x<camX-20||m.x>camX+VW+20||m.y<camY-20||m.y>camY+VH+20) continue;
+    drawSprite(m.t, m.x, m.y, m.face, m.flash>3);
+    if(m.hp<m.hpMax){
+      const w=m.w*CELL;
+      ctx.fillStyle='#000a'; ctx.fillRect(px(m.x)-w/2, py(m.y)-m.h*CELL/2-4, w, 2);
+      ctx.fillStyle='#e0335a'; ctx.fillRect(px(m.x)-w/2, py(m.y)-m.h*CELL/2-4, w*(m.hp/m.hpMax), 2);
+    }
+  }
+  // shots
+  for(const s of shots){
+    const r=Math.max(2,CELL-1);
+    ctx.fillStyle=s.s.col;
+    ctx.fillRect(Math.round(px(s.x))-r/2, Math.round(py(s.y))-r/2, r, r);
+    glows.push((s.x-camX)|0,(s.y-camY)|0,2);
+  }
+  // particles
+  for(const p of parts){ ctx.fillStyle=p.m===BLOOD?'#a01838':'#fff'; ctx.fillRect(Math.round(px(p.x)),Math.round(py(p.y)),CELL,CELL); }
+  // player
+  if(P.alive && !(P.iframe>0 && (frame>>2)&1)) drawSprite('player',P.x,P.y,P.face,false);
+  if(P.shield>0){
+    ctx.strokeStyle='rgba(125,232,255,'+(0.3+0.2*Math.sin(frame*0.2))+')'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(px(P.x),py(P.y),12*CELL/3,0,7); ctx.stroke();
+  }
+  if(P.burn>0){ ctx.fillStyle='rgba(255,122,24,.35)'; ctx.fillRect(px(P.x)-P.w*CELL/2,py(P.y)-P.h*CELL/2,P.w*CELL,P.h*CELL); }
+
+  // ---- darkness + light
+  const lx=px(P.x), ly=py(P.y);
+  const g=ctx.createRadialGradient(lx,ly,14, lx,ly, 250);
+  g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(0.5,'rgba(6,4,10,0.16)'); g.addColorStop(1,'rgba(6,4,10,0.66)');
+  ctx.fillStyle=g; ctx.fillRect(-sx-20,-sy-20,CSSW+40,CSSH+40);
+  // glow pass
+  ctx.globalCompositeOperation='lighter';
+  for(let i=0;i<glows.length;i+=3){
+    const gx=glows[i]*CELL+fx, gy=glows[i+1]*CELL+fy, gr=glows[i+2]*6;
+    const rg=ctx.createRadialGradient(gx,gy,0,gx,gy,gr);
+    rg.addColorStop(0,'rgba(255,146,58,0.17)'); rg.addColorStop(1,'rgba(255,110,30,0)');
+    ctx.fillStyle=rg; ctx.fillRect(gx-gr,gy-gr,gr*2,gr*2);
+  }
+  ctx.globalCompositeOperation='source-over';
+  ctx.restore();
+}
+
+// ================================================================ INPUT
+const stickL={el:document.getElementById('sL'),id:null,dx:0,dy:0,act:false};
+const stickR={el:document.getElementById('sR'),id:null,dx:0,dy:0,act:false};
+// Thumb throw for full deflection. 42 was hair-trigger, and the knob only drew
+// 30px of it, so the picture never matched the hand.
+const STICK_R=52;
+function knob(st){ const k=st.el.querySelector('.knob'); k.style.transform=`translate(${st.dx*STICK_R}px,${st.dy*STICK_R}px)`; st.el.classList.toggle('on',st.act); }
+// The ring is FLOATING: it jumps to wherever the thumb lands, so the centre you
+// feel and the centre you see are the same point. Pinned rings + a touch-point
+// origin meant the stick was always secretly somewhere else.
+function stickStart(st,e){
+  st.id=e.pointerId; st.ox=e.clientX; st.oy=e.clientY; st.dx=0; st.dy=0; st.act=true;
+  try{ st.el.setPointerCapture(e.pointerId); }catch(_){}
+  const el=st.el, r=el.offsetWidth/2;
+  el.style.right='auto'; el.style.bottom='auto';
+  el.style.left=(e.clientX-r)+'px'; el.style.top=(e.clientY-r)+'px';
+  knob(st);
+}
+function stickMove(st,e){
+  let dx=(e.clientX-st.ox)/STICK_R, dy=(e.clientY-st.oy)/STICK_R;
+  const d=Math.hypot(dx,dy); if(d>1){ dx/=d; dy/=d; }
+  st.dx=dx; st.dy=dy; knob(st);
+}
+function stickEnd(st){
+  st.id=null; st.dx=0; st.dy=0; st.act=false;
+  const el=st.el; el.style.left=''; el.style.top=''; el.style.right=''; el.style.bottom='';
+  knob(st);
+}
+// iOS Safari ignores `user-scalable=no`, so the instant a second finger moves it
+// begins a pinch-zoom and CANCELS both pointers — in a twin-stick game that means
+// both sticks die mid-drag. touch-action alone doesn't stop Safari's page-level
+// gestures, and a passive listener can't preventDefault. These must be non-passive.
+const noGesture=e=>{ if(e.cancelable) e.preventDefault(); };
+document.addEventListener('touchmove', e=>{
+  if(e.target && e.target.closest && e.target.closest('.scroll')) return;  // sanctum lists still scroll
+  noGesture(e);
+}, {passive:false});
+['gesturestart','gesturechange','gestureend','dblclick'].forEach(t=>
+  document.addEventListener(t, noGesture, {passive:false}));
+
+let inputDrops=0;   // surfaced in the pause menu: I can't repro iOS here
+addEventListener('pointerdown',e=>{
+  if(paused||!running) return;
+  if(e.clientY < CSSH*0.45) return;   // bottom ~55% is live, not a 190px strip
+  if(e.target && e.target.closest && e.target.closest('#wandbar,#pausebtn,.btn')) return;
+  // A fresh touch on a half ALWAYS re-binds that stick. Never gate this on
+  // `id===null`: phones drop pointerup constantly (the OS steals the touch, the
+  // notification shade opens, the finger slides off the glass) and a stick that
+  // latches to a dead pointer leaves the witch sprinting into a wall forever.
+  if(e.clientX < CSSW/2) stickStart(stickL,e);
+  else stickStart(stickR,e);
+},{passive:true});
+addEventListener('pointermove',e=>{
+  if(stickL.id===e.pointerId) stickMove(stickL,e);
+  if(stickR.id===e.pointerId) stickMove(stickR,e);
+},{passive:true});
+addEventListener('pointerup',e=>{
+  if(stickL.id===e.pointerId) stickEnd(stickL);
+  if(stickR.id===e.pointerId) stickEnd(stickR);
+},{passive:true});
+addEventListener('pointercancel',e=>{ if(stickL.id===e.pointerId||stickR.id===e.pointerId) inputDrops++; if(stickL.id===e.pointerId) stickEnd(stickL); if(stickR.id===e.pointerId) stickEnd(stickR); },{passive:true});
+// Let go of both sticks if the app loses focus mid-move, otherwise you come back
+// to a witch who has been holding right into a wall the whole time.
+const dropSticks=()=>{ stickEnd(stickL); stickEnd(stickR); };
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) dropSticks(); });
+addEventListener('pagehide',dropSticks);
+
+// keyboard (desktop testing + the odd bluetooth keyboard)
+const keys={};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=0;});
+
+// ================================================================ PLAYER STEP
+let aimX=1, aimY=0;
+function curWand(){ return wands[wsel]; }
+function stepPlayer(){
+  if(!P.alive) return;
+  let mx=stickL.dx, my=stickL.dy;
+  if(keys['a']) mx=-1; if(keys['d']) mx=1;
+  if(keys['w']) my=-1; if(keys['s']) my=1;
+  if(Math.abs(mx)<0.2) mx=0;
+
+  const liq=submerged(P);
+  const drag = liq?0.86:0.90;
+  const acc  = P.onGround?0.15:0.09;
+  P.vx += mx*acc;
+  P.vx *= drag;
+  if(Math.abs(P.vx)>1.05*(liq?0.6:1)) P.vx=Math.sign(P.vx)*1.05*(liq?0.6:1);
+  if(mx) P.face=Math.sign(mx);
+
+  // flight — the thing that makes this game a game
+  const wantFly = my<-0.30 || keys[' ']||keys['arrowup'];
+  const flyPow = P.perks.jetpack?0.13:0.10;
+  if(wantFly && P.fly>0){
+    P.vy -= flyPow; P.fly -= P.perks.jetpack?0.38:0.55;   // ~3.0s of lift, was 1.9s
+    // Exhaust is COSMETIC. EMBER and SMOKE are both T_GAS, so real cells written
+    // under your feet rise straight back into the head/body sample two rows up:
+    // ember set burn=70 every frame you held the jetpack, and smoke suffocated you
+    // on top of it. Flying cost ~16 dps of self-harm. Ghost particles look the
+    // same and can't light you up or choke you.
+    if(Math.random()<0.7) spurt(P.x+(Math.random()*3-1.5), P.y+4, Math.random()<0.3?EMBER:SMOKE, true);
+  } else if(P.onGround) P.fly=Math.min(P.flyMax,P.fly+2.6);
+  else P.fly=Math.min(P.flyMax,P.fly+0.25);
+
+  P.vy += liq?0.022:0.052;
+  if(liq){ P.vy*=0.90; if(my>0.3) P.vy+=0.03; }
+  if(P.vy>1.9) P.vy=1.9;
+  moveEnt(P,true);
+
+  // ---- the world hurts
+  const head=gget(P.x|0,(P.y-2)|0), body=gget(P.x|0,P.y|0);
+  for(const m of [head,body]){
+    if(m===LAVA){ hurtPlayer(0.9,'fire'); P.burn=Math.max(P.burn,120); }
+    else if(m===FIRE||m===EMBER){ hurtPlayer(0.18,'fire'); P.burn=Math.max(P.burn,70); }
+    else if(m===ACID){ hurtPlayer(0.55,'tox'); }
+    else if(m===SLUDGE){ P.poison=Math.max(P.poison,90); }
+  }
+  if(head===SMOKE||head===STEAM){ hurtPlayer(0.09,'env'); }   // you can suffocate in your own smoke
+  if(head===WATER||head===BLOOD){ if(P.burn>0){P.burn=0;} }
+  if(P.burn>0){ P.burn--; hurtPlayer(0.16,'burn'); if(Math.random()<0.3) setc((P.x+(Math.random()*4-2))|0,(P.y-1)|0,FIRE,12); }
+  if(P.poison>0){ P.poison--; hurtPlayer(0.05,'poison'); }
+  if(P.iframe>0) P.iframe--;
+  if(P.shield>0) P.shield--;
+  if(noCastWarn>0) noCastWarn--;
+
+  // ---- casting
+  const w=curWand();
+  if(w.delayT>0) w.delayT--;
+  if(w.reloadT>0){ w.reloadT--; if(w.reloadT<=0){ w.fresh=true; } }
+  w.mana=Math.min(w.manaMax, w.mana + w.manaChg/60);
+
+  let fire=false;
+  if(stickR.act){
+    const d=Math.hypot(stickR.dx,stickR.dy);
+    if(d>0.22){ aimX=stickR.dx/d; aimY=stickR.dy/d; P.face=Math.sign(aimX)||P.face; fire=true; }
+    // Resting a thumb on the right half used to cast unconditionally — into
+    // whatever direction you last aimed. Push to shoot; touch to line it up.
+  }
+  if(keys['f']||keys['arrowright']) fire=true;
+  if(fire) tryCast(w);
+}
+
+let castFlash=0;
+function tryCast(w){
+  if(w.delayT>0||w.reloadT>0) return;
+  const res=wandResolve(w);
+  // A wand of nothing but modifiers/multicasts resolves to no cast at all. It used
+  // to just stutter on a 20-frame delay forever with no feedback — the player holds
+  // fire, the tape twitches, nothing comes out, and there is nothing on screen that
+  // says why. Say it out loud.
+  if(!res){
+    w.delayT=30;
+    if(noCastWarn<=0){
+      noCastWarn=150;
+      toast(w.spells.some(s=>s) ? 'NO SPELL TO CAST — ONLY MODIFIERS' : 'THIS WAND IS EMPTY');
+    }
+    return;
+  }
+  if(res.manaCost>w.mana){ w.delayT=14; noMana=8; return; }
+  w.mana-=res.manaCost;
+  const ox=P.x+aimX*4, oy=P.y+aimY*4-1;
+  castGroups(res, ox, oy, aimX, aimY, 'p');
+  w.delayT=Math.max(1, w.castDelay+res.delay);
+  if(res.needsReload) w.reloadT=Math.max(4, w.recharge+res.recharge);
+  w.lastFired=res.drawn.slice();
+  castFlash=6;
+  tapeDirty=true;
+}
+let noMana=0, noCastWarn=0;
+
+// ================================================================ CAMERA
+function stepCam(){
+  const tx=P.x - VW/2, ty=P.y - VH/2 + (stickR.act? stickR.dy*10:0);
+  camX += (tx-camX)*0.14; camY += (ty-camY)*0.14;
+  camX=Math.max(0,Math.min(GW-VW,camX));
+  camY=Math.max(0,Math.min(GH-VH,camY));
+  simL=Math.max(0,camX-24)|0; simR=Math.min(GW,camX+VW+24)|0;
+  simT=Math.max(0,camY-24)|0; simB=Math.min(GH,camY+VH+24)|0;
+}
+
+// ================================================================ HUD
+const $=s=>document.querySelector(s);
+const elHP=$('#hp > i'), elHPn=$('#hp > b'), elMP=$('#mp > i'), elMPn=$('#mp > b'),
+      elFL=$('#fl > i'), elBiome=$('#biome'), elDepth=$('#depth'), elGold=$('#gold'),
+      elTape=$('#tape'), elTapeW=$('#tapewand'), elWandbar=$('#wandbar');
+let tapeDirty=true, lastBiome='';
+function hud(){
+  elHP.style.transform='scaleX('+Math.max(0,P.hp/P.hpMax)+')';
+  elHPn.textContent=Math.max(0,Math.ceil(P.hp));
+  const w=curWand();
+  elMP.style.transform='scaleX('+Math.max(0,w.mana/w.manaMax)+')';
+  elMPn.textContent=Math.ceil(w.mana);
+  elMP.style.filter = noMana>0?'brightness(2.5)':'';
+  if(noMana>0) noMana--;
+  elFL.style.transform='scaleX('+Math.max(0,P.fly/P.flyMax)+')';
+  const b=biomeName(P.y|0);
+  if(b!==lastBiome){ lastBiome=b; elBiome.textContent=b; }
+  elDepth.textContent=Math.max(0,((P.y-SURFACE)/4)|0)+'m';
+  elGold.textContent=P.gold;
+  if(tapeDirty || frame%6===0) drawTape();
+}
+
+// ---- THE TAPE: shows the wand's deck and where the read-head is right now.
+function drawTape(){
+  tapeDirty=false;
+  const w=curWand();
+  // before the first cast the deck is empty; show the slot order instead
+  const view = w.deck.length ? w.deck : w.spells.filter(s=>s);
+  if(elTape.childElementCount!==view.length || elTape.dataset.uid!=w.uid){
+    elTape.innerHTML=''; elTape.dataset.uid=w.uid;
+    for(let i=0;i<view.length;i++){
+      const d=document.createElement('div'); d.className='tcell';
+      d.innerHTML='<div class="g"></div>';
+      elTape.appendChild(d);
+    }
+  }
+  const cells=elTape.children;
+  for(let i=0;i<cells.length;i++){
+    const id=view[i];
+    const g=cells[i].firstChild;
+    if(!id){ g.style.background='#222'; continue; }
+    g.style.background=SP[id].col;
+    cells[i].classList.toggle('spent', i<w.ptr && w.reloadT<=0);
+    cells[i].classList.toggle('head', i===w.ptr && w.reloadT<=0);
+    cells[i].classList.toggle('fired', w.lastFired && w.lastFired.includes(id) && castFlash>0);
+  }
+  if(castFlash>0) castFlash--;
+  elTapeW.textContent = w.name + (w.shuffle?' · SHUFFLE':'') + (w.reloadT>0?' · RECHARGING':'') + (w.perCast>1?' · '+w.perCast+'/CAST':'');
+  elTapeW.style.color = w.reloadT>0?'#9d6bff':'#8a8296';
+}
+
+// ---- wand switcher
+let wands=[], wsel=0;
+function buildWandbar(){
+  elWandbar.innerHTML='';
+  wands.forEach((w,i)=>{
+    const d=document.createElement('div');
+    d.className='wslot'+(i===wsel?' sel':'');
+    d.textContent=(i+1);
+    d.onclick=()=>{ wsel=i; buildWandbar(); tapeDirty=true; };
+    elWandbar.appendChild(d);
+  });
+}
+
+// ---- toast
+let toastT=0, toastMsg='';
+function toast(m){ toastMsg=m; toastT=110; }
+function drawToast(){
+  if(toastT<=0) return;
+  toastT--;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.globalAlpha=Math.min(1,toastT/28);
+  ctx.font='700 11px Silkscreen, monospace'; ctx.textAlign='center';
+  ctx.fillStyle='#000c'; const w=ctx.measureText(toastMsg).width+16;
+  ctx.fillRect(CSSW/2-w/2, CSSH*0.30-11, w, 18);
+  ctx.fillStyle='#e6e0d2'; ctx.fillText(toastMsg, CSSW/2, CSSH*0.30+2);
+  ctx.globalAlpha=1;
+}
+
+// ================================================================ SCREENS
+const app=document.getElementById('app');
+function mkScreen(id,html){
+  const d=document.createElement('div'); d.className='screen'; d.id=id; d.innerHTML=html;
+  app.appendChild(d); return d;
+}
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('show',s.id===id)); curScreen=id; }
+function hideAll(){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('show')); curScreen=null; }
+let curScreen=null;
+
+// ---------------- title
+mkScreen('title',`
+  <div style="position:absolute;inset:0;background:rgba(8,7,10,.72)"></div>
+  <div style="position:relative;margin:auto;text-align:center;padding:0 18px;">
+    <div id="logo">ASHFALL</div>
+    <div id="logosub">DIG · BREW · DIE · REPEAT</div>
+    <div id="tagline">
+      Every pixel is simulated. The oil you spill will burn, the smoke will choke you,
+      and the lava you melt through the floor will follow you down.<br><br>
+      Your wand is <em>a program</em>. Spells run left to right.
+      A modifier grabs the spell on its right. Put one at the very end and the wand
+      <em>wraps</em> to the start and buffs your first spell instead.
+    </div>
+    <div id="startbtn" class="btn" style="padding:13px 30px;font-size:12px;border-color:#9d6bff;">BEGIN THE DESCENT</div>
+    <div id="howbtn" class="btn ghost" style="margin-top:9px;font-size:9px;">HOW TO PLAY</div>
+    <div style="margin-top:20px;font-size:8px;color:#4a4454;line-height:1.6">
+      An original game in the spirit of Noita.<br>Not affiliated with Nolla Games.
+    </div>
+  </div>`);
+
+// ---------------- how to play
+mkScreen('how',`
+  <div class="stitle">HOW TO PLAY</div>
+  <div class="hr"></div>
+  <div class="scroll" style="font-size:10px;line-height:1.75;color:#b8b2c0">
+    <p style="color:#9d6bff;font-family:Silkscreen,monospace;font-size:9px;margin-bottom:4px">MOVING</p>
+    <p>Left thumb anywhere on the left half: walk. Push <b>up</b> to fly — the thin violet bar is your fuel. It refills fastest when your feet are down. Flight is the whole game; there are no jumps worth taking.</p>
+    <p style="color:#9d6bff;font-family:Silkscreen,monospace;font-size:9px;margin:10px 0 4px">CASTING</p>
+    <p>Right thumb: aim and hold to cast. The strip above your thumb is your wand's <b>tape</b> — every spell in firing order. The bright cell is the read-head. Watch it walk. When it falls off the end, the wand recharges.</p>
+    <p style="color:#9d6bff;font-family:Silkscreen,monospace;font-size:9px;margin:10px 0 4px">THE WAND IS A PROGRAM</p>
+    <p>Spells fire <b>left to right</b>.</p>
+    <p>• A <b>modifier</b> (DAMAGE PLUS, HOMING…) is not cast. It attaches to the first real spell to its <b>right</b>.<br>
+       • A <b>multicast</b> (DOUBLE SPELL) fires the next 2 spells in the same shot.<br>
+       • <b>ADD TRIGGER</b> makes the next spell carry the spell after it, and cast it on impact.<br>
+       • If a modifier or multicast runs out of spells to its right, the wand <b>wraps</b> to slot 1 and reads again — then must recharge. This is not a bug. It is the best trick in the game.</p>
+    <p style="color:#9d6bff;font-family:Silkscreen,monospace;font-size:9px;margin:10px 0 4px">THE WORLD IS THE WEAPON</p>
+    <p>Oil burns. Water quenches and makes steam. Lava plus water makes stone. Acid eats almost anything, including you. Gunpowder chains. Wood burns to smoke, and smoke <b>suffocates you</b> in a tunnel. Almost everything that kills a monster kills you the same way.</p>
+    <p style="color:#9d6bff;font-family:Silkscreen,monospace;font-size:9px;margin:10px 0 4px">THE SANCTUM</p>
+    <p>Between layers there is a sealed room. Take a perk, take a spell, rebuild your wand, and press RUN to watch exactly what it will do before you spend a life finding out. Descending seals it behind you.</p>
+  </div>
+  <div class="hr"></div>
+  <div class="btn" id="howback">BACK</div>`);
+
+// ---------------- sanctum
+mkScreen('sanct',`
+  <div style="display:flex;justify-content:space-between;align-items:baseline">
+    <div class="stitle">SANCTUM</div><div id="sgold" style="font-size:10px;color:#e8c25a"></div>
+  </div>
+  <div class="ssub" id="ssub">The stone here refuses violence. Work.</div>
+  <div class="hr"></div>
+  <div class="scroll" id="sbody"></div>
+  <div class="hr"></div>
+  <div style="display:flex;gap:6px">
+    <div class="btn" id="descend" style="flex:1;border-color:#9d6bff">DESCEND ↓</div>
+  </div>`);
+
+// ---------------- death / win
+mkScreen('death',`<div style="margin:auto;text-align:center;padding:0 16px">
+  <div class="stitle" style="color:#e0335a;font-size:16px">YOU DIED</div>
+  <div id="dstats" style="font-size:10px;color:#8a8296;margin:14px 0 20px;line-height:2"></div>
+  <div id="dline" style="font-size:9px;color:#5a5464;margin-bottom:18px;font-style:italic"></div>
+  <div class="btn" id="again" style="padding:12px 26px;border-color:#9d6bff">GO AGAIN</div></div>`);
+mkScreen('win',`<div style="margin:auto;text-align:center;padding:0 16px">
+  <div class="stitle" style="color:#9d6bff;font-size:16px">THE HEART IS STILL</div>
+  <div id="wstats" style="font-size:10px;color:#8a8296;margin:14px 0 20px;line-height:2"></div>
+  <div class="btn" id="wagain" style="padding:12px 26px;border-color:#9d6bff">DESCEND AGAIN</div></div>`);
+mkScreen('pause',`<div style="margin:auto;text-align:center">
+  <div class="stitle">PAUSED</div>
+  <div style="height:16px"></div>
+  <div class="btn" id="resume" style="padding:11px 24px">RESUME</div>
+  <div class="btn ghost" id="pedit" style="margin-top:8px">TEND THE WAND</div>
+  <div class="btn ghost" id="phow" style="margin-top:8px">HOW TO PLAY</div>
+  <div class="btn ghost" id="pquit" style="margin-top:8px;color:#e0335a">ABANDON RUN</div>
+  <div id="pdrops" style="margin-top:14px;font-size:8px;color:var(--dim)"></div></div>`);
+
+// ================================================================ PERKS
+const PERKS=[
+  {id:'fireproof', n:'FIREPROOF',    d:'Fire and lava no longer burn you. Smoke still chokes.'},
+  {id:'blastproof',n:'BLAST SHIELD', d:'Your own explosions stop hurting you. Go loud.'},
+  {id:'toxproof',  n:'ACID BLOOD',   d:'Acid and sludge do nothing to you.'},
+  {id:'jetpack',   n:'BETTER JETPACK',d:'Stronger thrust, cheaper fuel.'},
+  {id:'vitality',  n:'THICK SKIN',   d:'+40 maximum health, healed now.'},
+  {id:'vampire',   n:'VAMPIRISM',    d:'Every kill returns 3 health.'},
+  {id:'extralife', n:'SECOND LIFE',  d:'Die once and stand back up.'},
+  {id:'mana',      n:'DEEP WELL',    d:'+50% mana and faster mana regrowth on every wand.'},
+  {id:'glass',     n:'GLASS CANNON', d:'Double damage. Half your maximum health.'},
+  {id:'fast',      n:'QUICK HANDS',  d:'-30% recharge and cast delay on every wand.'},
+  {id:'rich',      n:'PROSPECTOR',   d:'+50% gold and a much wider pull.'},
+  {id:'tinker',    n:'TINKERER',     d:'Rebuild your wands anywhere, from the pause menu.'},
+];
+function applyPerk(p){
+  P.perks[p.id]=1;
+  if(p.id==='vitality'){ P.hpMax+=40; P.hp=P.hpMax; }
+  if(p.id==='glass'){ P.hpMax=Math.max(20,P.hpMax/2|0); P.hp=Math.min(P.hp,P.hpMax); }
+  if(p.id==='extralife') P.lives++;
+  if(p.id==='mana') wands.forEach(w=>{ w.manaMax=w.manaMax*1.5|0; w.manaChg=w.manaChg*1.5|0; w.mana=w.manaMax; });
+  if(p.id==='fast') wands.forEach(w=>{ w.recharge=w.recharge*0.7|0; w.castDelay=w.castDelay*0.7|0; });
+  toast(p.n+' TAKEN');
+}
+const dmgMul=()=>P.perks.glass?2:1;
+
+// ================================================================ SANCTUM UI
+let inv=[], sIdx=0, pickPerk=null, pickSpell=null, editSlot=-1, editWand=0;
+function openSanct(i, fromPause){
+  sIdx=i; editWand=wsel; editSlot=-1;
+  const s=sanctums[i];
+  if(!fromPause && !s.offered){
+    s.offered=true;
+    pickPerk = shuffled(PERKS.filter(p=>!P.perks[p.id])).slice(0,3);
+    pickSpell= rollSpells(i);
+    P.hp=Math.min(P.hpMax, P.hp+35);
+    wands.forEach(w=>{ w.mana=w.manaMax; w.reloadT=0; w.delayT=0; });
+    if(i===1 || i===3) grantWand(i);
+  }
+  paused=true;
+  $('#ssub').textContent = fromPause ? 'You carry the workshop with you now.' : 'The stone here refuses violence. Work.';
+  $('#descend').style.display = fromPause?'none':'block';
+  renderSanct(fromPause);
+  show('sanct');
+}
+function shuffled(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];} return a; }
+function rollSpells(i){
+  const tier = i<1?1 : i<3?2 : 3;
+  const pool = shuffled(ALL_SPELLS.filter(k=>SP[k].tier<=tier && SP[k].tier>=Math.max(1,tier-1)));
+  return pool.slice(0,3);
+}
+function grantWand(i){
+  const shuffle = Math.random()<0.35;
+  const w=makeWand({
+    name:['ROD','STAFF','SPINE','BRANCH','SPLINTER'][Math.random()*5|0]+' '+(wands.length+1),
+    shuffle, cap: 4+(Math.random()*4|0)+i, perCast: Math.random()<0.3?2:1,
+    castDelay: 6+(Math.random()*16|0), recharge: 14+(Math.random()*36|0),
+    manaMax: 140+(Math.random()*260|0), manaChg: 30+(Math.random()*90|0), spread: Math.random()*6|0
+  });
+  w.spells=new Array(w.cap).fill(null); w.mana=w.manaMax;
+  if(wands.length<4) wands.push(w); else wands[3]=w;
+  buildWandbar();
+  toast('A NEW WAND');
+}
+
+function spellChip(id, onclick, extra){
+  const s=SP[id];
+  return `<div class="chip" data-id="${id}" style="border:1px solid #2c2634;background:#0c0a10;padding:7px 8px;display:flex;gap:8px;align-items:flex-start;${extra||''}">
+    <div style="width:17px;height:17px;flex:0 0 auto;background:${s.col};color:#000;font-family:Silkscreen,monospace;font-size:9px;display:flex;align-items:center;justify-content:center">${s.glyph}</div>
+    <div style="min-width:0">
+      <div style="font-family:Silkscreen,monospace;font-size:8px;color:#e6e0d2">${s.name}</div>
+      <div style="font-size:8px;color:#7a7488;line-height:1.45;margin-top:2px">${s.desc}</div>
+      <div style="font-size:7px;color:#4a4454;margin-top:2px;font-family:Silkscreen,monospace">${s.mana>=0?s.mana:'−'+(-s.mana)} MANA · ${s.type.toUpperCase()}${s.dmg?' · '+s.dmg+' DMG':''}</div>
+    </div></div>`;
+}
+
+function renderSanct(fromPause){
+  const w=wands[editWand];
+  $('#sgold').textContent=P.gold+' GOLD';
+  let h='';
+
+  if(pickPerk && pickPerk.length){
+    h+=`<div style="font-family:Silkscreen,monospace;font-size:9px;color:#9d6bff;margin-bottom:6px">TAKE ONE PERK</div><div style="display:flex;flex-direction:column;gap:5px">`;
+    pickPerk.forEach((p,i)=>{ h+=`<div class="perk" data-i="${i}" style="border:1px solid #2c2634;background:#0c0a10;padding:8px">
+      <div style="font-family:Silkscreen,monospace;font-size:9px;color:#e6e0d2">${p.n}</div>
+      <div style="font-size:8px;color:#7a7488;margin-top:3px;line-height:1.5">${p.d}</div></div>`; });
+    h+=`</div><div class="hr"></div>`;
+  }
+  if(pickSpell && pickSpell.length){
+    h+=`<div style="font-family:Silkscreen,monospace;font-size:9px;color:#9d6bff;margin-bottom:6px">TAKE ONE SPELL</div><div style="display:flex;flex-direction:column;gap:5px">`;
+    pickSpell.forEach(id=>{ h+=spellChip(id,null,'cursor:pointer'); });
+    h+=`</div>`;
+    h+=`<div style="display:flex;gap:6px;margin-top:6px">
+      <div class="btn ghost" id="buyall" style="flex:1;font-size:8px">TAKE ALL THREE · 60 GOLD</div>
+      <div class="btn ghost" id="reroll" style="flex:1;font-size:8px">REROLL · 25 GOLD</div></div>`;
+    h+=`<div class="hr"></div>`;
+  }
+
+  // ---- wand editor
+  h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-family:Silkscreen,monospace;font-size:9px;color:#9d6bff">THE WAND</div>
+        <div style="display:flex;gap:4px">${wands.map((x,i)=>`<div class="wpick" data-i="${i}" style="width:20px;height:18px;border:1px solid ${i===editWand?'#9d6bff':'#2c2634'};color:${i===editWand?'#e6e0d2':'#5a5464'};font-family:Silkscreen,monospace;font-size:8px;display:flex;align-items:center;justify-content:center">${i+1}</div>`).join('')}</div>
+      </div>`;
+  h+=`<div style="font-family:Silkscreen,monospace;font-size:8px;color:#8a8296;margin-bottom:6px">${w.name} · ${w.shuffle?'SHUFFLE':'ORDERED'} · ${w.perCast} SPELL/CAST · ${(w.castDelay/60).toFixed(2)}s DELAY · ${(w.recharge/60).toFixed(2)}s RECHARGE · ${w.manaMax} MANA</div>`;
+  if(w.shuffle) h+=`<div style="font-size:8px;color:#e0335a;margin-bottom:6px">This wand shuffles. Order means nothing here — modifiers land where luck puts them.</div>`;
+
+  // slots
+  h+=`<div id="slots" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">`;
+  for(let i=0;i<w.cap;i++){
+    const id=w.spells[i];
+    const sel=i===editSlot;
+    h+=`<div class="slot" data-i="${i}" style="width:30px;height:30px;border:1px solid ${sel?'#e6e0d2':'#2c2634'};background:${id?SP[id].col:'#0c0a10'};box-shadow:${sel?'0 0 8px #9d6bff':'none'};color:#000;font-family:Silkscreen,monospace;font-size:11px;display:flex;align-items:center;justify-content:center;position:relative">
+      ${id?SP[id].glyph:''}<span style="position:absolute;bottom:0;right:2px;font-size:6px;color:${id?'#0008':'#3a3444'}">${i+1}</span></div>`;
+  }
+  h+=`</div>`;
+  h+=`<div style="display:flex;gap:6px;margin-bottom:8px">
+        <div class="btn" id="runbtn" style="flex:1;font-size:9px;border-color:#9d6bff;color:#9d6bff">▶ RUN THE WAND</div>
+        <div class="btn ghost" id="clearbtn" style="font-size:9px">CLEAR</div></div>`;
+  h+=`<div id="runout" style="min-height:0"></div>`;
+
+  // inventory
+  h+=`<div class="hr"></div><div style="font-family:Silkscreen,monospace;font-size:9px;color:#9d6bff;margin-bottom:6px">SATCHEL${editSlot>=0?' · TAP A SPELL TO SET SLOT '+(editSlot+1):' · TAP A SLOT FIRST'}</div>`;
+  if(!inv.length) h+=`<div style="font-size:9px;color:#5a5464">Empty. Everything you own is already in a wand.</div>`;
+  h+=`<div style="display:flex;flex-direction:column;gap:5px">`;
+  const counts={}; inv.forEach(id=>counts[id]=(counts[id]||0)+1);
+  Object.keys(counts).forEach(id=>{ h+=spellChip(id,null,'cursor:pointer').replace('</div></div>',`</div><div style="margin-left:auto;font-family:Silkscreen,monospace;font-size:9px;color:#8a8296">×${counts[id]}</div></div>`); });
+  h+=`</div>`;
+  $('#sbody').innerHTML=h;
+  wireSanct(fromPause);
+}
+
+function wireSanct(fromPause){
+  $('#sbody').querySelectorAll('.perk').forEach(el=>el.onclick=()=>{
+    applyPerk(pickPerk[+el.dataset.i]); pickPerk=null; renderSanct(fromPause);
+  });
+  $('#sbody').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{
+    const id=el.dataset.id;
+    if(pickSpell && pickSpell.includes(id) && el.closest('#sbody').querySelector('#buyall')
+       && [...$('#sbody').querySelectorAll('.chip')].indexOf(el) < pickSpell.length){
+      inv.push(id); pickSpell=null; renderSanct(fromPause); return;
+    }
+    // satchel -> slot
+    if(editSlot<0){ toast('TAP A WAND SLOT FIRST'); return; }
+    const w=wands[editWand];
+    const k=inv.indexOf(id); if(k<0) return;
+    inv.splice(k,1);
+    if(w.spells[editSlot]) inv.push(w.spells[editSlot]);
+    w.spells[editSlot]=id;
+    w.fresh=true; w.deck=[]; w.ptr=0; tapeDirty=true;
+    editSlot=-1; renderSanct(fromPause);
+  });
+  $('#sbody').querySelectorAll('.slot').forEach(el=>el.onclick=()=>{
+    const i=+el.dataset.i, w=wands[editWand];
+    if(w.spells[i]){ inv.push(w.spells[i]); w.spells[i]=null; w.fresh=true; w.deck=[]; w.ptr=0; tapeDirty=true; editSlot=-1; }
+    else editSlot = editSlot===i?-1:i;
+    renderSanct(fromPause);
+  });
+  $('#sbody').querySelectorAll('.wpick').forEach(el=>el.onclick=()=>{ editWand=+el.dataset.i; editSlot=-1; renderSanct(fromPause); });
+  const rr=$('#reroll'); if(rr) rr.onclick=()=>{ if(P.gold<25){toast('NOT ENOUGH GOLD');return;} P.gold-=25; pickSpell=rollSpells(sIdx); renderSanct(fromPause); };
+  const ba=$('#buyall'); if(ba) ba.onclick=()=>{ if(P.gold<60){toast('NOT ENOUGH GOLD');return;} P.gold-=60; pickSpell.forEach(id=>inv.push(id)); pickSpell=null; renderSanct(fromPause); };
+  $('#clearbtn').onclick=()=>{ const w=wands[editWand]; w.spells.forEach(s=>{if(s)inv.push(s);}); w.spells=new Array(w.cap).fill(null); w.fresh=true; w.deck=[]; w.ptr=0; tapeDirty=true; renderSanct(fromPause); };
+  $('#runbtn').onclick=()=>runPreview(fromPause);
+}
+
+// ---------------- THE SIGNATURE: watch the read-head walk the wand
+let runTimer=null;
+function runPreview(fromPause){
+  clearInterval(runTimer);
+  const src=wands[editWand];
+  if(!src.spells.some(x=>x)){ $('#runout').innerHTML='<div style="font-size:9px;color:#e0335a">This wand is empty. It will do nothing at all.</div>'; return; }
+  const c=makeWand(Object.assign({},src,{spells:src.spells.slice(), shuffle:false, deck:[], ptr:0, fresh:true}));
+
+  // Walk the entire cycle: cast after cast until the wand must recharge.
+  const casts=[]; let guard=0;
+  while(guard++<8){
+    const trace=[]; const res=wandResolve(c,trace);
+    if(!res) break;
+    casts.push({trace,res});
+    if(res.needsReload) break;
+  }
+  if(!casts.length){ $('#runout').innerHTML='<div style="font-size:9px;color:#e0335a">Nothing to cast.</div>'; return; }
+
+  const steps=[];
+  casts.forEach((ca,i)=>{ steps.push({act:'head',n:i+1}); ca.trace.forEach(t=>steps.push(t)); steps.push({act:'end',res:ca.res}); });
+  steps.push({act:'final'});
+
+  const deck=c.deck;
+  let h=`<div style="border:1px solid #2c2634;background:#07060a;padding:8px">`;
+  h+=`<div id="rtape" style="display:flex;gap:3px;margin-bottom:8px;flex-wrap:wrap">`;
+  deck.forEach((id,i)=>{ h+=`<div class="rt" data-i="${i}" style="width:22px;height:22px;border:1px solid #2c2634;background:${SP[id].col}22;color:${SP[id].col};font-family:Silkscreen,monospace;font-size:10px;display:flex;align-items:center;justify-content:center">${SP[id].glyph}</div>`; });
+  h+=`</div><div id="rlog" style="font-size:8px;line-height:1.7;color:#8a8296;max-height:190px;overflow-y:auto"></div></div>`;
+  $('#runout').innerHTML=h;
+
+  const cells=$('#rtape').querySelectorAll('.rt');
+  const log=$('#rlog');
+  const add=x=>{ log.insertAdjacentHTML('beforeend',x); log.scrollTop=log.scrollHeight; };
+  let k=0;
+  runTimer=setInterval(()=>{
+    if(k>=steps.length){ clearInterval(runTimer); return; }
+    const t=steps[k++];
+    if(t.act==='head'){ cells.forEach(c2=>{c2.style.boxShadow='none';c2.style.borderColor='#2c2634';});
+      add(`<div style="color:#e6e0d2;font-family:Silkscreen,monospace;font-size:8px;margin-top:${t.n>1?'6px':'0'}">CAST ${t.n}</div>`); return; }
+    if(t.act==='end'){
+      const r=t.res, n=r.groups.length;
+      let tot=0; r.groups.forEach(g=>{ let d=g.spell.dmg||0; g.mods.forEach(m=>{ if(m.mod&&m.mod.dmg) d+=m.mod.dmg; }); if(g.trigger) g.trigger.payload.forEach(q=>tot+=q.spell.dmg||0); tot+=d; });
+      add(`<div style="color:#6bff9d">→ ${n} projectile${n>1?'s':''} · ${tot} damage · ${r.manaCost} mana · ${((Math.max(1,src.castDelay+r.delay))/60).toFixed(2)}s delay</div>`);
+      return;
+    }
+    if(t.act==='final'){
+      let mana=0, time=0, dmg=0;
+      casts.forEach(ca=>{ mana+=ca.res.manaCost; time+=Math.max(1,src.castDelay+ca.res.delay)/60;
+        ca.res.groups.forEach(g=>{ let d=g.spell.dmg||0; g.mods.forEach(m=>{ if(m.mod&&m.mod.dmg) d+=m.mod.dmg; }); dmg+=d; }); });
+      const rch=Math.max(4, src.recharge+casts[casts.length-1].res.recharge)/60;
+      time+=rch;
+      const dps=(dmg/Math.max(0.05,time)).toFixed(1);
+      const regen=src.manaChg*time, ok=regen>=mana;
+      add(`<div style="height:6px"></div><div style="color:#e6e0d2;font-family:Silkscreen,monospace;font-size:8px">THE WHOLE CYCLE</div>
+        <div>${casts.length} cast${casts.length>1?'s':''}, then ${rch.toFixed(2)}s recharge — ${time.toFixed(2)}s per loop</div>
+        <div>${dmg} damage per loop · <b style="color:#e6e0d2">${dps} damage / second</b></div>
+        <div style="color:${ok?'#6bff9d':'#e0335a'}">${ok
+          ? 'Mana holds: '+mana+' spent, '+regen.toFixed(0)+' regrown per loop.'
+          : 'Mana bleeds: '+mana+' spent but only '+regen.toFixed(0)+' regrown per loop. This wand will stall.'}</div>`);
+      if(src.shuffle) add(`<div style="color:#e0335a;margin-top:4px">Shown in slot order — but this wand SHUFFLES. In play the order is redrawn at random every reload, so modifiers land wherever they land.</div>`);
+      return;
+    }
+    if(t.act==='wrap'){ add(`<div style="color:#9d6bff">↺ ran out of spells to the right — wrapped back to slot 1 and read again. The wand must now recharge.</div>`); return; }
+    cells.forEach(c2=>{ c2.style.boxShadow='none'; c2.style.borderColor='#2c2634'; });
+    const cell=cells[t.i];
+    if(cell){ cell.style.boxShadow='0 0 10px '+SP[t.id].col; cell.style.borderColor='#e6e0d2'; }
+    const s2=SP[t.id];
+    const say = t.act==='mod'    ? 'holds — it attaches to the next spell on its right'
+              : t.act==='multi'  ? 'takes the next '+s2.count+' spells into one cast'
+              : t.act==='trigger'? 'the next spell will carry a payload'
+              : t.act==='cast'   ? '<span style="color:#6bff9d">CAST</span>'
+              : 'drawn';
+    add(`<div><span style="color:#5a5464">${String(t.i+1).padStart(2,'0')}</span> <span style="color:${s2.col}">${s2.name}</span> — ${say}</div>`);
+  }, 300);
+}
+
+// ================================================================ FLOW
+let running=false, paused=false, kills=0, deepest=0, runStart=0;
+
+function startRun(){
+  clearInterval(runTimer);
+  SEED=(Math.random()*1e9)|0;
+  const seed=SEED;
+  genWorld(seed);
+  P=newPlayer();
+  mobs=[]; shots=[]; drops=[]; parts=[]; kills=0; deepest=0;
+  sanctums.forEach(s=>{s.offered=false;s.used=false;});
+  wands=[
+    makeWand({name:'BOLT WAND', cap:4, perCast:1, castDelay:7, recharge:9, manaMax:220, manaChg:100, spread:3,
+              spells:['DMG','SPARK','BOUNCY',null]}),
+    makeWand({name:'SPADE WAND',cap:4, perCast:1, castDelay:12, recharge:26, manaMax:160, manaChg:60, spread:1,
+              spells:['DIGBLST',null,null,null]}),
+  ];
+  wands.forEach(w=>w.mana=w.manaMax);
+  wsel=0; inv=['DOUBLE','DMG']; buildWandbar();
+  populate();
+  camX=P.x-VW/2; camY=P.y-VH/2;
+  paused=false; running=true; attract=false; runStart=Date.now();
+  hideAll();
+  document.getElementById('hud').style.display='block';
+  $('#pausebtn').style.display='flex';
+  toast('THE SATCHEL HOLDS THREE SPELLS. USE THE SANCTUM.');
+}
+function screenDeath(){
+  running=true; paused=true;
+  $('#dstats').innerHTML=`REACHED <b style="color:#e6e0d2">${deepest}m</b> · ${biomeName(P.y|0)}<br>${kills} DEAD · ${P.gold} GOLD<br>${((Date.now()-runStart)/1000|0)}s`;
+  const lines=['The sand does not remember you.','Something you spilled is still burning.','The hole you dug is still there.','You were killed by your own good idea.','Down is the only direction that ever worked.'];
+  $('#dline').textContent=lines[Math.random()*lines.length|0];
+  show('death');
+}
+function winRun(){
+  running=true; paused=true;
+  $('#wstats').innerHTML=`${deepest}m · ${kills} DEAD · ${P.gold} GOLD<br>${((Date.now()-runStart)/1000|0)}s`;
+  show('win');
+}
+function descend(){
+  const s=sanctums[sIdx];
+  s.used=true;
+  // seal the way back
+  for(let x=0;x<GW;x++) for(let y=s.y0;y<s.y0+6;y++) setc(x,y,BRICK,0);
+  // open the way down
+  const cx=GW/2|0;
+  for(let y=s.y1-10;y<s.y1+16;y++) for(let x=cx-5;x<=cx+5;x++) setc(x,y,AIR,0);
+  P.x=cx; P.y=s.y1+8; P.vx=0; P.vy=0;
+  paused=false; hideAll();
+  toast('SEALED');
+}
+
+// sanctum entry
+let lastBand=null;
+function checkSanct(){
+  const b=bandAt(P.y|0);
+  if(b.type==='sanct'){
+    const i=bands.filter(x=>x.type==='sanct').indexOf(b);
+    if(i>=0 && !sanctums[i].offered && P.onGround) openSanct(i,false);
+  }
+}
+
+// ================================================================ LOOP
+let attract=true, acc=0, last=0;
+function step(){
+  if(attract){
+    // pour matter over the title so the physics is the hero
+    for(let k=0;k<3;k++){ const x=(GW/2-20+Math.random()*40)|0; setc(x, 10, Math.random()<0.5?SAND:WATER, 0); }
+    if(frame%5===0)  setc((GW/2-16+Math.random()*32)|0, 9, LAVA, 0);
+    if(frame%11===0) setc((GW/2-12+Math.random()*24)|0, 9, OIL, 0);
+    if(frame%23===0) setc((GW/2-12+Math.random()*24)|0, 12, FIRE, 30);
+    camY += (30-camY)*0.02; camX=GW/2-VW/2;
+    simL=Math.max(0,camX-8)|0; simR=Math.min(GW,camX+VW+8)|0;
+    simT=Math.max(0,camY-8)|0; simB=Math.min(GH,camY+VH+8)|0;
+    simulate();
+    return;
+  }
+  stepPlayer();
+  stepMobs();
+  stepShots();
+  stepParts();
+  stepCam();
+  simulate();
+  const d=Math.max(0,((P.y-SURFACE)/4)|0); if(d>deepest) deepest=d;
+  checkSanct();
+  if(P.y>GH-8) hurtPlayer(999,'env');
+}
+function frameLoop(t){
+  requestAnimationFrame(frameLoop);
+  if(!running && !attract) return;
+  if(paused){ return; }
+  if(!last) last=t;
+  let dt=t-last; last=t;
+  if(dt>60) dt=60;
+  acc+=dt;
+  let n=0;
+  while(acc>=16.666 && n<3){ step(); acc-=16.666; n++; }
+  if(acc>100) acc=0;
+  render();
+  if(!attract){ hud(); drawToast(); }
+}
+
+// count kills
+const _hurtMob=hurtMob;
+// GLASS CANNON reads "Double damage", but this only ever doubled 'shot' hits — so
+// every explosive build (FIREBALL, BOMB, EXPLOSIVE PLUS) took the halved health and
+// got nothing back. Blast damage is your damage too.
+hurtMob=function(m,n,k){ const was=m.dead; _hurtMob(m, n*((k==='shot'||k==='boom')?dmgMul():1), k); if(!was&&m.dead) kills++; };
+
+// ================================================================ WIRE
+$('#startbtn').onclick=startRun;
+$('#howbtn').onclick=()=>show('how');
+$('#howback').onclick=()=>show(running?'pause':'title');
+$('#again').onclick=startRun;
+$('#wagain').onclick=startRun;
+$('#descend').onclick=descend;
+$('#pausebtn').onclick=()=>{ if(paused) return; paused=true; $('#pedit').style.display=P.perks.tinker?'block':'none';
+  // I can't reproduce iOS Safari's touch cancellation from here, so the game
+  // counts it. If the sticks die mid-drag, this number is the evidence.
+  $('#pdrops').textContent = inputDrops ? 'INPUT DROPS THIS RUN: '+inputDrops : '';
+  show('pause'); };
+$('#resume').onclick=()=>{ paused=false; hideAll(); };
+$('#phow').onclick=()=>show('how');
+$('#pedit').onclick=()=>openSanct(0,true);
+$('#pquit').onclick=()=>{ running=false; attract=true; last=0; genWorld((Math.random()*1e9)|0); P=newPlayer(); mobs=[];shots=[];drops=[];parts=[]; camY=30; document.getElementById('hud').style.display='none'; show('title'); };
+
+// ================================================================ BOOT
+resize();
+srnd((Math.random()*1e9)|0);
+genWorld(SEED);
+P=newPlayer(); wands=[makeWand({spells:['SPARK',null,null,null]})];
+camX=GW/2-VW/2; camY=30;
+document.getElementById('hud').style.display='none';
+show('title');
+requestAnimationFrame(frameLoop);
+
+</script>
+</body>
+</html>
