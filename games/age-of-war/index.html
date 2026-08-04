@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Age of War</title>
 <style>
   :root {
@@ -29,9 +29,9 @@
 
   /* ---- top status bar ---- */
   #top {
-    display: flex; align-items: center; gap: 14px;
-    padding: 8px 12px; background: var(--panel);
+    display: flex; align-items: center; gap: 14px; background: var(--panel);
     border-bottom: 1px solid var(--line); flex-wrap: wrap;
+    padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left));
   }
   .stat { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
   .stat .dot { width: 10px; height: 10px; border-radius: 50%; }
@@ -66,8 +66,9 @@
 
   /* ---- bottom control deck ---- */
   #deck {
-    display: flex; gap: 8px; padding: 10px 12px; background: var(--panel);
+    display: flex; gap: 8px; background: var(--panel);
     border-top: 1px solid var(--line); align-items: stretch; flex-wrap: wrap;
+    padding: 10px max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
   .group { display: flex; gap: 8px; }
   .sep { width: 1px; background: var(--line); margin: 2px 4px; }
@@ -93,7 +94,10 @@
   #hint { font-size: 11px; color: var(--muted); align-self: center; margin-left: auto; }
   .btn.b1 { border-color: #2f4a6b; } .btn.b1 .n { color: #9dc6ec; }
   .btn.b2 { border-color: #6b3a34; } .btn.b2 .n { color: #eca9a1; }
-  .half { display: flex; gap: 6px; flex: 1; }
+  .half { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; min-width: 0; }
+  .btn { flex: 0 1 auto; }
+  .btn .n, .btn .c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn .n { padding-right: 13px; }   /* clear the key badge in the corner */
   #deckP2 { justify-content: flex-end; }
   .pcol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   .prow { display: flex; align-items: center; gap: 8px; }
@@ -418,7 +422,11 @@ function update(dt) {
     // passive gold is the floor that keeps a losing side in the game; kill
     // gold is the reward on top. Too little passive and the first lost fight
     // snowballs into an unrecoverable deficit.
-    const inc = (13 + side.age * 9) * (side.isPlayer || mode === "2p" ? 1 : 1 + (difficulty - 1) * 0.5);
+    // Income starts lean and accelerates, so the opening is a careful trickle
+    // and the late game can field the expensive units without a long wait.
+    const ramp = 0.42 + Math.min(G.t / 190, 1.28);
+    const inc = (13 + side.age * 9) * ramp
+              * (side.isPlayer || mode === "2p" ? 1 : 1 + (difficulty - 1) * 0.5);
     side.gold += inc * dt;
     for (let i = 0; i < 3; i++) side.cds[i] = Math.max(0, side.cds[i] - dt);
     side.specialCd = Math.max(0, side.specialCd - dt);
@@ -527,7 +535,7 @@ function ai(dt) {
   const e = G.e;
   e.aiTimer -= dt;
   if (e.aiTimer > 0) return;
-  e.aiTimer = rnd(0.5, 1.0) / difficulty;
+  e.aiTimer = rnd(0.85, 1.6) / difficulty;   // slower, more human decision cadence
 
   // evolve as soon as it can — but hold gold if it's starving for units
   if (e.age < AGES.length - 1 && e.xp >= AGES[e.age].xpNext) { evolve(e); return; }
@@ -988,7 +996,7 @@ function endGame(result) {              // result "win" = P1 (blue) took the rig
 }
 
 function start() {
-  aiPower = mode === "2p" ? 1 : 0.92 + (difficulty - 1) * 1.35;
+  aiPower = mode === "2p" ? 1 : 0.72 + (difficulty - 1) * 1.15;
   reset();
   resize();
   running = true; paused = false;
