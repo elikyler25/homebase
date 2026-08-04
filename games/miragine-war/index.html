@@ -29,7 +29,7 @@
   .hpbar span { position: absolute; inset: 0; text-align: center; font-size: 11px;
                 line-height: 14px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000; }
   .stats { margin-top: 3px; font-size: 13px; font-weight: bold; text-shadow: 0 2px 3px #000; }
-  .gold { color: #ffd75e; } .inc { color: #8dff8d; } .army { color: #cfe8ff; } .lane { color: #ffb0e0; }
+  .gold { color: #ffd75e; } .inc { color: #8dff8d; } .army { color: #cfe8ff; } .lane { color: #ffb0e0; } .mend { color: #9fffd8; }
   #centre { flex: 0 0 auto; text-align: center; pointer-events: none; padding: 0 6px; }
   #round { background: #1c1710; border: 2px solid #4a3c22; border-radius: 5px;
            padding: 1px 14px; font-weight: bold; font-size: 17px; color: #ffd75e; box-shadow: 0 2px 0 #0007; }
@@ -95,7 +95,8 @@
           <span class="gold">◆<span id="g1">0</span></span> &nbsp;
           <span class="inc">+<span id="i1">0</span></span> &nbsp;
           <span class="army"><span id="a1">0</span> troops</span> &nbsp;
-          <span class="lane" id="l1"></span>
+          <span class="lane" id="l1"></span> &nbsp;
+          <span class="mend" id="rp1"></span>
         </div>
       </div>
       <div id="centre">
@@ -104,6 +105,7 @@
       </div>
       <div class="side right p2">
         <div class="stats" style="margin:0 0 3px">
+          <span class="mend" id="rp2"></span> &nbsp;
           <span class="lane" id="l2"></span> &nbsp;
           <span class="army"><span id="a2">0</span> troops</span> &nbsp;
           <span class="inc">+<span id="i2">0</span></span> &nbsp;
@@ -137,7 +139,7 @@
           lane: <kbd>Right Shift</kbd>
         </div>
       </div>
-      <p style="font-size:12px;color:#9e8b63"><kbd>Space</kbd> pause &nbsp; <kbd>-</kbd><kbd>=</kbd> game speed
+      <p style="font-size:12px;color:#9e8b63"><kbd>5</kbd><kbd>6</kbd> mend crystal &nbsp; <kbd>H</kbd> counters &nbsp; <kbd>Space</kbd> pause &nbsp; <kbd>-</kbd><kbd>=</kbd> game speed
         &nbsp; <kbd>`</kbd> mute &nbsp; click a card to buy &nbsp; hover a card for full stats</p>
       <button class="big" id="startBtn">FIGHT</button>
     </div>
@@ -177,31 +179,31 @@ const UNITS = [
     { head:"helm",  body:"tunic", weapon:"sword" }),
   U("Zombie",      140,  5,  320,  2, "light",    26,  18,  13,  22, 1.00, 17, "#7fa86a", "melee",
     { head:"bare",  body:"tatter", weapon:"claws", skin:"#93b87a", hunch:true }),
-  U("Samurai",     200,  7,  190,  2, "light",    52,  42,  14,  26, 0.70, 17, "#d96a6a", "melee",
+  U("Samurai",     200,  7,  190,  2, "light",    52,  58,  14,  26, 0.70, 17, "#d96a6a", "melee",
     { head:"kasa",  body:"tunic", weapon:"katana" }),
   U("Sword Man",   280,  9,  260,  4, "armored",  44,  33,  24,  26, 0.80, 18, "#d9d9e2", "melee",
     { head:"helm",  body:"plate", weapon:"sword", shield:true }),
-  U("Ninja",       360, 11,  170,  1, "light",    96,  74,   9,  24, 0.55, 16, "#5f5f74", "melee",
+  U("Ninja",       360, 11,  170,  1, "light",    96,  98,   9,  24, 0.55, 16, "#5f5f74", "melee",
     { head:"mask",  body:"tunic", weapon:"daggers", scarf:true }),
-  U("Novice",      440, 14,  200,  2, "light",    40,  38,  38, 160, 1.10, 16, "#8fd98f", "ranged",
+  U("Novice",      440, 14,  200,  2, "light",    40,  36,  36, 160, 1.10, 16, "#8fd98f", "ranged",
     { head:"hood",  body:"tunic", weapon:"bow" }),
   U("Heavy Sword", 560, 17,  540,  8, "armored",  36,  43,  43,  30, 0.90, 21, "#a9b4c2", "melee",
     { head:"visor", body:"plate", weapon:"greatsword", pauldrons:true }),
-  U("Monk",        700, 20,  300,  3, "light",    40,  26, 118, 130, 1.00, 17, "#e0c060", "ranged",
+  U("Monk",        700, 20,  300,  3, "light",    40,  26, 152, 130, 1.00, 17, "#e0c060", "ranged",
     { head:"bald",  body:"robe",  weapon:"staff", halo:true, skin:"#e8c9a0" }),
-  U("Vampire",     880, 24,  460,  4, "light",    62,  54, 138,  28, 0.68, 18, "#a05ac0", "melee",
+  U("Vampire",     880, 24,  460,  4, "light",    62,  58, 150,  28, 0.68, 18, "#a05ac0", "melee",
     { head:"bare",  body:"robe",  weapon:"claws", cape:"#5a1030", wings:true, skin:"#e8dcea" }, { drain:0.75 }),
   U("Cavalry",    1100, 28,  620,  6, "armored", 104,  76,  38,  30, 0.75, 23, "#e0c25a", "mount",
     { head:"plume", body:"plate", weapon:"lance", mount:true }, { splash:30 }),
   U("Immortal",   1400, 33, 1150, 12, "armored",  32,  51,  51,  30, 0.90, 23, "#c0a0d0", "melee",
     { head:"visor", body:"plate", weapon:"spear", tower:true }),
-  U("Mage",       1750, 38,  380,  2, "light",    34,  89,  89, 205, 1.40, 18, "#c78fe0", "ranged",
+  U("Mage",       1750, 38,  380,  2, "light",    34,  78,  78, 205, 1.40, 18, "#c78fe0", "ranged",
     { head:"wizhat", body:"robe", weapon:"staff", orb:"#d27bff" }, { splash:60 }),
-  U("Iron Knight",2200, 44, 1900, 20, "armored",  30, 101,  76,  34, 1.00, 29, "#8fa0b8", "melee",
+  U("Iron Knight",2200, 44, 1900, 20, "armored",  30,  94,  70,  34, 1.00, 29, "#8fa0b8", "melee",
     { head:"visor", body:"plate", weapon:"greatsword", pauldrons:true, tower:true, glow:"#ffd070" }, { splash:40 }),
-  U("Dread Lord", 2800, 52, 1500, 10, "armored",  46, 139, 120,  36, 0.80, 26, "#8a3a3a", "melee",
+  U("Dread Lord", 2800, 52, 1650,  4, "light",    64, 128, 110,  36, 0.80, 26, "#8a3a3a", "melee",
     { head:"horns", body:"plate", weapon:"axe", cape:"#2a0a10", aura:"#ff3a3a" }, { splash:46 }),
-  U("High Lord",  3600, 62, 2600, 16, "armored",  40, 164, 139,  40, 0.85, 34, "#e0d070", "melee",
+  U("High Lord",  3600, 62, 2600, 16, "armored",  40, 148, 124,  40, 0.85, 34, "#e0d070", "melee",
     { head:"crown", body:"plate", weapon:"greatsword", cape:"#6a5a10", aura:"#ffe66a", pauldrons:true }, { splash:55 }),
 ].map((u, i) => (u.idx = i, u));
 
@@ -222,11 +224,29 @@ const TICK_T      = 10;
 const BASE_INCOME = 300;
 
 const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed:1,
-            units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0 };
+            units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false };
 let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
-function mkPlayer(team) { return { team, gold: START_GOLD, hp: CRYSTAL_HP, cool: 0, kills: 0, lane: 0, spent: 0 }; }
+const REPAIR_COST = 450, REPAIR_HEAL = 700;
+function mkPlayer(team) {
+  return { team, gold: START_GOLD, hp: CRYSTAL_HP, cool: 0, kills: 0, lane: 0, spent: 0,
+           built: {}, mend: 0 };
+}
+function repair(team) {
+  if (!G.running || G.over || G.paused) return;
+  const p = P[team];
+  if (p.gold < REPAIR_COST || p.hp >= CRYSTAL_HP || p.mend > 0) { sfxDeny(); return; }
+  p.gold -= REPAIR_COST; p.spent += REPAIR_COST; p.mend = 1.2;
+  p.hp = Math.min(CRYSTAL_HP, p.hp + REPAIR_HEAL);
+  tone(520, .18, "triangle", .05, 1040);
+  for (let i=0;i<14;i++) {
+    const a = Math.random()*6.28;
+    G.fx.push({ t:"p", x:crystalX(team)+Math.cos(a)*40, y:crystalY()+Math.sin(a)*54,
+                vx:-Math.cos(a)*70, vy:-Math.sin(a)*70, life:.5, max:.5,
+                c: team===0 ? "#bfe6ff" : "#ffd0b0", r:2+Math.random()*2, nog:true });
+  }
+}
 
 const cv = document.getElementById("cv");
 let ctx = cv.getContext("2d");
@@ -352,7 +372,7 @@ function spawn(idx, team) {
     x: crystalX(team) + (team===0?38:-38) + (Math.random()*10-5),
     y: laneY(team),
     hp:u.hp, maxhp:u.hp, cool:Math.random()*u.ws, tgt:null, retarget:Math.random()*.3,
-    swing:0, hurt:0, step:Math.random()*6.28, dust:0, dead:false };
+    swing:0, hurt:0, step:Math.random()*6.28, dust:0, vet:0, dead:false };
 }
 
 function buy(team, idx) {
@@ -360,6 +380,7 @@ function buy(team, idx) {
   const p = P[team], u = UNITS[idx];
   if (p.gold < u.price) { if (!CPU || CPU.team !== team) sfxDeny(); return false; }
   p.gold -= u.price; p.spent += u.price;
+  p.built[u.name] = (p.built[u.name] || 0) + 1;
   G.units.push(spawn(idx, team));
   flashCard(team, idx);
   if (!CPU || CPU.team !== team) sfxBuy();
@@ -397,9 +418,11 @@ function findTarget(a) {
   return best;
 }
 
+function vetBonus(a) { return 1 + Math.min(3, Math.floor((a.vet||0)/3)) * 0.12; }
 function hurt(target, amt, src) {
+  if (src) amt *= vetBonus(src);
   target.hp -= amt; target.hurt = .16;
-  if (amt >= 40) dmgText(target.x, target.y - target.u.size, Math.round(amt), src && src.team === 0);
+  if (amt >= 55) dmgText(target.x, target.y - target.u.size, Math.round(amt), src && src.team === 0);
   if (src && src.u.drain) {
     src.hp = Math.min(src.maxhp, src.hp + amt*src.u.drain);
     G.fx.push({ t:"p", x:src.x, y:src.y-8, vx:0, vy:-40, life:.4, max:.4, c:"#ff5e8a", r:2.5 });
@@ -407,6 +430,7 @@ function hurt(target, amt, src) {
   if (target.hp <= 0 && !target.dead) {
     target.dead = true;
     P[1-target.team].kills++;
+    if (src) src.vet = (src.vet||0) + 1;
     puff(target.x, target.y, target.team, target.u.size);
     bleed(target.x, target.y, target.u.size);
     sfxDie();
@@ -432,10 +456,13 @@ function hitCrystal(team, amt) {
    ============================================================ */
 const CPU_LEVELS = {
   // costPow: how much the CPU cares about value-for-money vs raw power.
-  // 0 = always field the strongest thing it can afford (which is what wins).
-  easy:   { think: 1.7,  reserve: 0, smart: 0.35, costPow: 0.85, maxPrice: 700 },
-  normal: { think: 0.8,  reserve: 0, smart: 0.85, costPow: 0.35, maxPrice: 2200 },
-  hard:   { think: 0.25, reserve: 0, smart: 1.00, costPow: 0.00, maxPrice: 9999 },
+  // Higher = buy for value, lower = buy the biggest thing affordable. Simulated
+  // duels put value-buying ahead 7 games in 10, so hard plays that way.
+  // What really separates them is awareness, not reaction speed: easy never looks
+  // at what it is fighting, normal sees it through noise, hard sees it exactly.
+  easy:   { think: 2.0,  smart: 0.35, costPow: 0.00, maxPrice: 700,  blind: true,  mend: false },
+  normal: { think: 1.2,  smart: 0.70, costPow: 0.60, maxPrice: 1400, noise: 0.35,  mend: true  },
+  hard:   { think: 0.25, smart: 1.00, costPow: 1.00, maxPrice: 9999, noise: 0,     mend: true  },
 };
 function cpuThink(dt) {
   if (!CPU) return;
@@ -451,7 +478,10 @@ function cpuThink(dt) {
     if (a.team === foe) { theirs++; if (a.u.type === "light") light += a.hp; else armored += a.hp; }
     else mine++;
   }
-  const armoredShare = armored / (armored + light);
+  let armoredShare = armored / (armored + light);
+  if (cfg.blind) armoredShare = 0.5;                       // easy fights blind
+  else if (cfg.noise) armoredShare = Math.max(0, Math.min(1,
+    armoredShare + (Math.random()-0.5)*cfg.noise));        // normal misreads it a little
 
   // losing the field means spend everything; winning it means bank toward better troops
   const losing = theirs > mine + 2 || me.hp < P[foe].hp * 0.9;
@@ -463,26 +493,23 @@ function cpuThink(dt) {
     return dps * ehp * splash / Math.pow(u.price, cfg.costPow);
   };
 
-  // Spending every last coin the moment it arrives means never reaching the top of
-  // the ladder. So: pick a target unit and save for it, but stop saving and buy
-  // what you can afford the moment the field starts slipping away.
-  const reachable = UNITS.filter(u => u.price <= cfg.maxPrice);
-  let target = reachable[0], bestScore = -1;
-  for (const u of reachable) { const v = score(u); if (v > bestScore) { bestScore = v; target = u; } }
-
+  // Simulated duels settled this: buying the best-scoring unit you can afford
+  // right now beats hoarding for something bigger. Idle gold is a dead army.
+  const opts = UNITS.filter(u => u.price <= me.gold && u.price <= cfg.maxPrice);
+  const any  = UNITS.filter(u => u.price <= me.gold);
   if (Math.random() > cfg.smart) {                       // sloppy play on lower levels
-    const opts = UNITS.filter(u => u.price <= me.gold);
-    if (opts.length) buy(CPU.team, opts[Math.floor(Math.random()*opts.length)].idx);
-  } else if (me.gold >= target.price) {
-    for (let n = 0; n < 3 && me.gold >= target.price; n++) buy(CPU.team, target.idx);
-  } else if (losing) {                                   // no time to save - hold the line
-    const opts = UNITS.filter(u => u.price <= me.gold);
-    if (opts.length) {
-      let pick = opts[0], best = -1;
-      for (const u of opts) { const v = score(u) / u.price; if (v > best) { best = v; pick = u; } }
+    if (any.length) buy(CPU.team, any[Math.floor(Math.random()*any.length)].idx);
+  } else {
+    const pool = opts.length ? opts : any;
+    if (pool.length) {
+      let pick = pool[0], best = -1;
+      for (const u of pool) { const v = score(u); if (v > best) { best = v; pick = u; } }
       buy(CPU.team, pick.idx);
+      if (losing && me.gold >= pick.price) buy(CPU.team, pick.idx);   // reinforce hard when pressed
     }
   }
+
+  if (cfg.mend && me.hp < CRYSTAL_HP*0.6 && me.gold > REPAIR_COST*2.5) repair(CPU.team);
   if (Math.random() < 0.05) me.lane = Math.floor(Math.random()*4);
 }
 
@@ -493,6 +520,8 @@ function step(dt) {
   G.frame++;
   rebuildGrid();
   cpuThink(dt);
+
+  for (const p of P) if (p.mend > 0) p.mend -= dt;
 
   G.tick -= dt;
   if (G.tick <= 0) {
@@ -648,7 +677,9 @@ function arc(a, tgt) {
   G.fx.push({ t:"arc", x:(a.x+tgt.x)/2, y:(a.y+tgt.y)/2 - a.u.size*.3,
               ang, r:a.u.size*1.5, life:.16, max:.16 });
 }
+let dmgShown = 0;
 function dmgText(x, y, n, blue) {
+  if (++dmgShown % 2) return;                     // thin them out in a big melee
   G.fx.push({ t:"txt", x, y, s:String(n), life:.6, max:.6, c: blue ? "#cfe8ff" : "#ffd0c0" });
 }
 let bannerT = 0;
@@ -702,6 +733,35 @@ function draw() {
 
   ctx.restore();
   drawRadar();
+  if (G.help) drawHelp();
+}
+
+function drawHelp() {
+  const lines = [
+    ["THE ONE RULE", "#ffd75e"],
+    ["Every unit is LIGHT or ARMORED and has separate damage vs each.", "#e8e2d0"],
+    ["Armour also subtracts flat damage from every hit.", "#e8e2d0"],
+    ["", ""],
+    ["Ninja / Samurai — shred LIGHT, useless into plate", "#ffd0a0"],
+    ["Monk / Vampire — shred ARMORED, the answer to Iron Knights", "#9fd0ff"],
+    ["Dread Lord is LIGHT: fast and lethal, but anti-light units eat it", "#ff9a9a"],
+    ["Novice / Mage — hit both, from range", "#c9b6ff"],
+    ["", ""],
+    ["5 / 6  mend your crystal        L-SHIFT / R-SHIFT  spawn lane", "#9fffd8"],
+    ["SPACE pause     - / =  speed     `  mute     H  close", "#cfc6ae"],
+  ];
+  const w = 560, h = lines.length*22 + 28;
+  const x = (G.W-w)/2, y = (G.H-h)/2 - 20;
+  ctx.fillStyle = "rgba(10,14,10,.92)";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "#4a3c22"; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+  ctx.textAlign = "left";
+  lines.forEach((l, i) => {
+    if (!l[0]) return;
+    ctx.font = (i === 0 ? "bold 15px " : "13px ") + "'Trebuchet MS', sans-serif";
+    ctx.fillStyle = l[1];
+    ctx.fillText(l[0], x+20, y+30+i*22);
+  });
 }
 
 function drawLaneMarker(team) {
@@ -1146,6 +1206,20 @@ function drawUnit(a) {
     ctx.drawImage(c, dx, dy, w, h);
     ctx.globalCompositeOperation = op; ctx.globalAlpha = al;
   }
+  if (G.hi && G.hi.team === a.team && G.hi.idx === a.u.idx) {
+    ctx.strokeStyle = "#fff8c0"; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.95, s*1.0, s*.4, 0, 0, 6.29); ctx.stroke();
+  }
+  const rank = Math.min(3, Math.floor((a.vet||0)/3));
+  if (rank > 0) {                                   // veteran chevrons
+    ctx.strokeStyle = "#ffe066"; ctx.lineWidth = 1.6;
+    for (let i=0;i<rank;i++) {
+      const cy = a.y - s*1.9 - i*3.4;
+      ctx.beginPath();
+      ctx.moveTo(a.x - s*.26, cy + 2.4); ctx.lineTo(a.x, cy);
+      ctx.lineTo(a.x + s*.26, cy + 2.4); ctx.stroke();
+    }
+  }
   if (a.hp < a.maxhp) {
     const bw = s*1.9, f = Math.max(0, a.hp/a.maxhp);
     ctx.fillStyle = "rgba(0,0,0,.6)"; ctx.fillRect(a.x-bw/2, a.y-s*1.65, bw, 3.4);
@@ -1206,6 +1280,8 @@ function buildShops() {
         (u.splash ? "\nsplash radius " + u.splash : "") +
         (u.drain ? "\nheals for " + (u.drain*100) + "% of damage dealt" : "");
       el.addEventListener("pointerdown", e => { e.preventDefault(); buy(team, i); });
+      el.addEventListener("mouseenter", () => { G.hi = { team, idx:i }; });
+      el.addEventListener("mouseleave", () => { if (G.hi && G.hi.idx === i && G.hi.team === team) G.hi = null; });
       host.appendChild(el);
       drawIcon(el.querySelector("canvas"), i, team);
       cards[team].push(el);
@@ -1242,6 +1318,11 @@ function updateHUD() {
     document.getElementById("a"+n).textContent = cnt[t];
     document.getElementById("l"+n).textContent = (CPU && CPU.team===t ? "CPU · " : "") + LANES[p.lane];
     UNITS.forEach((u,i) => cards[t][i].classList.toggle("poor", p.gold < u.price));
+  }
+  for (const t of [0,1]) {
+    const p = P[t], el = document.getElementById("rp"+(t+1));
+    el.textContent = p.hp < CRYSTAL_HP && p.gold >= REPAIR_COST && !(CPU && CPU.team===t)
+      ? "["+(t===0?"5":"6")+"] mend ◆"+REPAIR_COST : "";
   }
   document.getElementById("round").textContent = "ROUND " + G.round;
   document.getElementById("tick").textContent =
@@ -1283,6 +1364,9 @@ window.addEventListener("keydown", e => {
   if (e.code === "Space")  { e.preventDefault(); G.paused=!G.paused; banner(G.paused?"PAUSED":"", 600); return; }
   if (e.code === "Minus")  { G.speed = Math.max(1, G.speed-1); return; }
   if (e.code === "Equal")  { G.speed = Math.min(3, G.speed+1); return; }
+  if (e.code === "Digit5") { if (!CPU || CPU.team!==0) repair(0); return; }
+  if (e.code === "Digit6") { if (!CPU || CPU.team!==1) repair(1); return; }
+  if (e.code === "KeyH") { G.help = !G.help; return; }
   if (e.code === "ShiftLeft")  { if (!CPU || CPU.team!==0) P[0].lane=(P[0].lane+1)%4; return; }
   if (e.code === "ShiftRight") { if (!CPU || CPU.team!==1) P[1].lane=(P[1].lane+1)%4; return; }
   let i = P1_KEYS.indexOf(e.code);
@@ -1308,10 +1392,14 @@ function endGame(winner) {
   const title = CPU ? (winner === CPU.team ? "CPU WINS" : "YOU WIN") : (winner===0 ? "BLUE WINS" : "RED WINS");
   ov.querySelector("h1").textContent = title;
   ov.querySelector("h1").style.color = winner===0 ? "#bfe6ff" : "#ffd0b0";
+  const army = t => Object.entries(P[t].built).sort((a,b) => b[1]-a[1])
+    .slice(0,6).map(([k,v]) => k+" ×"+v).join(", ") || "nothing";
   ov.querySelectorAll("p")[0].innerHTML =
     "Crystal shattered on round <b>"+G.round+"</b>.<br>" +
-    "Blue — <b>"+P[0].kills+"</b> kills, <b>◆"+P[0].spent+"</b> spent &nbsp;·&nbsp; " +
-    "Red — <b>"+P[1].kills+"</b> kills, <b>◆"+P[1].spent+"</b> spent.";
+    "<span style='color:#bfe6ff'>Blue</span> — <b>"+P[0].kills+"</b> kills, <b>◆"+P[0].spent+
+    "</b> spent · "+army(0)+"<br>" +
+    "<span style='color:#ffd0b0'>Red</span> — <b>"+P[1].kills+"</b> kills, <b>◆"+P[1].spent+
+    "</b> spent · "+army(1);
   document.getElementById("startBtn").textContent = "REMATCH";
   ov.classList.remove("hide");
 }
