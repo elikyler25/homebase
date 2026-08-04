@@ -235,7 +235,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 .log {
   font-family: var(--mono); font-size: 10.5px; color: var(--ink-3);
-  display: grid; gap: 2px; align-content: start; height: 84px; overflow-y: auto;
+  display: grid; gap: 2px; align-content: start; height: 94px; overflow-y: auto;
   border-top: 1px solid var(--line); padding-top: 8px;
 }
 .log b { color: var(--ink-2); font-weight: 500; }
@@ -262,11 +262,81 @@ dialog .close { margin-top: 18px; }
 .note { font-size: 11px; color: var(--ink-3); max-width: 190px; }
 @media (max-width: 720px) { .note { display: none; } }
 
+/* ------------------------------------------------------- rounds & coach */
+
+.rounds { display: inline-flex; gap: 3px; }
+.rd { width: 7px; height: 7px; border-radius: 50%; background: #2a333e; display: inline-block; }
+.side.lt .rd.won { background: var(--you); box-shadow: 0 0 7px var(--you); }
+.side.rt .rd.won { background: var(--them); box-shadow: 0 0 7px var(--them); }
+.side .nm { font-weight: 700; }
+
+.coach {
+  font-size: 12px; line-height: 1.5; color: var(--ink-2);
+  background: var(--panel); border: 1px solid var(--line);
+  border-left: 3px solid var(--warn); border-radius: 8px; padding: 8px 12px;
+}
+.coach[hidden] { display: none; }
+.coach.good { border-left-color: var(--good); }
+.coach b { color: var(--ink); font-weight: 650; }
+
+/* ---------------------------------------------------------- yomi chain */
+
+.chain { display: grid; gap: 2px; }
+.link {
+  background: var(--panel-2); border-radius: 8px; padding: 7px 10px;
+  border-left: 3px solid var(--line); display: grid; gap: 2px;
+}
+.link.mine { border-left-color: var(--you); }
+.link.theirs { border-left-color: var(--them); }
+.link.loops { opacity: .72; border-left-style: dashed; }
+.link .depth { font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--ink-3); }
+.link .nm { font-size: 13px; font-weight: 650; }
+.link .who { font-size: 10px; color: var(--ink-3); }
+.link .vd { justify-self: start; margin-top: 2px; }
+.link .meta { font-size: 10px; color: var(--warn); font-family: var(--mono); }
+.chain .arrow { text-align: center; color: var(--ink-3); font-size: 11px; line-height: 1; }
+
+/* ----------------------------------------------------- character select */
+
+dialog#select { max-width: 760px; }
+dialog .lead { margin: 0 0 16px; }
+.roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.card {
+  text-align: left; padding: 12px 13px; border-radius: 11px; display: grid; gap: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); cursor: pointer;
+}
+.card:hover { border-color: #46596c; }
+.card.picked { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink) inset; background: #202834; }
+.card h3 { margin: 0; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; }
+.card p { margin: 0; font-size: 11.5px; line-height: 1.45; min-height: 50px; }
+.stats { display: grid; gap: 3px; }
+.stat { display: grid; grid-template-columns: 62px 1fr 34px; gap: 6px; align-items: center; }
+.stat .k { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.stat .b { height: 4px; border-radius: 2px; background: #10161d; overflow: hidden; }
+.stat .b i { display: block; height: 100%; }
+.stat .v { font-family: var(--mono); font-size: 10px; color: var(--ink-2); text-align: right; }
+.selfoot { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+.selfoot .primary { margin-left: auto; padding: 8px 22px; }
+
+/* The HUD's two stat blocks plus the clock cannot sit side by side on a phone —
+   the meter pips alone are wider than the viewport. Stack the clock underneath. */
+@media (max-width: 620px) {
+  .hud { grid-template-columns: 1fr 1fr; grid-template-areas: "lt rt" "clk clk"; row-gap: 8px; }
+  .side.lt { grid-area: lt; }
+  .side.rt { grid-area: rt; }
+  .clock { grid-area: clk; }
+  .pips { flex-wrap: wrap; gap: 2px; }
+  .pip { width: 9px; }
+  .burst { width: 30px; }
+  .side .who { font-size: 9px; letter-spacing: .08em; }
+  .stat { grid-template-columns: 54px 1fr 30px; }
+}
+
 </style>
 </head>
 <body>
 
-<!-- Dev entry point. `python3 build.py` inlines all of this into dist/hustle-lite.html. -->
+<!-- Dev entry point. `python3 build.py` inlines all of this into dist/. -->
 <div class="wrap">
 
   <header class="top">
@@ -278,6 +348,7 @@ dialog .close { margin-top: 18px; }
       <label for="oracle">Oracle</label>
       <select id="oracle">
         <option value="full">Full board</option>
+        <option value="chain">Yomi chain</option>
         <option value="risk">Risk only</option>
         <option value="off">Off</option>
       </select>
@@ -294,13 +365,13 @@ dialog .close { margin-top: 18px; }
     </div>
     <button id="sound" type="button">Sound on</button>
     <button id="helpbtn" type="button">How to play</button>
-    <button id="restart" type="button">Restart</button>
+    <button id="restart" type="button">New match</button>
   </header>
 
   <section class="stage">
     <div class="hud">
       <div class="side lt" id="p0">
-        <div class="who">You <span class="st"></span></div>
+        <div class="who"><span class="nm">Duelist</span> <span class="st"></span> <span class="rounds"></span></div>
         <div class="hp"><i style="width:100%"></i></div>
         <div class="pips">
           <span class="hpv">150</span>
@@ -311,12 +382,12 @@ dialog .close { margin-top: 18px; }
       </div>
 
       <div class="clock" id="clock">
-        <div class="t">60</div>
+        <div class="t">70</div>
         <div class="l">turns left</div>
       </div>
 
       <div class="side rt" id="p1">
-        <div class="who"><span class="st"></span> Rival</div>
+        <div class="who"><span class="rounds"></span> <span class="st"></span> <span class="nm">Rival</span></div>
         <div class="hp"><i style="width:100%"></i></div>
         <div class="pips">
           <span class="burst ready"><i style="width:100%"></i></span>
@@ -333,9 +404,11 @@ dialog .close { margin-top: 18px; }
       <div class="overlay" id="overlay" hidden>
         <h2>YOU WIN</h2>
         <p></p>
-        <div><button class="primary" id="playagain" type="button">Fight again</button></div>
+        <div><button class="primary" id="playagain" type="button">Next round</button></div>
       </div>
     </div>
+
+    <div class="coach" id="coach" hidden></div>
 
     <div class="scrub" id="scrubwrap" hidden>
       <button id="replay" type="button">Replay</button>
@@ -361,41 +434,70 @@ dialog .close { margin-top: 18px; }
   <section class="moves" id="moves"></section>
 </div>
 
+<dialog id="select">
+  <h2>Pick your fighter</h2>
+  <p class="lead">Three archetypes, one shared defensive skeleton. Guards, Parry, Dodge,
+     movement and Burst work the same for everyone — what changes is where you sit on the
+     speed, reach and damage triangle.</p>
+  <div class="roster" id="roster"></div>
+  <div class="selfoot">
+    <div class="ctl">
+      <label for="rival">Rival plays</label>
+      <select id="rival">
+        <option value="random">Random</option>
+        <option value="duelist">Duelist</option>
+        <option value="bruiser">Bruiser</option>
+        <option value="blade">Blade</option>
+      </select>
+    </div>
+    <button class="primary" id="startfight" type="button">Fight</button>
+  </div>
+</dialog>
+
 <dialog id="help">
   <h2>How to play</h2>
   <p>Both fighters choose a move at the same time, then the turn plays out frame by frame.
-     There are no reflexes here — only the guess, and what you know about the person guessing back.</p>
+     There are no reflexes here — only the guess, and what you know about the person guessing back.
+     First to two rounds wins.</p>
 
   <h3>The threat board</h3>
   <p>This is the part the original game makes you work out for yourself. Hover any move and
      the panel on the right runs <em>every</em> reply your rival currently has, simulates it
      against your move, and ranks the results. The top row is their best answer. The bar on
      each button is the share of their options that beat it.</p>
-  <p>Turn the Oracle down to <strong>Risk only</strong> or <strong>Off</strong> in the header
-     once you want the guessing back.</p>
+
+  <h3>The yomi chain</h3>
+  <p>Switch the Oracle to <strong>Yomi chain</strong> and it stops showing a list and starts
+     showing a ladder: what beats your move, what beats <em>that</em>, and what beats that.
+     Layer 1 is the obvious answer. Layer 2 is what to play if you think they have read you.
+     The chain ends where the read loops — that is the point where thinking deeper stops
+     helping and it is a coin flip again.</p>
+  <p>After each exchange, the line under the arena tells you what would actually have worked.</p>
 
   <h3>What beats what</h3>
   <ul>
     <li><strong>Speed decides trades.</strong> A 4-frame Jab beats a 6-frame Grab, every time.</li>
-    <li><strong>High Guard</strong> stops highs and mids; <strong>Sweep</strong> goes under it.</li>
-    <li><strong>Low Guard</strong> stops lows and mids; <strong>Overhead</strong> comes over it.</li>
-    <li><strong>Grab</strong> ignores both guards and the Parry — but loses to anything faster.</li>
-    <li><strong>Parry</strong> is live on frames 2–7 only. It eats fast moves and misses slow ones.</li>
-    <li><strong>Dodge Roll</strong> is invulnerable and retreats. Only an armoured <strong>Lunge</strong> chases it down.</li>
-    <li><strong>Lunge</strong> tanks one strike on the way in, and gets stuffed by guards and grabs.</li>
+    <li><strong>Counter-hits.</strong> Catch someone in their wind-up and it hurts 40% more.</li>
+    <li><strong>High Guard</strong> stops highs and mids; lows go under it.</li>
+    <li><strong>Low Guard</strong> stops lows and mids; highs come over it.</li>
+    <li><strong>Grabs</strong> ignore both guards and the Parry — but lose to anything faster.</li>
+    <li><strong>Parry</strong> is live on frames 2–9 only. It eats fast moves and misses slow ones.</li>
+    <li><strong>Dodge Roll</strong> is invulnerable and retreats. Chasing moves still catch it.</li>
+    <li><strong>Armour</strong> tanks one strike on the way in, at the cost of some of your own damage. Grabs go straight through it.</li>
   </ul>
 
   <h3>Resources</h3>
   <ul>
-    <li><strong>Meter</strong> (the gold pips) buys Rising Fang, an invulnerable reversal. <strong>Hustle</strong> banks two, if they let you.</li>
+    <li><strong>Meter</strong> (gold pips) buys your super. <strong>Hustle</strong> banks two, if they let you.</li>
     <li><strong>Burst</strong> (the blue bar) escapes a combo — unless they bait it by guarding.</li>
     <li><strong>Sadness</strong>: refuse to engage and the ring starts taking health off you.</li>
-    <li>At turn 60 it is time over, and whoever is ahead on health takes it.</li>
+    <li>At turn 70 it is time over, and whoever leads on health takes the round.</li>
   </ul>
 
   <h3>Keys</h3>
   <p><kbd>1</kbd>–<kbd>5</kbd> strikes · <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> defence ·
-     <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> footsies and meter · <kbd>?</kbd> this panel</p>
+     <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> footsies and meter ·
+     <kbd>Enter</kbd> continue · <kbd>?</kbd> this panel</p>
 
   <div class="close"><button class="primary" id="helpclose" type="button">Got it</button></div>
 </dialog>
@@ -410,11 +512,11 @@ dialog .close { margin-top: 18px; }
  *
  * Everything in this file is pure: no DOM, no canvas, no timers. `resolveTurn` is the
  * single source of truth — the renderer replays its timeline, the threat board scores its
- * outcomes, and the AI searches over it. Nothing is modelled twice.
+ * outcomes, the yomi chain walks it, and the AI searches over it. Nothing is modelled
+ * twice, so the numbers on screen are always the numbers that were actually simulated.
  */
 
 const RULES = {
-  MAX_HP: 150,
   MAX_METER: 5,
   BURST_FULL: 100,
   ARENA_MIN: 60,
@@ -428,9 +530,13 @@ const RULES = {
   GUTS_SCALE: 0.75,
   SUPER_COST: 2,
   METER_PER_LEVEL: 25,
-  STALL_GRACE: 8,       // turns of nobody committing before the ring starts biting
-  TURN_LIMIT: 60,       // the round ends here; whoever is ahead on health takes it
+  STALL_GRACE: 8,        // turns of refusing to engage before the ring starts biting
+  TURN_LIMIT: 70,        // per round; whoever leads on health takes it at time over
   PARRY_STUN: 24,
+  COUNTER_SCALE: 1.4,    // damage bonus for interrupting an opponent's wind-up
+  COUNTER_STUN: 6,       // extra hitstun on a counter-hit
+  ARMOUR_TAX: 0.72,      // damage you keep after powering through a hit on armour
+  ROUNDS_TO_WIN: 2,      // best of three
 };
 
 /* ------------------------------------------------------------------ moves */
@@ -439,7 +545,7 @@ const RULES = {
  * Frame anatomy of a strike: [0, startup) wind-up, [startup, startup+active) the hitbox
  * is live, then recovery. `range` is measured centre-to-centre, so a move only connects
  * if the gap has closed enough by the frame the hitbox is live — which is why `dash`
- * moves like Lunge reach further than their raw range suggests. They carry you in.
+ * moves reach further than their raw range suggests. They carry you in.
  */
 const M = (def) => ({
   startup: 0, active: 0, recovery: 0, range: 0, level: 'mid', dmg: 0,
@@ -448,76 +554,33 @@ const M = (def) => ({
   knockdown: false, unblockable: false, parryable: true, tag: '', ...def,
 });
 
-const MOVES = {
-  /* --- strikes ---------------------------------------------------------- */
-  jab: M({
-    id: 'jab', name: 'Jab', cat: 'strike', key: '1',
-    startup: 4, active: 2, recovery: 6, range: 95, level: 'mid',
-    dmg: 7, hitstun: 12, blockstun: 8, pushHit: 30, pushBlock: 22, gain: 6,
-    blurb: 'Fastest thing you own. Beats anything slower to the punch.',
-    tag: 'fast',
-  }),
-  sweep: M({
-    id: 'sweep', name: 'Sweep', cat: 'strike', key: '2',
-    startup: 8, active: 3, recovery: 12, range: 115, level: 'low',
-    dmg: 12, hitstun: 24, blockstun: 10, pushHit: 40, pushBlock: 30, gain: 8,
-    knockdown: true,
-    blurb: 'Low. Goes under High Guard and puts them on the floor.',
-    tag: 'low',
-  }),
-  overhead: M({
-    id: 'overhead', name: 'Overhead', cat: 'strike', key: '3',
-    startup: 13, active: 3, recovery: 16, range: 125, level: 'high',
-    dmg: 18, hitstun: 26, blockstun: 14, pushHit: 45, pushBlock: 28, gain: 10,
-    blurb: 'High. Crushes Low Guard, and slow enough to walk past a Parry.',
-    tag: 'high',
-  }),
-  lunge: M({
-    id: 'lunge', name: 'Lunge', cat: 'strike', key: '4',
-    startup: 10, active: 4, recovery: 18, range: 120, level: 'mid',
-    dmg: 14, hitstun: 24, blockstun: 12, pushHit: 20, pushBlock: 55, gain: 9,
-    dash: { from: 2, to: 12, dist: 150, toward: true },
-    armour: [2, 10],
-    blurb: 'Armoured approach: eats one strike on the way in. Guards and Grabs stop it cold.',
-    tag: 'armour 2-9',
-  }),
-  grab: M({
-    id: 'grab', name: 'Grab', cat: 'grab', key: '5',
-    startup: 6, active: 2, recovery: 19, range: 72, level: 'grab',
-    dmg: 8, hitstun: 30, pushHit: 150, gain: 12,
-    knockdown: true, unblockable: true, parryable: false,
-    blurb: 'Ignores both guards and the Parry. Loses to anything faster than 6f.',
-    tag: 'unblockable',
-  }),
-
-  /* --- defence ---------------------------------------------------------- */
+/* Shared by every fighter. Characters may tweak the numbers but never the roles. */
+const UNIVERSAL = {
   highGuard: M({
     id: 'highGuard', name: 'High Guard', cat: 'guard', key: 'q',
     recovery: 18, guards: ['high', 'mid'], gain: 5,
-    blurb: 'Stops highs and mids. Sweeps go straight under it.',
+    blurb: 'Stops highs and mids. Lows go straight under it.',
     tag: 'blocks high/mid',
   }),
   lowGuard: M({
     id: 'lowGuard', name: 'Low Guard', cat: 'guard', key: 'w',
     recovery: 18, guards: ['low', 'mid'], gain: 5,
-    blurb: 'Stops lows and mids. Overheads come right over the top.',
+    blurb: 'Stops lows and mids. Highs come right over the top.',
     tag: 'blocks low/mid',
   }),
   parry: M({
     id: 'parry', name: 'Parry', cat: 'parry', key: 'e',
-    recovery: 27, parry: { from: 2, to: 8 }, gain: 30,
-    blurb: 'A six-frame window. Eats fast moves whole; slow ones stroll past it.',
-    tag: 'frames 2-7',
+    recovery: 25, parry: { from: 2, to: 10 }, gain: 30,
+    blurb: 'Live on frames 2-9. Eats fast moves whole; slow ones stroll past it.',
+    tag: 'frames 2-9',
   }),
   dodge: M({
     id: 'dodge', name: 'Dodge Roll', cat: 'dodge', key: 'r',
-    recovery: 22, invuln: [3, 12],
-    dash: { from: 0, to: 16, dist: 105, toward: false },
-    blurb: 'Invulnerable frames 3-11 and it retreats. Only a Lunge can chase it down.',
+    recovery: 19, invuln: [3, 12],
+    dash: { from: 0, to: 16, dist: 70, toward: false }, gain: 3,
+    blurb: 'Invulnerable frames 3-11 and it retreats. Chasing moves still catch it.',
     tag: 'i-frames 3-11',
   }),
-
-  /* --- movement --------------------------------------------------------- */
   closeIn: M({
     id: 'closeIn', name: 'Close In', cat: 'move', key: 'a',
     recovery: 14, dash: { from: 0, to: 12, dist: 135, toward: true }, gain: 4,
@@ -530,24 +593,12 @@ const MOVES = {
     blurb: 'Make their whole moveset whiff. Costs you the corner eventually.',
     tag: 'retreat',
   }),
-
-  /* --- resource --------------------------------------------------------- */
   hustle: M({
     id: 'hustle', name: 'Hustle', cat: 'hustle', key: 'd',
     recovery: 30, gain: 0,
     blurb: 'Pure greed: +2 meter and thirty frames of standing perfectly still.',
     tag: '+2 meter',
   }),
-  super: M({
-    id: 'super', name: 'Rising Fang', cat: 'super', key: 'f',
-    startup: 5, active: 4, recovery: 30, range: 120, level: 'mid',
-    dmg: 30, hitstun: 34, blockstun: 12, pushHit: 70, pushBlock: 40,
-    cost: RULES.SUPER_COST, invuln: [0, 9], knockdown: true,
-    blurb: 'Invulnerable reversal for 2 meter. Guarded, it is a free round for them.',
-    tag: 'i-frames 0-8',
-  }),
-
-  /* --- while you are in hitstun ----------------------------------------- */
   burst: M({
     id: 'burst', name: 'Burst', cat: 'burst', key: '1',
     startup: 8, active: 3, recovery: 19, range: 110, level: 'mid',
@@ -568,8 +619,6 @@ const MOVES = {
     blurb: 'Drift away while stunned. Their next move may not reach.',
     tag: 'drift',
   }),
-
-  /* --- while you are knocked down --------------------------------------- */
   quickRise: M({
     id: 'quickRise', name: 'Quick Rise', cat: 'wake', key: '1',
     recovery: 10,
@@ -583,32 +632,216 @@ const MOVES = {
     blurb: 'Invulnerable retreat off the floor. Slow to recover.',
     tag: 'i-frames 3-15',
   }),
-  wakeSuper: M({
-    id: 'wakeSuper', name: 'Wakeup Fang', cat: 'super', key: '3',
-    startup: 5, active: 4, recovery: 30, range: 120, level: 'mid',
-    dmg: 30, hitstun: 34, blockstun: 12, pushHit: 70, pushBlock: 40,
-    cost: RULES.SUPER_COST, invuln: [0, 9], knockdown: true,
-    blurb: 'The reversal, from the floor. All or nothing.',
-    tag: 'i-frames 0-8',
-  }),
 };
 
-const NEUTRAL_SET = [
-  'jab', 'sweep', 'overhead', 'lunge', 'grab',
-  'highGuard', 'lowGuard', 'parry', 'dodge',
-  'closeIn', 'backOff', 'hustle', 'super',
+/* ------------------------------------------------------------- characters */
+
+/*
+ * Three archetypes sharing one defensive skeleton. Each brings five strikes and a super;
+ * guards, Parry, Dodge, movement, Hustle, Burst and wake-ups stay universal so the
+ * rock-paper-scissors web is the same game whoever you pick. Identity comes from where
+ * each fighter sits on the speed / reach / damage triangle, not from extra rules.
+ */
+const CHARS = {
+  duelist: {
+    id: 'duelist', name: 'Duelist', accent: '#3fe0cf', hp: 144,
+    tagline: 'Balanced. Every tool is adequate and none of them is an excuse.',
+    strikes: {
+      jab: M({
+        id: 'jab', name: 'Jab', cat: 'strike', key: '1',
+        startup: 4, active: 2, recovery: 6, range: 95, level: 'mid',
+        dmg: 7, hitstun: 12, blockstun: 8, pushHit: 30, pushBlock: 22, gain: 6,
+        blurb: 'Fastest thing you own. Beats anything slower to the punch.', tag: 'fast',
+      }),
+      sweep: M({
+        id: 'sweep', name: 'Sweep', cat: 'strike', key: '2',
+        startup: 7, active: 3, recovery: 12, range: 120, level: 'low',
+        dmg: 12, hitstun: 24, blockstun: 10, pushHit: 40, pushBlock: 30, gain: 8,
+        knockdown: true,
+        blurb: 'Low and quick. Goes under High Guard and puts them on the floor.', tag: 'low',
+      }),
+      overhead: M({
+        id: 'overhead', name: 'Overhead', cat: 'strike', key: '3',
+        startup: 13, active: 3, recovery: 16, range: 125, level: 'high',
+        dmg: 17, hitstun: 26, blockstun: 14, pushHit: 45, pushBlock: 28, gain: 10,
+        blurb: 'High. Crushes Low Guard, and slow enough to walk past a Parry.', tag: 'high',
+      }),
+      lunge: M({
+        id: 'lunge', name: 'Lunge', cat: 'strike', key: '4',
+        startup: 10, active: 4, recovery: 18, range: 120, level: 'mid',
+        dmg: 12, hitstun: 24, blockstun: 12, pushHit: 20, pushBlock: 55, gain: 9,
+        dash: { from: 2, to: 12, dist: 144, toward: true }, armour: [2, 8],
+        blurb: 'Armoured approach: eats one strike on the way in. Guards and Grabs stop it.',
+        tag: 'armour 2-7',
+      }),
+      grab: M({
+        id: 'grab', name: 'Grab', cat: 'grab', key: '5',
+        startup: 6, active: 2, recovery: 19, range: 72, level: 'grab',
+        dmg: 8, hitstun: 30, pushHit: 150, gain: 12,
+        knockdown: true, unblockable: true, parryable: false,
+        blurb: 'Ignores both guards and the Parry. Loses to anything faster than 6f.',
+        tag: 'unblockable',
+      }),
+    },
+    superMove: M({
+      id: 'risingFang', name: 'Rising Fang', cat: 'super', key: 'f',
+      startup: 5, active: 4, recovery: 30, range: 120, level: 'mid',
+      dmg: 29, hitstun: 34, blockstun: 12, pushHit: 70, pushBlock: 40,
+      cost: RULES.SUPER_COST, invuln: [0, 9], knockdown: true,
+      blurb: 'Invulnerable reversal. Guarded, it is a free round for them.',
+      tag: 'i-frames 0-8',
+    }),
+  },
+
+  bruiser: {
+    id: 'bruiser', name: 'Bruiser', accent: '#ff9f43', hp: 158,
+    tagline: 'Slow, armoured, enormous. Nothing you own is fast, so stop trying to be.',
+    tweaks: {
+      closeIn: { dash: { from: 0, to: 12, dist: 118, toward: true } },
+      backOff: { dash: { from: 0, to: 12, dist: 112, toward: false } },
+      dodge: { recovery: 22, dash: { from: 0, to: 16, dist: 58, toward: false } },
+    },
+    strikes: {
+      hook: M({
+        id: 'hook', name: 'Hook', cat: 'strike', key: '1',
+        startup: 6, active: 2, recovery: 8, range: 88, level: 'mid',
+        dmg: 9, hitstun: 14, blockstun: 8, pushHit: 34, pushBlock: 24, gain: 6,
+        blurb: 'Your "fast" button, and it still loses the speed war. It hits like a truck.',
+        tag: 'heavy poke',
+      }),
+      shin: M({
+        id: 'shin', name: 'Shin Kick', cat: 'strike', key: '2',
+        startup: 9, active: 3, recovery: 13, range: 108, level: 'low',
+        dmg: 13, hitstun: 24, blockstun: 10, pushHit: 42, pushBlock: 30, gain: 8,
+        knockdown: true,
+        blurb: 'Low. Slower than most sweeps and it hurts a great deal more.', tag: 'low',
+      }),
+      hammer: M({
+        id: 'hammer', name: 'Hammer', cat: 'strike', key: '3',
+        startup: 15, active: 3, recovery: 17, range: 122, level: 'high',
+        dmg: 20, hitstun: 28, blockstun: 15, pushHit: 55, pushBlock: 30, gain: 12,
+        blurb: 'High, and glacial. If it lands you were not the one guessing.', tag: 'high',
+      }),
+      charge: M({
+        id: 'charge', name: 'Charge', cat: 'strike', key: '4',
+        startup: 11, active: 4, recovery: 19, range: 118, level: 'mid',
+        dmg: 14, hitstun: 24, blockstun: 12, pushHit: 24, pushBlock: 58, gain: 9,
+        dash: { from: 2, to: 13, dist: 155, toward: true }, armour: [2, 10],
+        blurb: 'The best armour in the game and the whole reason you get to play offence.',
+        tag: 'armour 2-9',
+      }),
+      clinch: M({
+        id: 'clinch', name: 'Clinch', cat: 'grab', key: '5',
+        startup: 7, active: 2, recovery: 20, range: 76, level: 'grab',
+        dmg: 10, hitstun: 32, pushHit: 150, gain: 12,
+        knockdown: true, unblockable: true, parryable: false,
+        blurb: 'Longer and meaner than most grabs. One frame slower to start.',
+        tag: 'unblockable',
+      }),
+    },
+    superMove: M({
+      id: 'quake', name: 'Quake', cat: 'super', key: 'f',
+      startup: 8, active: 5, recovery: 30, range: 150, level: 'low',
+      dmg: 30, hitstun: 34, blockstun: 14, pushHit: 80, pushBlock: 44,
+      cost: RULES.SUPER_COST, invuln: [0, 10], knockdown: true,
+      blurb: 'A low, invulnerable reversal with huge reach. High Guard does not save them.',
+      tag: 'low · i-frames 0-9',
+    }),
+  },
+
+  blade: {
+    id: 'blade', name: 'Blade', accent: '#a78bfa', hp: 137,
+    tagline: 'Fastest and longest, made of glass. You win the exchange or you lose the round.',
+    tweaks: {
+      closeIn: { dash: { from: 0, to: 11, dist: 150, toward: true } },
+      backOff: { dash: { from: 0, to: 11, dist: 152, toward: false } },
+      dodge: { recovery: 17, dash: { from: 0, to: 15, dist: 82, toward: false } },
+    },
+    strikes: {
+      flick: M({
+        id: 'flick', name: 'Flick', cat: 'strike', key: '1',
+        startup: 3, active: 2, recovery: 7, range: 108, level: 'mid',
+        dmg: 9, hitstun: 11, blockstun: 7, pushHit: 26, pushBlock: 20, gain: 6,
+        blurb: 'Three frames. Nothing in the game beats it to the punch — it just barely hurts.',
+        tag: 'fastest',
+      }),
+      slice: M({
+        id: 'slice', name: 'Slice', cat: 'strike', key: '2',
+        startup: 7, active: 3, recovery: 12, range: 128, level: 'low',
+        dmg: 15, hitstun: 22, blockstun: 9, pushHit: 36, pushBlock: 28, gain: 8,
+        knockdown: true,
+        blurb: 'Low, long, and quick. Your main way to make High Guard a mistake.', tag: 'low',
+      }),
+      crescent: M({
+        id: 'crescent', name: 'Crescent', cat: 'strike', key: '3',
+        startup: 11, active: 3, recovery: 15, range: 138, level: 'high',
+        dmg: 18, hitstun: 25, blockstun: 13, pushHit: 42, pushBlock: 30, gain: 10,
+        blurb: 'High, and faster than most overheads. Still too slow for a Parry to catch.',
+        tag: 'high',
+      }),
+      thrust: M({
+        id: 'thrust', name: 'Step Thrust', cat: 'strike', key: '4',
+        startup: 9, active: 3, recovery: 18, range: 148, level: 'mid',
+        dmg: 16, hitstun: 22, blockstun: 12, pushHit: 30, pushBlock: 52, gain: 9,
+        dash: { from: 2, to: 11, dist: 96, toward: true }, invuln: [2, 7],
+        blurb: 'Steps through fast pokes on the way in, at absurd reach. Guards and Grabs stop it.',
+        tag: 'i-frames 2-6 · longest reach',
+      }),
+      snare: M({
+        id: 'snare', name: 'Snare', cat: 'grab', key: '5',
+        startup: 5, active: 2, recovery: 19, range: 66, level: 'grab',
+        dmg: 8, hitstun: 28, pushHit: 150, gain: 12,
+        knockdown: true, unblockable: true, parryable: false,
+        blurb: 'The fastest grab there is, and the weakest. You want the knockdown, not the damage.',
+        tag: 'unblockable',
+      }),
+    },
+    superMove: M({
+      id: 'zeroStance', name: 'Zero Stance', cat: 'super', key: 'f',
+      startup: 4, active: 4, recovery: 31, range: 150, level: 'mid',
+      dmg: 29, hitstun: 34, blockstun: 12, pushHit: 70, pushBlock: 40,
+      cost: RULES.SUPER_COST, invuln: [0, 8], knockdown: true,
+      blurb: 'Four frames of invulnerable reversal with absurd reach. Parry still eats it.',
+      tag: 'i-frames 0-7',
+    }),
+  },
+};
+
+const CHAR_IDS = Object.keys(CHARS);
+
+/* Move tables are built once per character and never mutated. */
+const TABLES = {};
+function buildTable(charId) {
+  const c = CHARS[charId];
+  const t = {};
+  for (const [id, m] of Object.entries(UNIVERSAL)) t[id] = c.tweaks?.[id] ? M({ ...m, ...c.tweaks[id] }) : m;
+  for (const m of Object.values(c.strikes)) t[m.id] = m;
+  t[c.superMove.id] = c.superMove;
+  // The wake-up super is the same move, restricted to the floor and keyed differently.
+  t.wakeSuper = M({ ...c.superMove, id: 'wakeSuper', name: `Wakeup ${c.superMove.name}`, cat: 'super', key: '3' });
+  return t;
+}
+function moveTable(charId) {
+  return (TABLES[charId] ||= buildTable(charId));
+}
+const moveOf = (charId, id) => moveTable(charId)[id];
+
+const neutralSet = (charId) => [
+  ...Object.values(CHARS[charId].strikes).map((m) => m.id),
+  'highGuard', 'lowGuard', 'parry', 'dodge', 'closeIn', 'backOff', 'hustle',
+  CHARS[charId].superMove.id,
 ];
 const STUN_SET = ['burst', 'diIn', 'diOut'];
 const WAKE_SET = ['quickRise', 'rollAway', 'wakeSuper'];
 
 /* ------------------------------------------------------------------ state */
 
-function newFighter(x, name) {
+function newFighter(x, name, charId) {
+  const hp = CHARS[charId].hp;
   return {
-    name, x,
-    hp: RULES.MAX_HP,
-    meter: 0,
-    meterPts: 0,
+    name, x, char: charId,
+    hp, maxHp: hp,
+    meter: 0, meterPts: 0,
     burst: RULES.BURST_FULL,
     state: 'neutral',      // 'neutral' | 'stunned' | 'down'
     combo: 0,
@@ -616,17 +849,28 @@ function newFighter(x, name) {
   };
 }
 
-function newMatch() {
+function newMatch(charA = 'duelist', charB = 'duelist') {
   const mid = (RULES.ARENA_MIN + RULES.ARENA_MAX) / 2;
   return {
     turn: 1,
-    over: null,
+    round: 1,
+    wins: [0, 0],
+    over: null,            // match result, once someone takes ROUNDS_TO_WIN rounds
+    roundOver: null,       // this round's result, cleared by nextRound()
     stall: 0,
     fighters: [
-      newFighter(mid - RULES.START_GAP / 2, 'YOU'),
-      newFighter(mid + RULES.START_GAP / 2, 'RIVAL'),
+      newFighter(mid - RULES.START_GAP / 2, 'YOU', charA),
+      newFighter(mid + RULES.START_GAP / 2, 'RIVAL', charB),
     ],
   };
+}
+
+/** Reset the arena for the next round, carrying the round tally forward. */
+function nextRound(state) {
+  const s = newMatch(state.fighters[0].char, state.fighters[1].char);
+  s.round = state.round + 1;
+  s.wins = [...state.wins];
+  return s;
 }
 
 const gap = (s) => Math.abs(s.fighters[0].x - s.fighters[1].x);
@@ -634,8 +878,9 @@ const gap = (s) => Math.abs(s.fighters[0].x - s.fighters[1].x);
 /** Which moves fighter `i` may legally pick right now. */
 function availableMoves(state, i) {
   const f = state.fighters[i];
-  const ids = f.state === 'down' ? WAKE_SET : f.state === 'stunned' ? STUN_SET : NEUTRAL_SET;
-  return ids.map((id) => MOVES[id]).filter((m) => {
+  const ids = f.state === 'down' ? WAKE_SET : f.state === 'stunned' ? STUN_SET : neutralSet(f.char);
+  const table = moveTable(f.char);
+  return ids.map((id) => table[id]).filter((m) => {
     if (m.cost > f.meter) return false;
     if (m.cat === 'burst' && f.burst < RULES.BURST_FULL) return false;
     return true;
@@ -643,7 +888,8 @@ function availableMoves(state, i) {
 }
 
 const cloneState = (s) => ({
-  turn: s.turn, over: s.over, stall: s.stall,
+  turn: s.turn, round: s.round, wins: [...s.wins],
+  over: s.over, roundOver: s.roundOver, stall: s.stall,
   fighters: s.fighters.map((f) => ({ ...f })),
 });
 
@@ -654,7 +900,6 @@ const moveDuration = (m) => m.startup + m.active + m.recovery;
 const clampX = (x) => Math.max(RULES.ARENA_MIN, Math.min(RULES.ARENA_MAX, x));
 
 function dashOffset(m, f) {
-  // Distance travelled by the end of frame `f`, eased so the fighter glides rather than snaps.
   if (!m.dash) return 0;
   const { from, to, dist } = m.dash;
   if (f <= from) return 0;
@@ -666,21 +911,22 @@ function dashOffset(m, f) {
  * Play one turn out, frame by frame.
  *
  * Two distinct results are tracked per fighter and they are not the same thing:
- *   `atk` — what my own move did   ('hit' | 'block' | 'parried' | 'clash' | 'whiff' | null)
- *   `def` — what happened to me    ('cut'  | 'guarded' | 'parry'  | 'clash' | null)
+ *   `atk` — what my own move did   ('hit' | 'block' | 'armoured' | 'parried' | 'clash' | 'whiff')
+ *   `def` — what happened to me    ('cut' | 'guarded' | 'parry' | 'armour' | 'clash')
  * Conflating them is what makes trades resolve wrong, so they stay separate all the way
  * out to the summary.
  */
 function resolveTurn(state, moveIds) {
   const s = cloneState(state);
+  s.roundOver = null;
   const sides = [0, 1].map((i) => {
     const f = s.fighters[i];
     return {
-      i, f, m: MOVES[moveIds[i]],
+      i, f, m: moveOf(f.char, moveIds[i]),
       x0: f.x, x: f.x, push: 0, dir: 0,
-      atk: null, def: null, armourUsed: false,
+      atk: null, def: null, armourUsed: false, counter: false,
       contactAt: null, cutAt: null,
-      dmgDealt: 0, gainPts: 0, spent: MOVES[moveIds[i]].cost,
+      dmgDealt: 0, gainPts: 0, spent: moveOf(f.char, moveIds[i]).cost,
     };
   });
   sides[0].dir = sides[0].x0 <= sides[1].x0 ? 1 : -1;
@@ -771,8 +1017,16 @@ function resolveTurn(state, moveIds) {
         continue;
       }
 
-      // clean hit
-      const dealt = scaleDamage(m.dmg, def.f, startCombo[atk.i]);
+      // Counter-hit: catching someone in the wind-up of their own attack pays extra.
+      // This is what makes raw speed worth having — the fastest button in the game is
+      // only a 3-frame poke until it starts interrupting people, and then it is a threat.
+      const counter = def.m.dmg > 0 && f < def.m.startup;
+      // Powering through a hit on armour costs you some of your own follow-through.
+      const armourTax = atk.armourUsed ? RULES.ARMOUR_TAX : 1;
+      const dealt = Math.round(
+        scaleDamage(m.dmg, def.f, startCombo[atk.i]) * (counter ? RULES.COUNTER_SCALE : 1) * armourTax,
+      );
+      if (counter) atk.counter = true;
       def.f.hp = Math.max(0, def.f.hp - dealt);
       def.f.burst = Math.min(RULES.BURST_FULL, def.f.burst + dealt * 1.6);
       atk.dmgDealt += dealt;
@@ -780,7 +1034,7 @@ function resolveTurn(state, moveIds) {
       atk.atk = 'hit'; atk.contactAt = f;
       def.def = 'cut'; def.cutAt = f;
       def.push += def.dir * -m.pushHit * 0.55;
-      events.push({ f, type: 'hit', by: atk.i, dmg: dealt, level: m.level, kd: m.knockdown });
+      events.push({ f, type: 'hit', by: atk.i, dmg: dealt, level: m.level, kd: m.knockdown, counter });
     }
 
     timeline.push({
@@ -799,7 +1053,7 @@ function resolveTurn(state, moveIds) {
     const other = sides[1 - sd.i];
     if (sd.def === 'parry') return (sd.contactAt ?? 0) + 1;
     if (sd.def === 'guarded') return (sd.contactAt ?? 0) + (other.m.blockstun || 8);
-    if (sd.def === 'cut') return (sd.cutAt ?? 0) + other.m.hitstun;
+    if (sd.def === 'cut') return (sd.cutAt ?? 0) + other.m.hitstun + (other.counter ? RULES.COUNTER_STUN : 0);
     if (sd.atk === 'parried') return (sd.cutAt ?? 0) + RULES.PARRY_STUN;
     if (sd.def === 'clash') return (sd.contactAt ?? 0) + 12;
     return moveDuration(sd.m);
@@ -817,7 +1071,7 @@ function resolveTurn(state, moveIds) {
     if (sd.m.cat === 'burst') f.burst = 0;
     f.meter = Math.max(0, Math.min(RULES.MAX_METER, f.meter - sd.spent + levels));
   }
-  separateFighters(s.fighters);
+  separateFighters(s.fighters, sides[0].dir === 1 ? 0 : 1);
 
   // A trade resets both fighters to neutral: neither earned the pressure.
   const traded = sides[0].def === 'cut' && sides[1].def === 'cut';
@@ -849,15 +1103,7 @@ function resolveTurn(state, moveIds) {
   }
 
   s.turn += 1;
-  // `over` is an object, never a bare index — fighter 0 winning must not read as falsy.
-  const down = [s.fighters[0].hp <= 0, s.fighters[1].hp <= 0];
-  if (down[0] || down[1]) {
-    s.over = { winner: down[0] && down[1] ? null : (down[0] ? 1 : 0), by: 'ko' };
-  } else if (s.turn > RULES.TURN_LIMIT) {
-    // Time over. Health decides it, so refusing to engage is a losing plan on its own.
-    const [a, b] = s.fighters.map((f) => f.hp);
-    s.over = { winner: a === b ? null : (a > b ? 0 : 1), by: 'time' };
-  }
+  settleRound(s);
 
   const summary = sides.map((sd, i) => ({
     move: sd.m,
@@ -866,10 +1112,32 @@ function resolveTurn(state, moveIds) {
     dmgDealt: sd.dmgDealt,
     dmgTaken: sides[1 - i].dmgDealt,
     adv: adv[i],
+    counter: sd.counter,
     contactAt: sd.contactAt,
   }));
 
   return { state: s, timeline, events, summary, adv, actionable, total, traded, stallDmg };
+}
+
+/** Decide whether this round (and then the match) has ended. */
+function settleRound(s) {
+  // `winner` is an index, so results are always objects — a bare 0 would read as falsy.
+  const down = [s.fighters[0].hp <= 0, s.fighters[1].hp <= 0];
+  let result = null;
+  if (down[0] || down[1]) {
+    result = { winner: down[0] && down[1] ? null : (down[0] ? 1 : 0), by: 'ko' };
+  } else if (s.turn > RULES.TURN_LIMIT) {
+    // Time over. Health share decides it, so refusing to engage is a losing plan by itself.
+    const [a, b] = s.fighters.map((f) => f.hp / f.maxHp);
+    result = { winner: a === b ? null : (a > b ? 0 : 1), by: 'time' };
+  }
+  if (!result) return;
+
+  s.roundOver = result;
+  if (result.winner !== null) s.wins[result.winner] += 1;
+  if (s.wins[0] >= RULES.ROUNDS_TO_WIN || s.wins[1] >= RULES.ROUNDS_TO_WIN) {
+    s.over = { winner: s.wins[0] >= RULES.ROUNDS_TO_WIN ? 0 : 1, by: result.by };
+  }
 }
 
 function phaseOf(sd, f) {
@@ -877,9 +1145,7 @@ function phaseOf(sd, f) {
   const m = sd.m;
   if (m.cat === 'guard') return sd.def === 'guarded' && f >= (sd.contactAt ?? 1e9) ? 'blockstun' : 'guard';
   if (m.cat === 'parry') return within(f, [m.parry.from, m.parry.to]) ? 'parryWindow' : 'parryRecover';
-  if (m.cat === 'dodge' || m.cat === 'wake' || m.cat === 'di') {
-    return within(f, m.invuln) ? 'invuln' : 'move';
-  }
+  if (m.cat === 'dodge' || m.cat === 'wake' || m.cat === 'di') return within(f, m.invuln) ? 'invuln' : 'move';
   if (m.cat === 'move') return 'move';
   if (m.cat === 'hustle') return 'hustle';
   if (within(f, m.armour) && f < m.startup) return 'armour';
@@ -890,27 +1156,26 @@ function phaseOf(sd, f) {
 
 function scaleDamage(raw, defender, comboCount) {
   let d = raw * Math.max(RULES.COMBO_FLOOR, 1 - RULES.COMBO_DECAY * comboCount);
-  if (defender.hp / RULES.MAX_HP < RULES.GUTS_THRESHOLD) d *= RULES.GUTS_SCALE;
+  if (defender.hp / defender.maxHp < RULES.GUTS_THRESHOLD) d *= RULES.GUTS_SCALE;
   return Math.max(1, Math.round(d));
 }
 
-function separate(sides) {
-  const [a, b] = sides;
-  const d = b.x - a.x;
-  if (Math.abs(d) >= RULES.MIN_SEPARATION) return;
-  const push = (RULES.MIN_SEPARATION - Math.abs(d)) / 2;
-  const sgn = d === 0 ? 1 : Math.sign(d);
-  a.x = clampX(a.x - sgn * push);
-  b.x = clampX(b.x + sgn * push);
+/*
+ * Keep the fighters apart *and* in their original left/right order. Using the current
+ * sign of the gap instead lets an overshooting dash teleport straight past the opponent
+ * and swap the sides mid-round, which reads as a bug even when the maths is fine.
+ */
+function keepApart(left, right) {
+  const overlap = RULES.MIN_SEPARATION - (right.x - left.x);
+  if (overlap <= 0) return;
+  left.x = clampX(left.x - overlap / 2);
+  right.x = clampX(right.x + overlap / 2);
 }
 
-function separateFighters(fs) {
-  const d = fs[1].x - fs[0].x;
-  if (Math.abs(d) >= RULES.MIN_SEPARATION) return;
-  const push = (RULES.MIN_SEPARATION - Math.abs(d)) / 2;
-  const sgn = d === 0 ? 1 : Math.sign(d);
-  fs[0].x = clampX(fs[0].x - sgn * push);
-  fs[1].x = clampX(fs[1].x + sgn * push);
+const separate = (sides) => keepApart(...(sides[0].dir === 1 ? sides : [sides[1], sides[0]]));
+
+function separateFighters(fs, leftIdx) {
+  keepApart(fs[leftIdx], fs[1 - leftIdx]);
 }
 
 /* ----------------------------------------------------------- threat board */
@@ -923,20 +1188,18 @@ function scoreFor(result, i) {
   const theirF = result.state.fighters[1 - i];
 
   let v = 0;
-  v += me.dmgDealt * 1.0;
-  v -= them.dmgDealt * 1.15;                    // eating damage stings more than dealing it
+  // Damage is weighed against each fighter's own health pool, so a Bruiser and a Blade
+  // value the same 15 points correctly differently.
+  v += (me.dmgDealt / theirF.maxHp) * 150;
+  v -= (them.dmgDealt / myF.maxHp) * 172;
   v += Math.max(-40, Math.min(40, me.adv)) * 0.32;
   v += (myF.meter - theirF.meter) * 1.2;
   if (theirF.state === 'down') v += 7;
   if (myF.state === 'down') v -= 7;
   if (theirF.state === 'stunned') v += 5;
   if (myF.state === 'stunned') v -= 5;
-  if (result.state.over?.winner === i) v += 500;
-  if (result.state.over?.winner === 1 - i) v -= 500;
-
-  // A whiffed attack is a wasted commitment. Without this the AI is happy to throw jabs
-  // into thin air forever, because at max range a whiff costs it literally nothing.
-  if (me.outcome === 'whiff') v -= 1.6;
+  if (result.state.roundOver?.winner === i) v += 500;
+  if (result.state.roundOver?.winner === 1 - i) v -= 500;
 
   // Being cornered is a genuine loss of options, so hold the middle.
   const wall = Math.min(myF.x - RULES.ARENA_MIN, RULES.ARENA_MAX - myF.x);
@@ -944,10 +1207,22 @@ function scoreFor(result, i) {
 
   // A one-turn lookahead cannot see that closing the gap is what makes damage possible
   // later, so spacing gets a small explicit nudge toward the range where strikes reach.
-  // Kept deliberately small: it breaks ties in neutral without ever outweighing a hit.
+  // The target is per character: a Blade wants to sit where a Bruiser cannot touch it.
   const g = Math.abs(myF.x - theirF.x);
-  v += Math.max(0, 1 - Math.abs(g - 100) / 200) * 3.0;
+  v += Math.max(0, 1 - Math.abs(g - preferredGap(myF.char)) / 200) * 3.0;
+
+  // A whiffed attack is a wasted commitment. Without this the AI is happy to throw pokes
+  // into thin air forever, because at max range a whiff costs it nothing at all.
+  if (me.outcome === 'whiff') v -= 1.6;
   return v;
+}
+
+/** Where this fighter's own strikes actually land — the gap they should be fighting at. */
+const GAPS = {};
+function preferredGap(charId) {
+  return (GAPS[charId] ??= 0.85 * Math.max(
+    ...neutralSet(charId).map((id) => moveOf(charId, id).dmg ? moveOf(charId, id).range : 0),
+  ));
 }
 
 /** Classify an exchange from fighter `i`'s point of view, for display. */
@@ -961,7 +1236,7 @@ function verdictFor(result, i) {
   if (me.defence === 'armour' && me.outcome === 'hit') return { key: 'win', label: `TANK & HIT · ${me.dmgDealt}` };
   if (me.outcome === 'armoured') return { key: 'blocked', label: 'THEY TANK IT' };
   if (me.defence === 'armour') return { key: 'guard', label: 'YOU TANK IT' };
-  if (me.outcome === 'hit') return { key: 'win', label: `HIT · ${me.dmgDealt}` };
+  if (me.outcome === 'hit') return { key: 'win', label: `${me.counter ? 'COUNTER' : 'HIT'} · ${me.dmgDealt}` };
   if (me.defence === 'cut') return { key: 'lose', label: `EAT · ${them.dmgDealt}` };
   if (me.outcome === 'block') return { key: 'blocked', label: 'THEY GUARD' };
   if (me.defence === 'guarded') return { key: 'guard', label: 'YOU GUARD' };
@@ -972,6 +1247,14 @@ function verdictFor(result, i) {
   return { key: 'neutral', label: adv === 0 ? 'EVEN' : (adv > 0 ? `+${adv}` : `${adv}`) };
 }
 
+/** Resolve a specific pairing without caring which index is which. */
+function pair(state, aIdx, aMove, bMove) {
+  const ids = [];
+  ids[aIdx] = aMove;
+  ids[1 - aIdx] = bMove;
+  return resolveTurn(state, ids);
+}
+
 /**
  * The headline feature. For a move *you* are considering, run every legal reply the
  * opponent has and rank them by how well they do against it. This is the real simulation
@@ -980,10 +1263,7 @@ function verdictFor(result, i) {
 function threatBoard(state, myIdx, myMoveId) {
   const themIdx = 1 - myIdx;
   const rows = availableMoves(state, themIdx).map((m) => {
-    const ids = [];
-    ids[myIdx] = myMoveId;
-    ids[themIdx] = m.id;
-    const result = resolveTurn(state, ids);
+    const result = pair(state, myIdx, myMoveId, m.id);
     return {
       move: m,
       score: scoreFor(result, themIdx),
@@ -1010,6 +1290,84 @@ function threatBoard(state, myIdx, myMoveId) {
   return { rows, best: rows[0], risk: rows.length ? bad / rows.length : 0 };
 }
 
+/** The single best reply `responder` has to a move the other side has committed to. */
+function bestAnswer(state, responder, committedMove) {
+  let best = null;
+  for (const m of availableMoves(state, responder)) {
+    const result = pair(state, 1 - responder, committedMove, m.id);
+    const score = scoreFor(result, responder);
+    if (!best || score > best.score) {
+      best = { move: m, score, result, verdict: verdictFor(result, responder) };
+    }
+  }
+  return best;
+}
+
+/**
+ * The yomi ladder, made visible.
+ *
+ * Layer 1 is what beats your move. Layer 2 is what beats *that* — the move to play if you
+ * expect them to have read you. Layer 3 is their answer to the read, and so on. Every
+ * layer is evaluated in the same current situation, because that is how the guess actually
+ * works: nobody is planning turns ahead, they are planning how deep to think right now.
+ *
+ * Chains in this game close quickly, so the walk stops as soon as a side repeats itself —
+ * that repeat is the point where the read loops and you are back to a coin flip.
+ */
+function yomiChain(state, myIdx, myMoveId, depth = 4) {
+  const chain = [{ side: myIdx, move: moveOf(state.fighters[myIdx].char, myMoveId), label: 'You commit' }];
+  const seen = [new Set([myMoveId]), new Set()];
+  let side = myIdx;
+  let committed = myMoveId;
+
+  for (let d = 0; d < depth; d++) {
+    const responder = 1 - side;
+    const answer = bestAnswer(state, responder, committed);
+    if (!answer) break;
+    const loops = seen[responder].has(answer.move.id);
+    chain.push({
+      side: responder,
+      move: answer.move,
+      verdict: answer.verdict,
+      label: responder === myIdx ? 'So you' : 'They answer',
+      loops,
+    });
+    if (loops) break;
+    seen[responder].add(answer.move.id);
+    side = responder;
+    committed = answer.move.id;
+  }
+  return chain;
+}
+
+/**
+ * After the fact: given what they actually played, what should you have played?
+ * The threat board teaches you before the guess; this teaches you after it.
+ */
+function postMortem(preState, myIdx, myMoveId, theirMoveId) {
+  const rows = availableMoves(preState, myIdx).map((m) => {
+    const result = pair(preState, myIdx, m.id, theirMoveId);
+    return {
+      move: m,
+      score: scoreFor(result, myIdx),
+      verdict: verdictFor(result, myIdx),
+      dmgDealt: result.summary[myIdx].dmgDealt,
+      dmgTaken: result.summary[myIdx].dmgTaken,
+      adv: result.summary[myIdx].adv,
+    };
+  });
+  rows.sort((a, b) => b.score - a.score);
+  const played = rows.find((r) => r.move.id === myMoveId) ?? null;
+  const best = rows[0];
+  return {
+    best,
+    played,
+    wasBest: !!played && !!best && played.move.id === best.move.id,
+    rank: played ? rows.indexOf(played) + 1 : null,
+    total: rows.length,
+  };
+}
+
 /** Risk rating for every move you could pick — drives the dots on the buttons. */
 function riskProfile(state, myIdx) {
   const out = {};
@@ -1026,12 +1384,7 @@ function payoffMatrix(state, aiIdx) {
   const humanIdx = 1 - aiIdx;
   const mine = availableMoves(state, aiIdx);
   const theirs = availableMoves(state, humanIdx);
-  const M2 = mine.map((am) => theirs.map((hm) => {
-    const ids = [];
-    ids[aiIdx] = am.id;
-    ids[humanIdx] = hm.id;
-    return scoreFor(resolveTurn(state, ids), aiIdx);
-  }));
+  const M2 = mine.map((am) => theirs.map((hm) => scoreFor(pair(state, aiIdx, am.id, hm.id), aiIdx)));
   return { mine, theirs, M: M2 };
 }
 
@@ -1040,6 +1393,7 @@ function payoffMatrix(state, aiIdx) {
  * other's history. It converges toward a mixed equilibrium — exactly the right shape of
  * opponent for a game whose whole premise is that no single answer is ever safe.
  */
+const EPS = 1e-9;
 function fictitiousPlay(M, iters = 250) {
   const R = M.length, C = M[0].length;
   const rowCount = new Array(R).fill(0);
@@ -1050,14 +1404,16 @@ function fictitiousPlay(M, iters = 250) {
     for (let r = 0; r < R; r++) {
       let v = 0;
       for (let c = 0; c < C; c++) v += M[r][c] * colCount[c];
-      if (v > bv) { bv = v; bi = r; }
+      // On a tie, favour whichever option has been chosen least. Strict `>` would pile
+      // every tie onto the first option in the list and quietly kill its equals.
+      if (v > bv + EPS || (Math.abs(v - bv) <= EPS && rowCount[r] < rowCount[bi])) { bv = v; bi = r; }
     }
     rowCount[bi]++;
     let ci = 0, cv = Infinity;
     for (let c = 0; c < C; c++) {
       let v = 0;
       for (let r = 0; r < R; r++) v += M[r][c] * rowCount[r];
-      if (v < cv) { cv = v; ci = c; }
+      if (v < cv - EPS || (Math.abs(v - cv) <= EPS && colCount[c] < colCount[ci])) { cv = v; ci = c; }
     }
     colCount[ci]++;
   }
@@ -1135,11 +1491,19 @@ function chooseAiMove(state, aiIdx, difficulty, history, rand) {
 
 const W = 1000, H = 300;
 const GROUND = 246;
-const COL = {
-  you: '#3fe0cf', them: '#ff5f78',
-  youDim: '#1d6f68', themDim: '#7d2f3b',
-  ink: '#e9eef4', dim: '#3a4653', floor: '#131a22',
-};
+const COL = { ink: '#e9eef4', dim: '#3a4653', floor: '#131a22' };
+
+// Player one always reads cool, player two always reads warm, whichever characters are
+// picked — you should never have to work out which fighter is yours.
+const SIDE_TINT = ['#3fe0cf', '#ff5f78'];
+const sideColour = (state, i) => (state ? mixHex(CHARS[state.fighters[i].char].accent, SIDE_TINT[i], 0.55) : SIDE_TINT[i]);
+
+function mixHex(a, b, t) {
+  const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [ar, ag, ab] = p(a), [br, bg, bb] = p(b);
+  const c = (x, y) => Math.round(x + (y - x) * t).toString(16).padStart(2, '0');
+  return `#${c(ar, br)}${c(ag, bg)}${c(ab, bb)}`;
+}
 
 /* ------------------------------------------------------------------ poses */
 
@@ -1328,17 +1692,21 @@ class Stage {
     this.onFrame = null;
     this.onEnd = null;
     this.preview = null;      // { x:[..], phases, ranges } for the idle/planning view
+    this.floats = [];
+    this.state = null;        // whose colours to draw with
   }
 
   /** Show a static neutral pose — used between turns while you are choosing. */
   setPreview(state, myMove, theirBestMove, showThreat) {
     this.result = null;
     this.playing = false;
+    this.state = state;
     this.preview = { state, myMove, theirBestMove, showThreat };
     this.draw();
   }
 
-  play(result) {
+  play(result, state) {
+    if (state) this.state = state;
     this.result = result;
     this.preview = null;
     this.frame = 0;
@@ -1346,6 +1714,7 @@ class Stage {
     this.hitstop = 0;
     this.sparks.length = 0;
     this.trails.length = 0;
+    this.floats.length = 0;
     this.playing = true;
   }
 
@@ -1367,6 +1736,8 @@ class Stage {
     this.sparks = this.sparks.filter((s) => s.life > 0);
     for (const t of this.trails) t.life -= dt;
     this.trails = this.trails.filter((t) => t.life > 0);
+    for (const f of this.floats) { f.life -= dt; f.y -= dt * 34; }
+    this.floats = this.floats.filter((f) => f.life > 0);
 
     if (this.playing && this.result) {
       if (this.hitstop > 0) this.hitstop -= dt;
@@ -1389,7 +1760,7 @@ class Stage {
     this.onFrame?.(f);
     for (let i = 0; i < 2; i++) {
       if (tl.phase[i] === 'active') {
-        this.trails.push({ x: tl.x[i], colour: i === 0 ? COL.you : COL.them, life: 0.22 });
+        this.trails.push({ x: tl.x[i], colour: sideColour(this.state, i), life: 0.22 });
       }
     }
     for (const e of tl.events) {
@@ -1397,21 +1768,30 @@ class Stage {
       if (e.type === 'hit') {
         this.shake.mag = Math.min(16, 5 + e.dmg * 0.4);
         this.hitstop = 0.09 + Math.min(0.11, e.dmg * 0.005);
-        this.burst(victim, GROUND - 60, 18, e.by === 0 ? COL.you : COL.them);
+        this.burst(victim, GROUND - 60, e.counter ? 26 : 18, e.counter ? '#ffe066' : sideColour(this.state, e.by));
+        this.float(victim, GROUND - 96, `${e.counter ? 'COUNTER ' : ''}${e.dmg}`, e.counter ? '#ffe066' : '#ffffff');
       } else if (e.type === 'block') {
         this.shake.mag = 3; this.hitstop = 0.05;
         this.burst(victim, GROUND - 60, 8, '#9fb3c8');
+        this.float(victim, GROUND - 92, 'GUARD', '#9fb3c8');
       } else if (e.type === 'armour') {
         this.shake.mag = 4; this.hitstop = 0.06;
         this.burst(victim, GROUND - 60, 10, '#ffab5e');
+        this.float(victim, GROUND - 92, 'ARMOUR', '#ffab5e');
       } else if (e.type === 'parry') {
         this.shake.mag = 7; this.hitstop = 0.19;
         this.burst(tl.x[e.by], GROUND - 60, 22, '#7cc4ff');
+        this.float(tl.x[e.by], GROUND - 100, 'PARRY', '#7cc4ff');
       } else if (e.type === 'clash') {
         this.shake.mag = 6; this.hitstop = 0.1;
         this.burst((tl.x[0] + tl.x[1]) / 2, GROUND - 55, 14, '#ffd166');
       }
     }
+  }
+
+  /** A damage number that drifts up and fades — the fastest way to read an exchange. */
+  float(x, y, text, colour) {
+    this.floats.push({ x, y, text, colour, life: 0.95 });
   }
 
   burst(x, y, n, colour) {
@@ -1447,6 +1827,17 @@ class Stage {
       g.fillRect(s.x - 1.5, s.y - 1.5, 3, 3);
     }
     g.globalAlpha = 1;
+
+    for (const f of this.floats) {
+      g.globalAlpha = Math.max(0, Math.min(1, f.life * 1.6));
+      g.fillStyle = f.colour;
+      g.font = '700 15px ui-monospace, monospace';
+      g.textAlign = 'center';
+      g.strokeStyle = '#05080c'; g.lineWidth = 3;
+      g.strokeText(f.text, f.x, f.y);
+      g.fillText(f.text, f.x, f.y);
+    }
+    g.globalAlpha = 1;
     g.restore();
   }
 
@@ -1456,14 +1847,15 @@ class Stage {
     const facing = a.x <= b.x ? 1 : -1;
 
     if (myMove?.range) {
-      drawRange(g, a.x, facing, myMove.range, COL.you, false, `${myMove.name} ${myMove.range}`);
+      drawRange(g, a.x, facing, myMove.range, sideColour(state, 0), false, `${myMove.name} ${myMove.range}`);
     }
     if (showThreat && theirBestMove?.range) {
-      drawRange(g, b.x, -facing, theirBestMove.range, COL.them, true, `${theirBestMove.name} ${theirBestMove.range}`);
+      drawRange(g, b.x, -facing, theirBestMove.range, sideColour(state, 1), true, `${theirBestMove.name} ${theirBestMove.range}`);
     }
 
-    drawFighter(g, a.x, facing, poseFor(idlePhase(a), MOVES.jab, 0), COL.you, { down: a.state === 'down' });
-    drawFighter(g, b.x, -facing, poseFor(idlePhase(b), MOVES.jab, 0), COL.them, { down: b.state === 'down' });
+    const stub = { id: '', level: 'mid' };
+    drawFighter(g, a.x, facing, poseFor(idlePhase(a), stub, 0), sideColour(state, 0), { down: a.state === 'down' });
+    drawFighter(g, b.x, -facing, poseFor(idlePhase(b), stub, 0), sideColour(state, 1), { down: b.state === 'down' });
 
     g.fillStyle = '#2c3846';
     g.font = '600 10px ui-monospace, monospace';
@@ -1480,7 +1872,7 @@ class Stage {
     for (let i = 0; i < 2; i++) {
       const m = r.summary[i].move;
       const ph = tl.phase[i];
-      const colour = i === 0 ? COL.you : COL.them;
+      const colour = sideColour(this.state, i);
       const face = i === 0 ? facing : -facing;
       const flash = ph === 'active' || ph === 'parryWindow';
       if (ph === 'active') drawRange(g, tl.x[i], face, m.range, colour, false, null);
@@ -1549,8 +1941,8 @@ class Sfx {
  * HUSTLE LITE — interface.
  *
  * Owns the DOM, the turn loop and the input. All fight logic lives in engine.js; this
- * file only asks it questions. The threat board in particular is not a table of hand-
- * written matchups — it is `threatBoard()` running the real simulation once per option.
+ * file only asks it questions. The threat board and the yomi chain in particular are not
+ * tables of hand-written matchups — they are the real simulation, run once per option.
  */
 
 
@@ -1564,26 +1956,20 @@ const el = (tag, cls, txt) => {
 
 const ME = 0, THEM = 1;
 
-const GROUPS = [
-  { title: 'Strikes', ids: ['jab', 'sweep', 'overhead', 'lunge', 'grab'] },
-  { title: 'Defence', ids: ['highGuard', 'lowGuard', 'parry', 'dodge'] },
-  { title: 'Footsies & Meter', ids: ['closeIn', 'backOff', 'hustle', 'super'] },
-  { title: 'Escape', ids: ['burst', 'diIn', 'diOut'] },
-  { title: 'Wake-up', ids: ['quickRise', 'rollAway', 'wakeSuper'] },
-];
-
 const game = {
-  state: newMatch(),
-  phase: 'choosing',           // 'choosing' | 'playing' | 'over'
+  state: null,
+  phase: 'select',             // 'select' | 'choosing' | 'playing' | 'roundover' | 'over'
   hovered: null,
   picked: null,
   profile: null,               // riskProfile for the current state
   history: [],                 // what the player has been doing, for the AI's read
   difficulty: 'fighter',
-  oracle: 'full',              // 'full' | 'risk' | 'off'
+  oracle: 'full',              // 'full' | 'chain' | 'risk' | 'off'
+  chars: ['duelist', 'blade'],
   rand: rng((Date.now() ^ 0x9e3779b9) >>> 0),
   log: [],
   lastResult: null,
+  preTurn: null,               // state before the exchange, for the post-mortem
 };
 
 let stage, sfx;
@@ -1592,15 +1978,27 @@ let stage, sfx;
 
 const fmtAdv = (n) => (n > 0 ? `+${n}` : `${n}`);
 const pct = (n) => `${Math.round(n * 100)}%`;
+const myChar = () => game.state.fighters[ME].char;
+const theirChar = () => game.state.fighters[THEM].char;
 
 function riskColour(r) {
   if (r < 0.25) return 'var(--good)';
   if (r < 0.55) return 'var(--warn)';
   return 'var(--bad)';
 }
+const myMoves = () => availableMoves(game.state, ME);
 
-/** Everything the player can currently choose, in display order. */
-function myMoves() { return availableMoves(game.state, ME); }
+/** Move groups are derived from the character's own set, so every roster stays in sync. */
+function groupsFor(charId, fighterState) {
+  if (fighterState === 'stunned') return [{ title: 'Escape', ids: ['burst', 'diIn', 'diOut'] }];
+  if (fighterState === 'down') return [{ title: 'Wake-up', ids: ['quickRise', 'rollAway', 'wakeSuper'] }];
+  const strikes = Object.values(CHARS[charId].strikes).map((m) => m.id);
+  return [
+    { title: 'Strikes', ids: strikes },
+    { title: 'Defence', ids: ['highGuard', 'lowGuard', 'parry', 'dodge'] },
+    { title: 'Footsies & Meter', ids: ['closeIn', 'backOff', 'hustle', CHARS[charId].superMove.id] },
+  ];
+}
 
 /* ------------------------------------------------------------------ HUD */
 
@@ -1608,19 +2006,26 @@ function renderHud() {
   const [me, them] = game.state.fighters;
   for (const [side, f] of [['#p0', me], ['#p1', them]]) {
     const root = $(side);
-    root.querySelector('.hp i').style.width = `${(f.hp / RULES.MAX_HP) * 100}%`;
+    root.querySelector('.hp i').style.width = `${(f.hp / f.maxHp) * 100}%`;
     root.querySelector('.hpv').textContent = Math.max(0, Math.round(f.hp));
-    const pips = root.querySelectorAll('.pip');
-    pips.forEach((p, i) => p.classList.toggle('on', i < f.meter));
+    root.querySelector('.nm').textContent = CHARS[f.char].name;
+    root.querySelector('.nm').style.color = CHARS[f.char].accent;
+    root.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('on', i < f.meter));
     const b = root.querySelector('.burst');
     b.querySelector('i').style.width = `${(f.burst / RULES.BURST_FULL) * 100}%`;
     b.classList.toggle('ready', f.burst >= RULES.BURST_FULL);
-    const st = root.querySelector('.st');
-    st.textContent = f.state === 'down' ? 'DOWN' : f.state === 'stunned' ? 'STUNNED'
-      : f.sad > RULES.STALL_GRACE ? 'SADNESS' : '';
+    root.querySelector('.st').textContent = f.state === 'down' ? 'DOWN'
+      : f.state === 'stunned' ? 'STUNNED'
+        : f.sad > RULES.STALL_GRACE ? 'SADNESS' : '';
+    const rounds = root.querySelector('.rounds');
+    rounds.textContent = '';
+    for (let i = 0; i < RULES.ROUNDS_TO_WIN; i++) {
+      rounds.append(el('span', `rd${i < game.state.wins[side === '#p0' ? 0 : 1] ? ' won' : ''}`));
+    }
   }
   const left = Math.max(0, RULES.TURN_LIMIT - game.state.turn + 1);
   $('#clock .t').textContent = left;
+  $('#clock .l').textContent = `round ${game.state.round} · turns left`;
   $('#clock').classList.toggle('low', left <= 10);
 }
 
@@ -1630,23 +2035,17 @@ function renderMoves() {
   const host = $('#moves');
   host.textContent = '';
   const avail = new Map(myMoves().map((m) => [m.id, m]));
-  const st = game.state.fighters[ME].state;
-  // Stunned and knocked-down fighters get their own small menus, exactly as the engine
-  // allows — the grid never shows a move you are not actually permitted to pick.
-  const shown = st === 'down' ? [GROUPS[4]] : st === 'stunned' ? [GROUPS[3]] : GROUPS.slice(0, 3);
 
-  for (const grp of shown) {
-    const ids = grp.ids.filter((id) => MOVES[id]);
-    if (!ids.length) continue;
+  for (const grp of groupsFor(myChar(), game.state.fighters[ME].state)) {
     const box = el('div', 'movegroup');
     box.append(el('h3', null, grp.title));
     const grid = el('div', 'grid');
-    for (const id of ids) {
-      const m = MOVES[id];
-      const usable = avail.has(id);
+    for (const id of grp.ids) {
+      const m = moveOf(myChar(), id);
+      if (!m) continue;
       const b = el('button', 'mv');
       b.type = 'button';
-      b.disabled = !usable || game.phase !== 'choosing';
+      b.disabled = !avail.has(id) || game.phase !== 'choosing';
       b.setAttribute('aria-pressed', String(game.picked === id));
       b.dataset.id = id;
 
@@ -1683,8 +2082,7 @@ function renderMoves() {
 
 function frameLine(m) {
   const bits = [];
-  if (m.dmg) bits.push(`${m.startup}f · ${m.dmg} dmg · ${m.range}r`);
-  else bits.push(`${moveDuration(m)}f`);
+  bits.push(m.dmg ? `${m.startup}f · ${m.dmg} dmg · ${m.range}r` : `${moveDuration(m)}f`);
   if (m.cost) bits.push(`${m.cost} meter`);
   if (m.tag) bits.push(m.tag);
   return bits.join(' · ');
@@ -1697,32 +2095,29 @@ function renderBoard() {
   const sub = $('#boardsub');
   const focusId = game.hovered || game.picked;
   rowsHost.textContent = '';
+  $('#riskwrap').hidden = true;
 
   if (game.oracle === 'off') {
     sub.textContent = 'Oracle is off — you are reading them blind.';
-    $('#riskwrap').hidden = true;
     rowsHost.append(el('div', 'empty', 'Turn the Oracle back on from the header to see their answers.'));
     return;
   }
   if (game.phase !== 'choosing') {
     sub.textContent = 'Resolving…';
-    $('#riskwrap').hidden = true;
     rowsHost.append(el('div', 'empty', 'Watching the exchange play out.'));
     return;
   }
   if (!focusId) {
     sub.textContent = 'Hover a move to see how they can answer it.';
-    $('#riskwrap').hidden = true;
     rowsHost.append(el('div', 'empty', 'Every option they hold, ranked by how well it does against yours.'));
     return;
   }
 
-  const m = MOVES[focusId];
+  const m = moveOf(myChar(), focusId);
   const p = game.profile[focusId];
   sub.innerHTML = `If you throw <b>${m.name}</b>, their options rank like this:`;
 
-  const wrap = $('#riskwrap');
-  wrap.hidden = false;
+  $('#riskwrap').hidden = false;
   $('#riskval').textContent = `${pct(p.risk)} of their answers beat it`;
   const bar = $('#riskfill');
   bar.style.width = pct(Math.max(0.03, p.risk));
@@ -1732,6 +2127,10 @@ function renderBoard() {
     rowsHost.append(el('div', 'empty', 'Risk-only mode: you get the temperature, not the list.'));
     return;
   }
+  if (game.oracle === 'chain') {
+    renderChain(rowsHost, focusId);
+    return;
+  }
 
   p.rows.forEach((row, i) => {
     const r = el('div', `row${i === 0 ? ' best' : ''}`);
@@ -1739,9 +2138,7 @@ function renderBoard() {
     nm.append(el('span', null, row.move.name));
     if (i === 0) nm.append(el('span', 'crown', 'BEST ANSWER'));
     r.append(nm);
-
-    const v = el('span', `vd ${row.verdict.key}`, row.verdict.label);
-    r.append(v);
+    r.append(el('span', `vd ${row.verdict.key}`, row.verdict.label));
 
     const parts = [];
     if (row.dmgTaken) parts.push(`you take ${row.dmgTaken}`);
@@ -1749,9 +2146,33 @@ function renderBoard() {
     parts.push(`you end ${fmtAdv(row.adv)}f`);
     r.append(el('div', 'meta', parts.join('  ·  ')));
 
-    r.addEventListener('mouseenter', () => previewCounter(focusId, row));
+    r.addEventListener('mouseenter', () => stage.setPreview(game.state, m, row.move, true));
     rowsHost.append(r);
   });
+}
+
+/**
+ * The yomi ladder. Layer 1 is what beats your move; layer 2 is what to play if you expect
+ * them to have read you; layer 3 is their answer to that. The loop closing is the point —
+ * it is where thinking one level deeper stops helping and it becomes a guess again.
+ */
+function renderChain(host, focusId) {
+  const chain = yomiChain(game.state, ME, focusId);
+  const wrap = el('div', 'chain');
+  chain.forEach((link, i) => {
+    const node = el('div', `link ${link.side === ME ? 'mine' : 'theirs'}${link.loops ? ' loops' : ''}`);
+    node.append(el('div', 'depth', i === 0 ? 'YOU COMMIT' : `LAYER ${i}`));
+    const nm = el('div', 'nm');
+    nm.append(el('span', null, link.move.name));
+    nm.style.color = CHARS[link.side === ME ? myChar() : theirChar()].accent;
+    node.append(nm);
+    node.append(el('div', 'who', link.side === ME ? 'your read' : 'their read'));
+    if (link.verdict) node.append(el('span', `vd ${link.verdict.key}`, link.verdict.label));
+    if (link.loops) node.append(el('div', 'meta', 'the read loops here — from now on it is a coin flip'));
+    wrap.append(node);
+    if (i < chain.length - 1) wrap.append(el('div', 'arrow', '↓'));
+  });
+  host.append(wrap);
 }
 
 /* ------------------------------------------------------------ turn loop */
@@ -1763,17 +2184,13 @@ function setHover(id) {
   paintStage();
 }
 
-function previewCounter(myId, row) {
-  // Draw their best answer's reach next to yours, so the spacing read is visual too.
-  stage.setPreview(game.state, MOVES[myId], row.move, game.oracle !== 'off');
-}
-
 function paintStage() {
   if (game.phase !== 'choosing') return;
   const focusId = game.hovered || game.picked;
-  const mine = focusId ? MOVES[focusId] : null;
-  const best = focusId && game.oracle === 'full' ? game.profile[focusId].best.move : null;
-  stage.setPreview(game.state, mine, best, game.oracle === 'full');
+  const mine = focusId ? moveOf(myChar(), focusId) : null;
+  const showThreat = game.oracle === 'full' || game.oracle === 'chain';
+  const best = focusId && showThreat ? game.profile[focusId].best.move : null;
+  stage.setPreview(game.state, mine, best, showThreat);
 }
 
 function refreshTurn() {
@@ -1788,20 +2205,18 @@ function refreshTurn() {
 
 function commit(id) {
   if (game.phase !== 'choosing') return;
-  const legal = myMoves().some((m) => m.id === id);
-  if (!legal) return;
+  if (!myMoves().some((m) => m.id === id)) return;
 
   sfx.click();
   game.picked = id;
   game.phase = 'playing';
   game.history.push(id);
+  game.preTurn = game.state;
 
   const theirId = chooseAiMove(game.state, THEM, game.difficulty, game.history, game.rand)
     ?? availableMoves(game.state, THEM)[0].id;
 
-  const ids = [];
-  ids[ME] = id; ids[THEM] = theirId;
-  const result = resolveTurn(game.state, ids);
+  const result = resolveTurn(game.state, [id, theirId]);
   game.lastResult = result;
 
   renderMoves();
@@ -1811,37 +2226,60 @@ function commit(id) {
 
   stage.onFrame = (f) => {
     $('#scrub').value = String(f);
-    const tl = result.timeline[f];
-    for (const e of tl.events) sfx.event(e.type);
+    for (const e of result.timeline[f].events) sfx.event(e.type);
   };
   stage.onEnd = () => finishTurn(result, id, theirId);
-  stage.play(result);
+  stage.play(result, game.state);
 
-  showBanner(`${MOVES[id].name}  vs  ${MOVES[theirId].name}`);
+  showBanner(`${moveOf(myChar(), id).name}  vs  ${moveOf(theirChar(), theirId).name}`);
 }
 
 function finishTurn(result, myId, theirId) {
   const v = verdictFor(result, ME);
-  const mine = result.summary[ME];
-  showBanner(`${v.label}   ·   ${fmtAdv(mine.adv)}f`, v.key);
+  showBanner(`${v.label}   ·   ${fmtAdv(result.summary[ME].adv)}f`, v.key);
+  renderCoach(myId, theirId);
 
-  const bits = [`T${game.state.turn}`, MOVES[myId].name, 'vs', MOVES[theirId].name, '→', v.label];
-  if (result.stallDmg?.some?.((d) => d > 0)) bits.push(`(sadness ${result.stallDmg.join('/')})`);
+  const bits = [`T${game.state.turn}`, moveOf(myChar(), myId).name, 'vs',
+    moveOf(theirChar(), theirId).name, '→', v.label];
+  if (result.stallDmg?.some((d) => d > 0)) bits.push(`(sadness ${result.stallDmg.join('/')})`);
   game.log.unshift(bits.join(' '));
   game.log.length = Math.min(game.log.length, 30);
   $('#log').textContent = '';
-  for (const line of game.log.slice(0, 6)) $('#log').append(el('div', null, line));
+  for (const line of game.log.slice(0, 5)) $('#log').append(el('div', null, line));
 
   game.state = result.state;
   renderHud();
 
-  if (game.state.over) {
-    game.phase = 'over';
-    endMatch();
-    return;
-  }
+  if (game.state.over) { game.phase = 'over'; endMatch(); return; }
+  if (game.state.roundOver) { game.phase = 'roundover'; endRound(); return; }
   game.phase = 'choosing';
   refreshTurn();
+}
+
+/**
+ * The threat board teaches you before the guess. This teaches you after it: given what
+ * they actually did, what was the right button?
+ */
+function renderCoach(myId, theirId) {
+  if (game.oracle === 'off' || !game.preTurn) { $('#coach').hidden = true; return; }
+  const pm = postMortem(game.preTurn, ME, myId, theirId);
+  const box = $('#coach');
+  box.hidden = false;
+  box.textContent = '';
+  const them = moveOf(theirChar(), theirId).name;
+
+  if (pm.wasBest) {
+    box.className = 'coach good';
+    box.append(el('b', null, 'Best answer available. '));
+    box.append(document.createTextNode(`They played ${them} and nothing beat it harder than ${pm.played.move.name}.`));
+    return;
+  }
+  box.className = 'coach';
+  box.append(el('b', null, `They played ${them}. `));
+  box.append(document.createTextNode(
+    `${pm.best.move.name} was the answer — ${pm.best.verdict.label.toLowerCase()}, `
+    + `you end ${fmtAdv(pm.best.adv)}f. Yours ranked ${pm.rank} of ${pm.total}.`,
+  ));
 }
 
 function showBanner(text, key) {
@@ -1853,28 +2291,104 @@ function showBanner(text, key) {
   showBanner.t = setTimeout(() => b.classList.remove('show'), 2600);
 }
 
+/* ---------------------------------------------------------- round / match */
+
+function endRound() {
+  const r = game.state.roundOver;
+  const ov = $('#overlay');
+  ov.hidden = false;
+  ov.querySelector('h2').textContent = r.winner === null ? 'DRAWN ROUND'
+    : r.winner === ME ? 'ROUND WON' : 'ROUND LOST';
+  ov.querySelector('h2').style.color = r.winner === null ? 'var(--warn)'
+    : r.winner === ME ? 'var(--you)' : 'var(--them)';
+  ov.querySelector('p').textContent =
+    `${r.by === 'time' ? 'Time over' : 'Knockout'}. Rounds ${game.state.wins[0]}–${game.state.wins[1]}.`;
+  $('#playagain').textContent = 'Next round';
+  renderMoves();
+}
+
 function endMatch() {
   const o = game.state.over;
   const ov = $('#overlay');
   ov.hidden = false;
   const won = o.winner === ME;
-  ov.querySelector('h2').textContent = o.winner === null ? 'DRAW' : won ? 'YOU WIN' : 'YOU LOSE';
-  ov.querySelector('h2').style.color = o.winner === null ? 'var(--warn)' : won ? 'var(--you)' : 'var(--them)';
-  const hp = game.state.fighters.map((f) => Math.max(0, Math.round(f.hp)));
-  ov.querySelector('p').textContent = o.by === 'time'
-    ? `Time over on turn ${game.state.turn - 1}. Health decided it, ${hp[0]} to ${hp[1]}.`
-    : `Knockout on turn ${game.state.turn - 1}. ${hp[0]} health to ${hp[1]}.`;
+  ov.querySelector('h2').textContent = won ? 'YOU WIN' : 'YOU LOSE';
+  ov.querySelector('h2').style.color = won ? 'var(--you)' : 'var(--them)';
+  ov.querySelector('p').textContent =
+    `Match over, ${game.state.wins[0]}–${game.state.wins[1]}. ${o.by === 'time' ? 'Took the last round on time.' : 'Closed it with a knockout.'}`;
+  $('#playagain').textContent = 'Fight again';
   renderMoves();
 }
 
-function restart() {
-  game.state = newMatch();
+function advance() {
+  $('#overlay').hidden = true;
+  if (game.phase === 'over') { openSelect(); return; }
+  game.state = nextRound(game.state);
+  game.phase = 'choosing';
+  game.log = [];
+  $('#log').textContent = '';
+  $('#coach').hidden = true;
+  $('#scrubwrap').hidden = true;
+  refreshTurn();
+}
+
+/* ------------------------------------------------------- character select */
+
+function openSelect() {
+  game.phase = 'select';
+  const dlg = $('#select');
+  const host = $('#roster');
+  host.textContent = '';
+  for (const id of CHAR_IDS) {
+    const c = CHARS[id];
+    const card = el('button', `card${game.chars[ME] === id ? ' picked' : ''}`);
+    card.type = 'button';
+    card.dataset.id = id;
+    const h = el('h3', null, c.name);
+    h.style.color = c.accent;
+    card.append(h);
+    card.append(el('p', null, c.tagline));
+    const stats = el('div', 'stats');
+    const fastest = Math.min(...neutralSet(id).map((m) => (moveOf(id, m).dmg ? moveOf(id, m).startup : 99)));
+    const reach = Math.max(...neutralSet(id).map((m) => moveOf(id, m).range));
+    const hit = Math.max(...neutralSet(id).map((m) => moveOf(id, m).dmg));
+    for (const [k, val, max] of [['health', c.hp, 170], ['fastest', 16 - fastest, 14], ['reach', reach, 160], ['biggest hit', hit, 30]]) {
+      const row = el('div', 'stat');
+      row.append(el('span', 'k', k));
+      const b = el('span', 'b');
+      const f = el('i');
+      f.style.width = `${Math.min(100, (val / max) * 100)}%`;
+      f.style.background = c.accent;
+      b.append(f);
+      row.append(b);
+      row.append(el('span', 'v', k === 'fastest' ? `${fastest}f` : String(val)));
+      stats.append(row);
+    }
+    card.append(stats);
+    card.addEventListener('click', () => {
+      game.chars[ME] = id;
+      host.querySelectorAll('.card').forEach((n) => n.classList.toggle('picked', n.dataset.id === id));
+    });
+    host.append(card);
+  }
+  if (!dlg.open) dlg.showModal();
+}
+
+function startMatch() {
+  $('#select').close();
+  const rivalPick = $('#rival').value;
+  game.chars[THEM] = rivalPick === 'random'
+    ? CHAR_IDS[Math.floor(game.rand() * CHAR_IDS.length)]
+    : rivalPick;
+  game.state = newMatch(game.chars[ME], game.chars[THEM]);
   game.phase = 'choosing';
   game.history = [];
   game.log = [];
   game.lastResult = null;
+  game.preTurn = null;
   $('#overlay').hidden = true;
   $('#scrubwrap').hidden = true;
+  $('#coach').hidden = true;
   $('#log').textContent = '';
   refreshTurn();
 }
@@ -1897,10 +2411,11 @@ function boot() {
     sfx.on = !sfx.on;
     e.target.textContent = sfx.on ? 'Sound on' : 'Sound off';
   });
-  $('#restart').addEventListener('click', restart);
-  $('#playagain').addEventListener('click', restart);
+  $('#restart').addEventListener('click', openSelect);
+  $('#playagain').addEventListener('click', advance);
   $('#helpbtn').addEventListener('click', () => $('#help').showModal());
   $('#helpclose').addEventListener('click', () => $('#help').close());
+  $('#startfight').addEventListener('click', startMatch);
   $('#replay').addEventListener('click', () => {
     if (game.lastResult) { stage.play(game.lastResult); stage.onEnd = () => {}; }
   });
@@ -1909,10 +2424,10 @@ function boot() {
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'SELECT' || $('#help').open) return;
     if (e.key === '?') { $('#help').showModal(); return; }
-    if (e.key === 'Enter' && game.phase === 'over') { restart(); return; }
+    if ($('#select').open) { if (e.key === 'Enter') startMatch(); return; }
+    if (e.key === 'Enter' && (game.phase === 'over' || game.phase === 'roundover')) { advance(); return; }
     if (game.phase !== 'choosing') return;
-    const k = e.key.toLowerCase();
-    const hit = myMoves().find((m) => m.key === k);
+    const hit = myMoves().find((m) => m.key === e.key.toLowerCase());
     if (hit) { e.preventDefault(); commit(hit.id); }
   });
 
@@ -1927,7 +2442,7 @@ function boot() {
   };
   requestAnimationFrame(loop);
 
-  refreshTurn();
+  openSelect();
 }
 
 boot();

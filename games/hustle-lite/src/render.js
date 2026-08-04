@@ -5,15 +5,23 @@
  * never decides anything itself: every position, phase and impact on screen came out of
  * the simulation, so what you watch is exactly what was scored.
  */
-import { RULES, MOVES } from './engine.js';
+import { RULES, CHARS } from './engine.js';
 
 const W = 1000, H = 300;
 const GROUND = 246;
-const COL = {
-  you: '#3fe0cf', them: '#ff5f78',
-  youDim: '#1d6f68', themDim: '#7d2f3b',
-  ink: '#e9eef4', dim: '#3a4653', floor: '#131a22',
-};
+const COL = { ink: '#e9eef4', dim: '#3a4653', floor: '#131a22' };
+
+// Player one always reads cool, player two always reads warm, whichever characters are
+// picked — you should never have to work out which fighter is yours.
+const SIDE_TINT = ['#3fe0cf', '#ff5f78'];
+const sideColour = (state, i) => (state ? mixHex(CHARS[state.fighters[i].char].accent, SIDE_TINT[i], 0.55) : SIDE_TINT[i]);
+
+function mixHex(a, b, t) {
+  const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [ar, ag, ab] = p(a), [br, bg, bb] = p(b);
+  const c = (x, y) => Math.round(x + (y - x) * t).toString(16).padStart(2, '0');
+  return `#${c(ar, br)}${c(ag, bg)}${c(ab, bb)}`;
+}
 
 /* ------------------------------------------------------------------ poses */
 
@@ -202,17 +210,21 @@ export class Stage {
     this.onFrame = null;
     this.onEnd = null;
     this.preview = null;      // { x:[..], phases, ranges } for the idle/planning view
+    this.floats = [];
+    this.state = null;        // whose colours to draw with
   }
 
   /** Show a static neutral pose — used between turns while you are choosing. */
   setPreview(state, myMove, theirBestMove, showThreat) {
     this.result = null;
     this.playing = false;
+    this.state = state;
     this.preview = { state, myMove, theirBestMove, showThreat };
     this.draw();
   }
 
-  play(result) {
+  play(result, state) {
+    if (state) this.state = state;
     this.result = result;
     this.preview = null;
     this.frame = 0;
@@ -220,6 +232,7 @@ export class Stage {
     this.hitstop = 0;
     this.sparks.length = 0;
     this.trails.length = 0;
+    this.floats.length = 0;
     this.playing = true;
   }
 
@@ -241,6 +254,8 @@ export class Stage {
     this.sparks = this.sparks.filter((s) => s.life > 0);
     for (const t of this.trails) t.life -= dt;
     this.trails = this.trails.filter((t) => t.life > 0);
+    for (const f of this.floats) { f.life -= dt; f.y -= dt * 34; }
+    this.floats = this.floats.filter((f) => f.life > 0);
 
     if (this.playing && this.result) {
       if (this.hitstop > 0) this.hitstop -= dt;
@@ -263,7 +278,7 @@ export class Stage {
     this.onFrame?.(f);
     for (let i = 0; i < 2; i++) {
       if (tl.phase[i] === 'active') {
-        this.trails.push({ x: tl.x[i], colour: i === 0 ? COL.you : COL.them, life: 0.22 });
+        this.trails.push({ x: tl.x[i], colour: sideColour(this.state, i), life: 0.22 });
       }
     }
     for (const e of tl.events) {
@@ -271,21 +286,30 @@ export class Stage {
       if (e.type === 'hit') {
         this.shake.mag = Math.min(16, 5 + e.dmg * 0.4);
         this.hitstop = 0.09 + Math.min(0.11, e.dmg * 0.005);
-        this.burst(victim, GROUND - 60, 18, e.by === 0 ? COL.you : COL.them);
+        this.burst(victim, GROUND - 60, e.counter ? 26 : 18, e.counter ? '#ffe066' : sideColour(this.state, e.by));
+        this.float(victim, GROUND - 96, `${e.counter ? 'COUNTER ' : ''}${e.dmg}`, e.counter ? '#ffe066' : '#ffffff');
       } else if (e.type === 'block') {
         this.shake.mag = 3; this.hitstop = 0.05;
         this.burst(victim, GROUND - 60, 8, '#9fb3c8');
+        this.float(victim, GROUND - 92, 'GUARD', '#9fb3c8');
       } else if (e.type === 'armour') {
         this.shake.mag = 4; this.hitstop = 0.06;
         this.burst(victim, GROUND - 60, 10, '#ffab5e');
+        this.float(victim, GROUND - 92, 'ARMOUR', '#ffab5e');
       } else if (e.type === 'parry') {
         this.shake.mag = 7; this.hitstop = 0.19;
         this.burst(tl.x[e.by], GROUND - 60, 22, '#7cc4ff');
+        this.float(tl.x[e.by], GROUND - 100, 'PARRY', '#7cc4ff');
       } else if (e.type === 'clash') {
         this.shake.mag = 6; this.hitstop = 0.1;
         this.burst((tl.x[0] + tl.x[1]) / 2, GROUND - 55, 14, '#ffd166');
       }
     }
+  }
+
+  /** A damage number that drifts up and fades — the fastest way to read an exchange. */
+  float(x, y, text, colour) {
+    this.floats.push({ x, y, text, colour, life: 0.95 });
   }
 
   burst(x, y, n, colour) {
@@ -321,6 +345,17 @@ export class Stage {
       g.fillRect(s.x - 1.5, s.y - 1.5, 3, 3);
     }
     g.globalAlpha = 1;
+
+    for (const f of this.floats) {
+      g.globalAlpha = Math.max(0, Math.min(1, f.life * 1.6));
+      g.fillStyle = f.colour;
+      g.font = '700 15px ui-monospace, monospace';
+      g.textAlign = 'center';
+      g.strokeStyle = '#05080c'; g.lineWidth = 3;
+      g.strokeText(f.text, f.x, f.y);
+      g.fillText(f.text, f.x, f.y);
+    }
+    g.globalAlpha = 1;
     g.restore();
   }
 
@@ -330,14 +365,15 @@ export class Stage {
     const facing = a.x <= b.x ? 1 : -1;
 
     if (myMove?.range) {
-      drawRange(g, a.x, facing, myMove.range, COL.you, false, `${myMove.name} ${myMove.range}`);
+      drawRange(g, a.x, facing, myMove.range, sideColour(state, 0), false, `${myMove.name} ${myMove.range}`);
     }
     if (showThreat && theirBestMove?.range) {
-      drawRange(g, b.x, -facing, theirBestMove.range, COL.them, true, `${theirBestMove.name} ${theirBestMove.range}`);
+      drawRange(g, b.x, -facing, theirBestMove.range, sideColour(state, 1), true, `${theirBestMove.name} ${theirBestMove.range}`);
     }
 
-    drawFighter(g, a.x, facing, poseFor(idlePhase(a), MOVES.jab, 0), COL.you, { down: a.state === 'down' });
-    drawFighter(g, b.x, -facing, poseFor(idlePhase(b), MOVES.jab, 0), COL.them, { down: b.state === 'down' });
+    const stub = { id: '', level: 'mid' };
+    drawFighter(g, a.x, facing, poseFor(idlePhase(a), stub, 0), sideColour(state, 0), { down: a.state === 'down' });
+    drawFighter(g, b.x, -facing, poseFor(idlePhase(b), stub, 0), sideColour(state, 1), { down: b.state === 'down' });
 
     g.fillStyle = '#2c3846';
     g.font = '600 10px ui-monospace, monospace';
@@ -354,7 +390,7 @@ export class Stage {
     for (let i = 0; i < 2; i++) {
       const m = r.summary[i].move;
       const ph = tl.phase[i];
-      const colour = i === 0 ? COL.you : COL.them;
+      const colour = sideColour(this.state, i);
       const face = i === 0 ? facing : -facing;
       const flash = ph === 'active' || ph === 'parryWindow';
       if (ph === 'active') drawRange(g, tl.x[i], face, m.range, colour, false, null);
