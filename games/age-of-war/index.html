@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Age of War</title>
+<style>
+  :root {
+    --bg: #10131a;
+    --panel: #1a1f2b;
+    --panel-hi: #232a39;
+    --line: #303a4d;
+    --gold: #f2c14e;
+    --xp: #6fc3df;
+    --hp: #5fd07a;
+    --foe: #e0645a;
+    --text: #e7ecf3;
+    --muted: #8d99ad;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+  }
+  #wrap { display: flex; flex-direction: column; height: 100%; }
+
+  /* ---- top status bar ---- */
+  #top {
+    display: flex; align-items: center; gap: 14px; background: var(--panel);
+    border-bottom: 1px solid var(--line); flex-wrap: wrap;
+    padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left));
+  }
+  .stat { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+  .stat .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .bars { display: flex; gap: 12px; flex: 1; min-width: 260px; }
+  .barbox { flex: 1; }
+  .barlabel { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+  .bar { height: 12px; background: #0c0f15; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+  .bar > i { display: block; height: 100%; width: 100%; transition: width .15s linear; }
+  .bar span { position: absolute; }
+
+  /* ---- battlefield ---- */
+  #stage { position: relative; flex: 1; min-height: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #muteBtn {
+    position: absolute; top: 8px; right: 8px; z-index: 4;
+    background: rgba(20,25,34,.72); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px 9px; font: 600 11px inherit; cursor: pointer;
+  }
+  #helpBtn {
+    position: absolute; top: 8px; right: 160px; z-index: 4;
+    background: rgba(20,25,34,.72); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px 9px; font: 600 11px inherit; cursor: pointer;
+  }
+  #helpBtn.on { color: var(--gold); border-color: #6a5a2a; }
+  #statsPanel {
+    position: absolute; inset: 0; display: none; z-index: 6;
+    align-items: center; justify-content: center;
+    background: rgba(8,10,15,.82); padding: 12px; overflow: auto;
+  }
+  #statsInner { max-width: 900px; width: 100%; }
+  #statsPanel h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: .04em; }
+  #statsPanel table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 12px; }
+  #statsPanel th { text-align: left; color: var(--muted); font-weight: 600;
+    font-size: 10px; letter-spacing: .07em; text-transform: uppercase; padding: 3px 6px; }
+  #statsPanel td { padding: 3px 6px; border-top: 1px solid var(--line); }
+  #statsPanel .num { text-align: right; font-variant-numeric: tabular-nums; }
+  #statsPanel .tri { color: var(--muted); font-size: 12px; line-height: 1.6; }
+  #musicBtn {
+    position: absolute; top: 8px; right: 84px; z-index: 4;
+    background: rgba(20,25,34,.72); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px 9px; font: 600 11px inherit; cursor: pointer;
+  }
+  #muteBtn.off, #musicBtn.off { color: var(--foe); border-color: #5a2a2a; }
+  #overlay {
+    position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center; flex-direction: column;
+    background: rgba(8,10,15,.86); text-align: center; gap: 14px; z-index: 5;
+  }
+  #overlay h1 { margin: 0; font-size: 44px; letter-spacing: -.02em; }
+  #overlay p { margin: 0; color: var(--muted); max-width: 460px; line-height: 1.5; }
+  .bigbtn {
+    background: var(--gold); color: #1a1206; border: 0; border-radius: 8px;
+    padding: 12px 26px; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .bigbtn:hover { filter: brightness(1.1); }
+  .diffrow { display: flex; gap: 8px; }
+  .diffbtn {
+    background: var(--panel-hi); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .diffbtn.on { border-color: var(--gold); color: var(--gold); }
+
+  /* ---- bottom control deck ---- */
+  #deck {
+    display: flex; gap: 8px; background: var(--panel);
+    border-top: 1px solid var(--line); align-items: stretch; flex-wrap: wrap;
+    padding: 10px max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  .group { display: flex; gap: 8px; }
+  .sep { width: 1px; background: var(--line); margin: 2px 4px; }
+  .btn {
+    position: relative; overflow: hidden;
+    background: var(--panel-hi); border: 1px solid var(--line); border-radius: 8px;
+    color: var(--text); padding: 8px 12px; min-width: 108px; text-align: left;
+    cursor: pointer; font-family: inherit; transition: border-color .1s, transform .05s;
+  }
+  .btn, .bigbtn, .diffbtn, .modebtn, #muteBtn, #musicBtn, #helpBtn { touch-action: manipulation; }
+  #stage { touch-action: none; }
+  .btn:hover:not(:disabled) { border-color: #4a586e; }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { opacity: .42; cursor: not-allowed; }
+  .btn .n { display: block; font-size: 12px; font-weight: 700; }
+  .btn .c { display: block; font-size: 11px; color: var(--gold); margin-top: 2px; }
+  .btn .k { position: absolute; top: 4px; right: 6px; font-size: 10px; color: var(--muted); }
+  .btn .cd {
+    position: absolute; left: 0; bottom: 0; height: 3px; background: var(--xp); width: 0%;
+  }
+  .btn.evo { border-color: #6a5a2a; }
+  .btn.evo .c { color: var(--xp); }
+  .btn.spec { border-color: #5a2a2a; }
+  .btn.rec { border-color: var(--gold); box-shadow: inset 0 0 0 1px rgba(242,193,78,.3); }
+  .btn.rec .n::after { content: " \25b2"; font-size: 9px; color: var(--gold); }
+  .btn.spec .c { color: var(--foe); }
+  #hint { font-size: 11px; color: var(--muted); align-self: center; margin-left: auto; }
+  .btn.b1 { border-color: #2f4a6b; } .btn.b1 .n { color: #9dc6ec; }
+  .btn.b2 { border-color: #6b3a34; } .btn.b2 .n { color: #eca9a1; }
+  .half { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; min-width: 0; }
+  .btn { flex: 0 0 auto; width: 138px; }
+  .btn .n, .btn .c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn .n { padding-right: 13px; }   /* clear the key badge in the corner */
+  #deckP2 { justify-content: flex-end; }
+  .pcol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .prow { display: flex; align-items: center; gap: 8px; }
+  .p2col .prow { justify-content: flex-end; }
+  .tag { font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 4px; letter-spacing: .06em; }
+  .t1 { background: #2f4a6b; color: #cfe4f7; } .t2 { background: #6b3a34; color: #f7d2cf; }
+  .g { color: var(--gold); font-weight: 700; font-size: 14px; }
+  .ag { font-weight: 600; font-size: 13px; }
+  .modebtn { background: var(--panel-hi); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .modebtn.on { border-color: var(--gold); color: var(--gold); }
+  /* phone in landscape: shrink chrome so the battlefield keeps the screen */
+  @media (max-height: 560px) {
+    #top { padding: 3px 8px; gap: 8px; }
+    .barlabel { font-size: 9px; margin-bottom: 1px; } .bar { height: 8px; }
+    #deck { padding: 5px 6px; gap: 6px; }
+    .btn { width: 84px; padding: 3px 6px; }
+    .btn .n { font-size: 10px; } .btn .c { font-size: 9px; } .btn .k { font-size: 9px; }
+    #hint { display: none; }
+  }
+  @media (max-width: 760px) {
+    .btn { width: 78px; padding: 6px 8px; }
+    .btn .n { font-size: 11px; }
+    #hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="top">
+    <div class="pcol p1col">
+      <div class="prow"><span class="tag t1">P1</span><span class="g" id="gold1">0</span><span class="ag" id="age1">Stone Age</span></div>
+      <div class="prow">
+        <div class="barbox"><div class="barlabel">Base <span id="hpTxt1"></span></div><div class="bar"><i id="hpBar1" style="background:var(--hp)"></i></div></div>
+        <div class="barbox"><div class="barlabel">XP <span id="xpTxt1"></span></div><div class="bar"><i id="xpBar1" style="background:var(--xp)"></i></div></div>
+      </div>
+    </div>
+    <div class="pcol p2col">
+      <div class="prow"><span class="ag" id="age2">Stone Age</span><span class="g" id="gold2">0</span><span class="tag t2">P2</span></div>
+      <div class="prow">
+        <div class="barbox"><div class="barlabel">XP <span id="xpTxt2"></span></div><div class="bar"><i id="xpBar2" style="background:var(--xp)"></i></div></div>
+        <div class="barbox"><div class="barlabel">Base <span id="hpTxt2"></span></div><div class="bar"><i id="hpBar2" style="background:var(--foe)"></i></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <button id="muteBtn">&#9834; sound</button>
+    <button id="musicBtn">&#9835; score</button>
+    <button id="helpBtn">? stats</button>
+    <div id="statsPanel"><div id="statsInner"></div></div>
+    <div id="overlay">
+      <h1 id="ovTitle">Age of War</h1>
+      <p id="ovText">Two players, one screen. P1 (blue) holds the left base, P2 (red) the right. Spawn troops, bank XP to evolve through five ages, and smash the other base.<br><b>P1:</b> 1 2 3 spawn &middot; E evolve &middot; T turret &middot; Q special<br><b>P2:</b> 7 8 9 spawn &middot; I evolve &middot; O turret &middot; U special<br>Or just tap the buttons &mdash; both sides are touch-friendly.<br><br><b>Light</b> beats <b>Ranged</b> beats <b>Heavy</b> beats <b>Light</b> &mdash; slots 1/2/3 in every age. Counter what they field.<br><span style="font-size:12px">P pauses &middot; M mutes &middot; N toggles the score</span></p>
+      <div class="diffrow" id="modeRow">
+        <button class="modebtn on" data-m="2p">2 Players</button>
+        <button class="modebtn" data-m="ai">1 Player vs AI</button>
+      </div>
+      <div class="diffrow" id="diffRow" style="display:none">
+        <button class="diffbtn" data-d="0.8">Easy</button>
+        <button class="diffbtn on" data-d="1">Normal</button>
+        <button class="diffbtn" data-d="1.3">Hard</button>
+      </div>
+      <button class="bigbtn" id="ovBtn">Start War</button>
+    </div>
+  </div>
+
+  <div id="deck">
+    <div class="half" id="deckP1"></div>
+    <div class="half" id="deckP2"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Age of War — single-file canvas game.
+   Field is a fixed 1200x420 logical space, scaled to fit.
+   ============================================================ */
+
+const FIELD_W = 1200, FIELD_H = 420, GROUND_Y = 340;
+const BASE_X = { p: 78, e: FIELD_W - 78 };   // base centres
+const SPAWN_X = { p: 106, e: FIELD_W - 106 };   // the base doorway
+
+/* ---------------- content tables ---------------- */
+
+const AGES = [
+  { name: "Stone Age",    sky: ["#2b2417", "#4a3d24"], ground: "#3a3020", baseHp: 3600,  xpNext: 500,
+    turret: { cost: 150,  dmg: 9,   range: 150, cd: 1.4, name: "Rock Thrower" },
+    special: { name: "Meteor",       dmg: 120,  cost: 0 } },
+  { name: "Medieval",     sky: ["#1b2436", "#38506e"], ground: "#2f4030", baseHp: 6000,  xpNext: 1900,
+    turret: { cost: 400,  dmg: 20,  range: 178, cd: 1.25, name: "Ballista" },
+    special: { name: "Arrow Rain",   dmg: 260,  cost: 0 } },
+  { name: "Renaissance",  sky: ["#241d2e", "#5b4a63"], ground: "#3c3a2c", baseHp: 9000,  xpNext: 5200,
+    turret: { cost: 900,  dmg: 44,  range: 200, cd: 1.2, name: "Culverin" },
+    special: { name: "Cannonade",    dmg: 520,  cost: 0 } },
+  { name: "Modern",       sky: ["#151b22", "#3d4a58"], ground: "#33383a", baseHp: 12500, xpNext: 14000,
+    turret: { cost: 1800, dmg: 78,  range: 215, cd: 1.1, name: "Machine Gun" },
+    special: { name: "Air Strike",   dmg: 1400, cost: 0 } },
+  { name: "Future",       sky: ["#0d1a22", "#1f4e5c"], ground: "#26333a", baseHp: 18000, xpNext: Infinity,
+    turret: { cost: 3400, dmg: 135, range: 232, cd: 1.0, name: "Ion Cannon" },
+    special: { name: "Orbital Beam", dmg: 3100, cost: 0 } },
+];
+
+// [name, cost, hp, dmg, range, speed, atkCd, gold, xp, kind, splash]
+const UNITS = [
+  [ // Stone
+    { n: "Clubman",   cost: 30,  hp: 60,   dmg: 10,  rng: 26,  spd: 40, cd: 0.85, gold: 22,  xp: 16,  kind: "melee" },
+    { n: "Slinger",   cost: 60,  hp: 45,   dmg: 13,  rng: 165, spd: 34, cd: 1.35, gold: 38,  xp: 26,  kind: "shot" },
+    { n: "Dino Rider",cost: 130, hp: 190,  dmg: 24,  rng: 30,  spd: 32, cd: 1.15, gold: 78,  xp: 52,  kind: "melee" },
+  ],
+  [ // Medieval
+    { n: "Swordsman", cost: 90,  hp: 160,  dmg: 22,  rng: 28,  spd: 44, cd: 0.8,  gold: 55,  xp: 38,  kind: "melee" },
+    { n: "Archer",    cost: 150, hp: 105,  dmg: 28,  rng: 205, spd: 38, cd: 1.25, gold: 88,  xp: 60,  kind: "shot" },
+    { n: "Knight",    cost: 260, hp: 420,  dmg: 46,  rng: 32,  spd: 34, cd: 1.05, gold: 155, xp: 105, kind: "melee" },
+  ],
+  [ // Renaissance
+    { n: "Duelist",   cost: 260, hp: 400,  dmg: 52,  rng: 30,  spd: 50, cd: 0.72, gold: 150, xp: 100, kind: "melee" },
+    { n: "Musketeer", cost: 340, hp: 290,  dmg: 68,  rng: 240, spd: 39, cd: 1.15, gold: 195, xp: 130, kind: "shot" },
+    { n: "Bombard",   cost: 560, hp: 860,  dmg: 118, rng: 62,  spd: 27, cd: 1.55, gold: 320, xp: 215, kind: "shot", splash: 46 },
+  ],
+  [ // Modern
+    { n: "Shotgunner",cost: 520, hp: 640,  dmg: 98,  rng: 54,  spd: 58, cd: 0.72, gold: 290, xp: 195, kind: "shot" },
+    { n: "Rifleman",  cost: 760, hp: 500,  dmg: 148, rng: 250, spd: 38, cd: 1.1,  gold: 410, xp: 280, kind: "shot" },
+    { n: "Tank",      cost: 1300,hp: 2300, dmg: 255, rng: 66,  spd: 29, cd: 1.4,  gold: 700, xp: 470, kind: "shot", splash: 56 },
+  ],
+  [ // Future
+    { n: "Blade Drone",cost: 1100,hp: 1250, dmg: 185, rng: 32,  spd: 72, cd: 0.62, gold: 600, xp: 400, kind: "melee" },
+    { n: "Laser Trp", cost: 1800,hp: 950,  dmg: 300, rng: 252, spd: 36, cd: 1.0,  gold: 980, xp: 660, kind: "shot" },
+    { n: "Titan",     cost: 3000,hp: 5200, dmg: 480, rng: 72,  spd: 26, cd: 1.35, gold: 1600,xp: 1100,kind: "shot", splash: 70 },
+  ],
+];
+
+const SPAWN_CD    = [1.9, 2.3, 3.0];       // per-slot cooldown seconds
+const TURRET_SLOTS = [2, 2, 3, 3, 4];      // slots unlocked per age
+const SPECIAL_CD   = 50;                   // seconds
+const MAX_UNITS    = 14;                   // per side, keeps the field readable
+const BASE_DMG_MULT = 2.6;                 // siege bonus: bases fall to a real push
+const QUEUE_MAX    = 4;                    // taps you can bank per slot
+
+// Slot 0 is Light, 1 is Ranged, 2 is Heavy in every age. Light beats Ranged,
+// Ranged beats Heavy, Heavy beats Light — so reading what the other side is
+// fielding matters more than always buying the most expensive unit.
+const CLASS_NAME = ["Light", "Ranged", "Heavy"];
+const COUNTER = [[1, 1.5, 0.7],
+                 [0.7, 1, 1.5],
+                 [1.5, 0.7, 1]];
+function counterMul(atkSlot, target) {
+  if (atkSlot == null || !target || target.slot == null) return 1;
+  return COUNTER[atkSlot][target.slot];
+}
+
+/* ---------------- game state ---------------- */
+
+let G = null;
+let difficulty = 1;
+let aiPower = 1;              // enemy unit hp/dmg multiplier, set by difficulty
+let mode = "2p";              // "2p" = hotseat two-player, "ai" = P2 is the computer
+let series = { p: 0, e: 0 };  // wins across matches this sitting
+let running = false, paused = false;
+
+function newSide(isPlayer) {
+  return {
+    isPlayer,
+    age: 0,
+    gold: 250,
+    xp: 0,
+    hp: AGES[0].baseHp,
+    maxHp: AGES[0].baseHp,
+    units: [],
+    turrets: [],
+    cds: [0, 0, 0],
+    qs: [0, 0, 0],              // orders waiting on each slot cooldown
+    specialCd: 0,
+    aiTimer: 0,
+    income: 0,
+    kills: 0,
+    earned: 0,
+  };
+}
+
+function reset() {
+  G = {
+    p: newSide(true),
+    e: newSide(false),
+    shots: [],
+    fx: [],
+    strikes: [],
+    t: 0,
+    over: null,
+    finishing: null,
+    shake: 0,
+  };
+}
+
+/* ---------------- helpers ---------------- */
+
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const rnd   = (a, b) => a + Math.random() * (b - a);
+const foe   = s => s === G.p ? G.e : G.p;
+
+function spec(side, slot) { return UNITS[side.age][slot]; }
+
+// A tap always registers. It pays up front and joins that slot's queue; the
+// troop marches out when the cooldown clears and the field has room. Silently
+// dropping the tap was indistinguishable from a dead button.
+function spawn(side, slot) {
+  const d = spec(side, slot);
+  if (side.gold < d.cost) return false;
+  if (side.qs[slot] >= QUEUE_MAX) return false;
+  side.gold -= d.cost;
+  side.qs[slot]++;
+  sfx("order");
+  return true;
+}
+
+function emit(side, slot) {
+  const d = spec(side, slot);
+  side.cds[slot] = SPAWN_CD[slot];
+  const dir = side.isPlayer ? 1 : -1;
+  const pow = side.isPlayer ? 1 : aiPower;
+  side.units.push({
+    side, d, dir, pow, slot,
+    x: side.isPlayer ? SPAWN_X.p : SPAWN_X.e,
+    lane: rnd(-30, 30),
+    hp: d.hp * pow, maxHp: d.hp * pow,
+    cd: rnd(0, 0.3),
+    age: side.age,
+    step: Math.random() * 6,
+    flash: 0,
+  });
+  sfx("spawn");
+  return true;
+}
+
+// Buys while there is an empty mount; once they are full the same control
+// sells the last turret back at half price, so over-investing in defence is
+// recoverable instead of permanent.
+function sellTurret(side) {
+  if (!side.turrets.length) return false;
+  side.turrets.pop();
+  side.gold += AGES[side.age].turret.cost * 0.5;
+  sfx("build");
+  return true;
+}
+
+function buyTurret(side) {
+  const t = AGES[side.age].turret;
+  if (side.turrets.length >= TURRET_SLOTS[side.age]) return sellTurret(side);
+  if (side.gold < t.cost) return false;
+  side.gold -= t.cost;
+  side.turrets.push({ side, def: t, cd: 0, slot: side.turrets.length, age: side.age });
+  sfx("build");
+  return true;
+}
+
+function evolve(side) {
+  if (side.age >= AGES.length - 1) return false;
+  if (side.xp < AGES[side.age].xpNext) return false;
+  side.xp -= AGES[side.age].xpNext;
+  // Refund queued orders at the price actually paid. This has to happen BEFORE
+  // the age advances: refunding at the new age's costs turned "queue cheap
+  // units, then evolve" into a repeatable source of free gold.
+  for (let i = 0; i < 3; i++) { side.gold += spec(side, i).cost * side.qs[i]; side.qs[i] = 0; }
+  side.age++;
+  const ratio = side.hp / side.maxHp;
+  side.maxHp = AGES[side.age].baseHp;
+  side.hp = Math.max(side.maxHp * ratio, side.maxHp * 0.5);
+  side.cds = [0, 0, 0];
+  // turrets upgrade with the age they sit in
+  side.turrets.forEach(t => { t.def = AGES[side.age].turret; t.age = side.age; });
+  const bx = side.isPlayer ? BASE_X.p : BASE_X.e;
+  for (let i = 0; i < 26; i++) burst(bx + rnd(-40, 40), GROUND_Y - rnd(0, 90), "#f2c14e");
+  G.shake = Math.max(G.shake, 10);
+  sfx("evolve");
+  return true;
+}
+
+// A special is a bombardment that walks across the enemy half over ~1.3s,
+// each impact landing its own damage, rather than one instant invisible hit.
+function useSpecial(side) {
+  if (side.specialCd > 0) return false;
+  side.specialCd = SPECIAL_CD;
+  const sp = AGES[side.age].special;
+  const other = foe(side);
+  const lo = side.isPlayer ? FIELD_W * 0.34 : 50;
+  const hi = side.isPlayer ? FIELD_W - 50 : FIELD_W * 0.66;
+  const N = 11;
+  const impacts = [];
+  for (let i = 0; i < N; i++) {
+    let x = lo + (hi - lo) * ((side.isPlayer ? i : N - 1 - i) + 0.5) / N + rnd(-30, 30);
+    if (other.units.length && Math.random() < 0.6) {
+      const t = other.units[Math.floor(Math.random() * other.units.length)];
+      x = t.x + rnd(-34, 34);
+    }
+    impacts.push({ x: clamp(x, 40, FIELD_W - 40), at: i * (1.15 / N) + rnd(0, 0.05), lit: false, hit: false });
+  }
+  G.strikes.push({ side, age: side.age, dmg: sp.dmg / N, t: 0, impacts });
+  if (side.age === 3) G.fx.push({ plane: true, dir: side.isPlayer ? 1 : -1,
+                                  x: side.isPlayer ? -60 : FIELD_W + 60,
+                                  y: GROUND_Y - 190, life: 2.0, max: 2.0, c: "#cfd8e6" });
+  sfx("special");
+  return true;
+}
+
+function updateStrikes(dt) {
+  for (const st of G.strikes) {
+    st.t += dt;
+    for (const im of st.impacts) {
+      if (!im.lit && st.t >= im.at - 0.42) {
+        im.lit = true;
+        G.fx.push({ incoming: true, age: st.age, x: im.x, life: 0.42, max: 0.42,
+                    c: ["#ffb35c", "#e8dcc0", "#ffd08a", "#dfe8f2", "#7ef0ff"][st.age] });
+      }
+      if (!im.hit && st.t >= im.at) {
+        im.hit = true;
+        const other = foe(st.side);
+        for (const u of other.units)
+          if (!u.dead && Math.abs(u.x - im.x) < 74) damage(u, st.dmg, st.side);
+        const bx = other.isPlayer ? BASE_X.p : BASE_X.e;
+        if (Math.abs(bx - im.x) < 74) hitBase(other, st.dmg * 0.5, st.side);
+        G.fx.push({ x: im.x, y: GROUND_Y - 12, r: st.age === 4 ? 40 : 30,
+                    life: 0.34, max: 0.34, c: "#ffca7a", ring: true });
+        for (let i = 0; i < 9; i++) burst(im.x, GROUND_Y - 12, st.age === 4 ? "#7ef0ff" : "#ffb35c");
+        G.shake = Math.max(G.shake, 13);
+        sfx("boom");
+      }
+    }
+  }
+  G.strikes = G.strikes.filter(st => st.t < 2.2);
+}
+
+function damage(u, amt, from, raw) {
+  u.hp -= amt;
+  u.flash = 0.12;
+  if (u.hp <= 0 && !u.dead) {
+    u.dead = true;
+    from.gold += u.d.gold;
+    from.xp   += u.d.xp;
+    from.kills++; from.earned += u.d.gold;
+    sfx("die");
+    // leave a body behind for a beat instead of vanishing mid-swing
+    G.fx.push({ corpse: { d: u.d, slot: u.slot, age: u.age, dir: u.dir,
+                          side: u.side, cd: 0, step: u.step, flash: 0,
+                          hp: 1, maxHp: 1, lane: u.lane },
+                x: u.x, lane: u.lane, life: 0.65, max: 0.65 });
+    G.fx.push({ x: u.x, y: GROUND_Y - 46 + u.lane, txt: "+" + u.d.gold,
+                life: 0.85, max: 0.85, c: "#f2c14e" });
+    for (let i = 0; i < 8; i++) burst(u.x, GROUND_Y - 14 + u.lane, "#c1494a");
+  }
+}
+
+function burst(x, y, c) {
+  G.fx.push({ x, y, vx: rnd(-70, 70), vy: rnd(-120, -20), r: rnd(2, 5), life: rnd(0.25, 0.6), max: 0.6, c });
+}
+
+/* ---------------- combat targeting ---------------- */
+
+function nearestTarget(u) {
+  const other = foe(u.side);
+  let best = null, bd = Infinity;
+  for (const t of other.units) {
+    if (t.dead) continue;
+    // only look forward
+    const ahead = (t.x - u.x) * u.dir;
+    if (ahead < -20) continue;
+    const dist = Math.abs(t.x - u.x);
+    if (dist < bd) { bd = dist; best = t; }
+  }
+  const baseX = u.side.isPlayer ? BASE_X.e : BASE_X.p;
+  const bDist = Math.abs(baseX - u.x);
+  if (bDist < bd) return { base: true, x: baseX, dist: bDist };
+  return best ? { unit: best, x: best.x, dist: bd } : { base: true, x: baseX, dist: bDist };
+}
+
+function fire(from, tgt, def, isTurret) {
+  const y0 = GROUND_Y - (isTurret ? 78 : 20) + (from.lane || 0);
+  G.shots.push({
+    side: from.side, x: from.x, y: y0, sx: from.x, sy: y0,
+    d0: Math.hypot(tgt.x - from.x, 20),
+    tx: tgt.x, ty: GROUND_Y - 16 + (tgt.unit ? tgt.unit.lane : 0),
+    target: tgt.unit || null, base: !!tgt.base,
+    dmg: def.dmg * (from.pow || 1), splash: def.splash || 0, slot: from.slot,
+    spd: 420 + (def.splash ? -60 : 0),
+    age: from.age || 0,
+  });
+  sfx(def.splash ? "cannon" : ((from.age || 0) <= 1 && !isTurret ? "bow" : "gun"));
+}
+
+// side = the side taking damage, from = the attacker. Landing hits on a base
+// pays out gold and xp, so a side that wins the field converts that lead into
+// a finish instead of grinding a permanent midfield stalemate.
+function hitBase(side, amt, from) {
+  const dealt = amt * BASE_DMG_MULT;
+  side.hp -= dealt;
+  if (from) { from.gold += dealt * 0.05; from.xp += dealt * 0.11; }
+  G.shake = Math.max(G.shake, 6);
+  const bx = side.isPlayer ? BASE_X.p : BASE_X.e;
+  G.fx.push({ x: bx + (side.isPlayer ? 26 : -26), y: GROUND_Y - rnd(20, 70), r: rnd(5, 11), life: 0.3, max: 0.3, c: "#ffd88a", ring: true });
+  if (side.hp <= 0 && !G.finishing) {
+    side.hp = 0;
+    G.finishing = { result: side.isPlayer ? "lose" : "win", loser: side, t: 0 };
+    sfx("boom");
+  }
+}
+
+/* ---------------- update loop ---------------- */
+
+function update(dt) {
+  G.t += dt;
+  G.shake *= Math.pow(0.001, dt);
+
+  // a base going down gets its own beat before the result screen
+  if (G.finishing) {
+    const f = G.finishing;
+    f.t += dt;
+    const bx = f.loser.isPlayer ? BASE_X.p : BASE_X.e;
+    if (Math.random() < 0.6) {
+      G.fx.push({ x: bx + rnd(-50, 50), y: GROUND_Y - rnd(8, 130), r: rnd(14, 40),
+                  life: 0.5, max: 0.5, c: "#ffb35c", ring: true });
+      for (let i = 0; i < 5; i++) burst(bx + rnd(-44, 44), GROUND_Y - rnd(0, 120), "#ffd88a");
+    }
+    if (!f.lastBoom || f.t - f.lastBoom > 0.22) { f.lastBoom = f.t; sfx("boom"); }
+    G.shake = Math.max(G.shake, 18);
+    for (const fx of G.fx) { fx.life -= dt;
+      if (fx.vx !== undefined) { fx.x += fx.vx * dt; fx.y += fx.vy * dt; fx.vy += 320 * dt; } }
+    G.fx = G.fx.filter(fx => fx.life > 0);
+    if (f.t > 1.5) endGame(f.result);
+    return;                                   // combat is frozen during the collapse
+  }
+
+  for (const side of [G.p, G.e]) {
+    // passive income + cooldowns
+    // passive gold is the floor that keeps a losing side in the game; kill
+    // gold is the reward on top. Too little passive and the first lost fight
+    // snowballs into an unrecoverable deficit.
+    // Income starts lean and accelerates, so the opening is a careful trickle
+    // and the late game can field the expensive units without a long wait.
+    const ramp = 0.42 + Math.min(G.t / 190, 2.4);
+    const inc = (13 + side.age * 9) * ramp
+              * (side.isPlayer || mode === "2p" ? 1 : 1 + (difficulty - 1) * 0.5);
+    side.gold += inc * dt;
+    for (let i = 0; i < 3; i++) {
+      side.cds[i] = Math.max(0, side.cds[i] - dt);
+      if (side.qs[i] > 0 && side.cds[i] <= 0 && side.units.length < MAX_UNITS) {
+        side.qs[i]--; emit(side, i);
+      }
+    }
+    side.specialCd = Math.max(0, side.specialCd - dt);
+
+    // turrets
+    for (const t of side.turrets) {
+      t.cd -= dt;
+      if (t.cd > 0) continue;
+      const other = foe(side);
+      const tx = side.isPlayer ? BASE_X.p : BASE_X.e;
+      let best = null, bd = t.def.range;
+      for (const u of other.units) {
+        if (u.dead) continue;
+        const d = Math.abs(u.x - tx);
+        if (d < bd) { bd = d; best = u; }
+      }
+      if (best) {
+        t.cd = t.def.cd;
+        fire({ x: tx + (side.isPlayer ? 26 : -26), side, lane: 0, age: t.age, pow: side.isPlayer ? 1 : aiPower },
+             { unit: best, x: best.x }, t.def, true);
+      }
+    }
+
+    // units
+    for (const u of side.units) {
+      if (u.dead) continue;
+      if (u.flash > 0) u.flash -= dt;
+      u.cd -= dt;
+      const tgt = nearestTarget(u);
+      const reach = u.d.rng + 12;
+      if (tgt.dist > reach) {
+        // walk, but don't overlap a friendly ahead of you
+        let blocker = null;
+        for (const f of side.units) {
+          if (f === u || f.dead) continue;
+          const gap = (f.x - u.x) * u.dir;
+          if (gap > 0 && gap < 17 && Math.abs(f.lane - u.lane) < 7) { blocker = f; break; }
+        }
+        if (blocker) {
+          // step aside rather than queue up behind a friend: a rank that just
+          // stands there is an army fighting at a fraction of its strength
+          const away = blocker.lane > u.lane ? -1 : 1;
+          u.lane = clamp(u.lane + away * 34 * dt, -30, 30);
+        }
+        if (!blocker) {
+          u.x += u.d.spd * u.dir * dt;
+          u.step += dt * u.d.spd * 0.28;
+        }
+      } else if (u.cd <= 0) {
+        u.cd = u.d.cd;
+        if (u.d.kind === "shot") {
+          fire(u, tgt, u.d, false);
+        } else {
+          if (tgt.unit) damage(tgt.unit, u.d.dmg * u.pow * counterMul(u.slot, tgt.unit), side);
+          else hitBase(foe(side), u.d.dmg * u.pow, side);
+          G.fx.push({ x: u.x + u.dir * 16, y: GROUND_Y - 18 + u.lane, r: 8, life: 0.14, max: 0.14, c: "#fff2c4", ring: true });
+          sfx("melee");
+        }
+      }
+      u.x = clamp(u.x, 40, FIELD_W - 40);
+    }
+    side.units = side.units.filter(u => !u.dead);
+  }
+
+  // projectiles
+  for (const s of G.shots) {
+    const goalX = s.target && !s.target.dead ? s.target.x : s.tx;
+    const goalY = s.target && !s.target.dead ? GROUND_Y - 16 + s.target.lane : s.ty;
+    const dx = goalX - s.x, dy = goalY - s.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const move = s.spd * dt;
+    if (move >= dist) {
+      s.x = goalX; s.y = goalY; s.done = true;
+      const shooter = s.side, other = foe(shooter);
+      if (s.splash) {
+        for (const u of other.units) {
+          if (!u.dead && Math.abs(u.x - s.x) < s.splash) damage(u, s.dmg * counterMul(s.slot, u), shooter);
+        }
+        const bx = shooter.isPlayer ? BASE_X.e : BASE_X.p;
+        if (Math.abs(bx - s.x) < s.splash + 20) hitBase(other, s.dmg, shooter);
+        G.fx.push({ x: s.x, y: s.y, r: s.splash, life: 0.3, max: 0.3, c: "#ffb35c", ring: true });
+      } else if (s.target && !s.target.dead) {
+        damage(s.target, s.dmg * counterMul(s.slot, s.target), shooter);
+      } else if (s.base || !s.target) {
+        const bx = shooter.isPlayer ? BASE_X.e : BASE_X.p;
+        if (Math.abs(bx - s.x) < 60) hitBase(other, s.dmg, shooter);
+      }
+      for (let i = 0; i < 4; i++) burst(s.x, s.y, "#ffd88a");
+      sfx(s.splash ? "boom" : "hit");
+    } else {
+      s.x += dx / dist * move;
+      s.y += dy / dist * move;
+    }
+  }
+  G.shots = G.shots.filter(s => !s.done);
+
+  updateStrikes(dt);
+
+  // particles
+  for (const f of G.fx) {
+    f.life -= dt;
+    if (f.txt) { f.y -= 30 * dt; continue; }
+    if (f.plane) { f.x += f.dir * 620 * dt; continue; }
+    if (f.incoming) continue;
+    if (f.vx !== undefined) {
+      f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 320 * dt;
+    }
+  }
+  G.fx = G.fx.filter(f => f.life > 0);
+
+  ai(dt);
+}
+
+/* ---------------- enemy AI ---------------- */
+
+function ai(dt) {
+  if (mode === "2p") return;          // P2 is a human, hands off
+  const e = G.e;
+  e.aiTimer -= dt;
+  if (e.aiTimer > 0) return;
+  e.aiTimer = rnd(0.85, 1.6) / difficulty;   // slower, more human decision cadence
+
+  // evolve as soon as it can — but hold gold if it's starving for units
+  if (e.age < AGES.length - 1 && e.xp >= AGES[e.age].xpNext) { evolve(e); return; }
+
+  // special when the player has a real push going
+  if (e.specialCd <= 0 && G.p.units.length >= 5) { useSpecial(e); return; }
+
+  // turret when comfortably rich
+  const t = AGES[e.age].turret;
+  if (e.turrets.length < TURRET_SLOTS[e.age] && e.gold > t.cost * (1.8 - 0.4 * difficulty)) {
+    buyTurret(e); return;
+  }
+
+  if (e.units.length >= MAX_UNITS) return;
+  // prefer the strongest affordable unit, with a bias to cheap chaff when outnumbered
+  const outnumbered = G.p.units.length > e.units.length + 2;
+  // read what the other side is fielding and lead with the class that counters
+  // it; falling back to strongest-affordable when the field is empty
+  const counts = [0, 0, 0];
+  for (const u of G.p.units) if (u.slot != null) counts[u.slot]++;
+  let dom = -1, most = 0;
+  for (let i = 0; i < 3; i++) if (counts[i] > most) { most = counts[i]; dom = i; }
+  const want = dom < 0 ? -1 : [0, 1, 2].find(x => COUNTER[x][dom] > 1);
+  const base = outnumbered ? [0, 1, 2] : [2, 1, 0];
+  const order = want >= 0 ? [want, ...base.filter(x => x !== want)] : base;
+  for (const slot of order) {
+    if (e.qs[slot] >= 2) continue;
+    const d = spec(e, slot);
+    const buffer = outnumbered ? 1 : 1.15;
+    if (e.gold >= d.cost * buffer) { spawn(e, slot); return; }
+  }
+}
+
+/* ---------------- rendering ---------------- */
+
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+let view = { s: 1, ox: 0, oy: 0, top: 0, bot: FIELD_H };
+
+// fixed star + cloud fields, generated once so they never flicker frame to frame
+const STARS = [], CLOUDS = [];
+for (let i = 0; i < 80; i++) {
+  const a = (i * 9301 + 49297) % 233280 / 233280, b = (i * 4919 + 7919) % 233280 / 233280;
+  STARS.push({ x: a * FIELD_W, y: -170 + b * 400, r: 0.7 + ((i * 7) % 4) * 0.35, tw: (i % 9) });
+}
+for (let i = 0; i < 7; i++) {
+  const a = (i * 7717 + 311) % 233280 / 233280, b = (i * 2179 + 97) % 233280 / 233280;
+  CLOUDS.push({ x: a * FIELD_W * 1.3 - 100, y: -110 + b * 210, w: 90 + b * 150, h: 13 + a * 16, sp: 3 + a * 7 });
+}
+
+// blend two "#rrggbb" colours; used for the age crossfade across the sky
+function mix(c1, c2, t) {
+  const p1 = parseInt(c1.slice(1), 16), p2 = parseInt(c2.slice(1), 16);
+  const r = Math.round((p1 >> 16) + ((p2 >> 16) - (p1 >> 16)) * t);
+  const g = Math.round(((p1 >> 8) & 255) + (((p2 >> 8) & 255) - ((p1 >> 8) & 255)) * t);
+  const b = Math.round((p1 & 255) + ((p2 & 255) - (p1 & 255)) * t);
+  return "rgb(" + r + "," + g + "," + b + ")";
+}
+
+function resize() {
+  const r = cv.parentElement.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.floor(r.width * dpr);
+  cv.height = Math.floor(r.height * dpr);
+  // Always show the full width — you must be able to see both bases. Height is
+  // then whatever that scale gives; the ground line is parked low in frame and
+  // sky/earth are painted past the field box so there are never letterbox bars.
+  let s = r.width / FIELD_W;
+  const MUST_SEE = 235;                                 // bases + troops + a strip of ground
+  if (MUST_SEE * s > r.height) s = r.height / MUST_SEE;
+  // park the ground line ~76% down the frame: sky above, a shallow strip of
+  // earth below, and the fighting where the eye already is
+  const groundOnScreen = clamp(r.height * 0.76, r.height * 0.5, r.height - 30);
+  view.s = s * dpr;
+  view.ox = (r.width - FIELD_W * s) / 2 * dpr;
+  view.oy = (groundOnScreen - GROUND_Y * s) * dpr;
+  view.top = -view.oy / view.s;                          // field y at screen top
+  view.bot = (cv.height - view.oy) / view.s;             // field y at screen bottom
+}
+window.addEventListener("resize", resize);
+
+function draw() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = "#0a0d12";
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  const sh = G ? G.shake : 0;
+  ctx.setTransform(view.s, 0, 0, view.s,
+    view.ox + (sh ? rnd(-sh, sh) : 0) * view.s,
+    view.oy + (sh ? rnd(-sh, sh) : 0) * view.s);
+  ctx.beginPath(); ctx.rect(0, view.top, FIELD_W, view.bot - view.top); ctx.clip();
+
+  if (!G) return;
+
+  // Sky crossfades from your age on the left to theirs on the right. Drawn as
+  // lerped vertical strips — a two-rect split leaves a visible seam box.
+  const a = AGES[G.p.age], b = AGES[G.e.age];
+  const top = view.top, bot = view.bot;
+  if (G.p.age === G.e.age) {
+    const g = ctx.createLinearGradient(0, top, 0, GROUND_Y);
+    g.addColorStop(0, a.sky[0]); g.addColorStop(1, a.sky[1]);
+    ctx.fillStyle = g; ctx.fillRect(0, top, FIELD_W, GROUND_Y - top);
+  } else {
+    const N = 48, sw = FIELD_W / N;
+    for (let i = 0; i < N; i++) {
+      const t = i / (N - 1);
+      const g = ctx.createLinearGradient(0, top, 0, GROUND_Y);
+      g.addColorStop(0, mix(a.sky[0], b.sky[0], t));
+      g.addColorStop(1, mix(a.sky[1], b.sky[1], t));
+      ctx.fillStyle = g;
+      ctx.fillRect(i * sw - 0.5, top, sw + 1, GROUND_Y - top);
+    }
+  }
+
+  // sky furniture — stars, a disc, slow cloud bands
+  for (const st of STARS) {
+    if (st.y < top - 10) continue;
+    ctx.globalAlpha = 0.25 + 0.3 * (0.5 + 0.5 * Math.sin(G.t * 1.4 + st.tw));
+    ctx.fillStyle = "#dfeaff";
+    ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 0.10;
+  ctx.fillStyle = "#ffe9c0";
+  ctx.beginPath(); ctx.arc(FIELD_W * 0.52, top + (GROUND_Y - top) * 0.18, 46, 0, 7); ctx.fill();
+  ctx.globalAlpha = 0.06;
+  ctx.fillStyle = "#ffffff";
+  for (const c of CLOUDS) {
+    const cx = ((c.x + G.t * c.sp) % (FIELD_W + 400)) - 200;
+    if (c.y < top - c.h) continue;
+    ctx.beginPath(); ctx.ellipse(cx, c.y, c.w, c.h, 0, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // each side's half of the horizon shows its own era
+  drawSkyline(G.p.age, 0, FIELD_W * 0.5);
+  drawSkyline(G.e.age, FIELD_W * 0.5, FIELD_W);
+
+  // distant hills
+  ctx.fillStyle = "rgba(0,0,0,.22)";
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y);
+  for (let x = 0; x <= FIELD_W; x += 60) {
+    ctx.lineTo(x, GROUND_Y - 40 - Math.sin(x * 0.011) * 26 - Math.cos(x * 0.023) * 14);
+  }
+  ctx.lineTo(FIELD_W, GROUND_Y); ctx.closePath(); ctx.fill();
+
+  // ground — extends past the field box so tall viewports show earth, not bars
+  const gg = ctx.createLinearGradient(0, GROUND_Y, 0, Math.max(FIELD_H, bot));
+  gg.addColorStop(0, mix(a.ground, b.ground, 0.5)); gg.addColorStop(1, "#14171c");
+  ctx.fillStyle = gg; ctx.fillRect(0, GROUND_Y, FIELD_W, bot - GROUND_Y);
+  ctx.fillStyle = "rgba(255,255,255,.05)";
+  ctx.fillRect(0, GROUND_Y, FIELD_W, 2);
+  ctx.globalAlpha = 0.5;
+  for (let i = 0; i < 60; i++) {
+    const a = (i * 6151 + 331) % 233280 / 233280, b = (i * 3121 + 17) % 233280 / 233280;
+    ctx.fillStyle = i % 2 ? "rgba(255,255,255,.028)" : "rgba(0,0,0,.10)";
+    ctx.fillRect(a * FIELD_W, GROUND_Y + 6 + b * (bot - GROUND_Y), 12 + b * 34, 2);
+  }
+  ctx.globalAlpha = 1;
+
+  drawBase(G.p);
+  drawBase(G.e);
+
+  // near-foreground debris, drawn dark and low for depth
+  for (let i = 0; i < 26; i++) {
+    const r1 = ((i * 3733 + 91) % 971) / 971, r2 = ((i * 6151 + 17) % 983) / 983;
+    const fx2 = r1 * FIELD_W, fy = GROUND_Y + 24 + r2 * Math.max(18, bot - GROUND_Y - 30);
+    const w2 = 5 + r2 * 13, hgt = 2 + r1 * 3;
+    ctx.fillStyle = "rgba(0,0,0,.22)";
+    ctx.beginPath(); ctx.ellipse(fx2, fy, w2, hgt, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.05)";
+    ctx.beginPath(); ctx.ellipse(fx2, fy - hgt * 0.5, w2 * 0.8, hgt * 0.5, 0, Math.PI, 0); ctx.fill();
+  }
+
+  const all = G.p.units.concat(G.e.units).sort((u, v) => u.lane - v.lane);
+  for (const u of all) drawUnit(u);
+
+  for (const s of G.shots) drawShot(s);
+  for (const f of G.fx) if (!f.incoming && !f.plane) drawFx(f);
+  for (const f of G.fx) if (f.incoming || f.plane) drawFx(f);
+}
+
+// Deterministic era props along the horizon — seeded by index so they never
+// jitter between frames.
+function drawSkyline(age, x0, x1) {
+  const N = 8, base = GROUND_Y - 34;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,.28)";
+  ctx.strokeStyle = "rgba(0,0,0,.28)";
+  for (let i = 0; i < N; i++) {
+    const r1 = ((i * 7919 + 13) % 997) / 997, r2 = ((i * 104729 + 71) % 991) / 991;
+    const x = x0 + (x1 - x0) * ((i + 0.5) / N) + (r1 - 0.5) * 48;
+    const h = 34 + r2 * 46;
+    if (age === 0) {                                   // rock spires
+      ctx.beginPath();
+      ctx.moveTo(x - 15 - r1 * 8, base); ctx.lineTo(x, base - h);
+      ctx.lineTo(x + 13 + r2 * 8, base); ctx.closePath(); ctx.fill();
+    } else if (age === 1) {                            // keep towers
+      const w = 13 + r1 * 7;
+      ctx.fillRect(x - w / 2, base - h, w, h);
+      for (let k = 0; k < 3; k++) ctx.fillRect(x - w / 2 + k * (w / 3), base - h - 6, w / 4.2, 6);
+    } else if (age === 2) {                            // windmills and spires
+      if (i % 2) {
+        ctx.fillRect(x - 6, base - h, 12, h);
+        ctx.save(); ctx.translate(x, base - h - 2);
+        ctx.rotate(G.t * 0.5 + i);
+        ctx.lineWidth = 3;
+        for (let k = 0; k < 4; k++) {
+          ctx.beginPath(); ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(k * Math.PI / 2) * 20, Math.sin(k * Math.PI / 2) * 20); ctx.stroke();
+        }
+        ctx.restore();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(x - 9, base); ctx.lineTo(x - 9, base - h * 0.6);
+        ctx.lineTo(x, base - h - 14); ctx.lineTo(x + 9, base - h * 0.6);
+        ctx.lineTo(x + 9, base); ctx.closePath(); ctx.fill();
+      }
+    } else if (age === 3) {                            // chimneys and blocks
+      if (i % 3 === 0) {
+        ctx.fillRect(x - 5, base - h - 22, 10, h + 22);
+        ctx.fillRect(x - 8, base - h - 26, 16, 5);
+      } else {
+        ctx.fillRect(x - 16, base - h * 0.7, 32, h * 0.7);
+      }
+    } else {                                           // future spires
+      const w = 9 + r1 * 6;
+      ctx.beginPath();
+      ctx.moveTo(x - w, base); ctx.lineTo(x - w * 0.45, base - h - 26);
+      ctx.lineTo(x + w * 0.45, base - h - 26); ctx.lineTo(x + w, base); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "rgba(110,220,255,.30)";
+      ctx.fillRect(x - w * 0.4, base - h - 24, w * 0.8, 3);
+      ctx.fillStyle = "rgba(0,0,0,.28)";
+    }
+  }
+  ctx.restore();
+}
+
+function drawBase(side) {
+  const x = side.isPlayer ? BASE_X.p : BASE_X.e;
+  const flip = side.isPlayer ? 1 : -1;
+  const age = side.age;
+  const frac = clamp(side.hp / side.maxHp, 0, 1);
+  const dying = G.finishing && G.finishing.loser === side
+    ? clamp(G.finishing.t / 1.5, 0, 1) : 0;
+  ctx.save();
+  ctx.translate(x, GROUND_Y + dying * 26);
+  ctx.rotate(dying * 0.16 * flip);
+  ctx.globalAlpha = 1 - dying * 0.35;
+  ctx.scale(flip, 1);
+
+  const body = side.isPlayer ? "#4d5a6e" : "#6e4d4d";
+  const dark = side.isPlayer ? "#394453" : "#523a3a";
+  const h = 118 + age * 14;
+  const w = 74 + age * 5;
+
+  // silhouette shifts with age: cave → castle → fort → bunker → spire
+  ctx.fillStyle = dark;
+  ctx.fillRect(-w / 2 - 6, -14, w + 12, 14);
+  ctx.fillStyle = body;
+  if (age === 0) {
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, 0); ctx.lineTo(-w / 2 + 8, -h * 0.7);
+    ctx.lineTo(0, -h); ctx.lineTo(w / 2 - 6, -h * 0.65); ctx.lineTo(w / 2, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#1b1712";
+    ctx.beginPath(); ctx.ellipse(6, -12, 15, 24, 0, Math.PI, 0); ctx.fill();
+  } else if (age === 1) {
+    ctx.fillRect(-w / 2, -h, w, h);
+    ctx.fillStyle = dark;
+    for (let i = 0; i < 4; i++) ctx.fillRect(-w / 2 + i * (w / 4), -h - 10, w / 8, 10);
+    ctx.fillStyle = "#1b1712";
+    ctx.fillRect(-4, -34, 22, 34);
+  } else if (age === 2) {
+    ctx.fillRect(-w / 2, -h * 0.8, w, h * 0.8);
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.moveTo(-w / 2 - 8, -h * 0.8); ctx.lineTo(0, -h - 12); ctx.lineTo(w / 2 + 8, -h * 0.8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#1b1712"; ctx.fillRect(-2, -36, 24, 36);
+  } else if (age === 3) {
+    ctx.fillRect(-w / 2, -h * 0.62, w, h * 0.62);
+    ctx.fillStyle = dark;
+    ctx.fillRect(-w / 2 + 6, -h * 0.9, w * 0.42, h * 0.3);
+    ctx.fillStyle = "#8fa2b8"; ctx.fillRect(-w / 2 + 12, -h * 0.86, 12, 8);
+    ctx.fillStyle = "#1b1712"; ctx.fillRect(0, -34, 26, 34);
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, 0); ctx.lineTo(-w / 2 + 10, -h); ctx.lineTo(w / 2 - 14, -h - 26);
+    ctx.lineTo(w / 2, -h * 0.5); ctx.lineTo(w / 2, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#59e3ff";
+    ctx.globalAlpha = 0.55 + Math.sin(G.t * 3) * 0.25;
+    ctx.fillRect(-w / 2 + 14, -h * 0.82, w * 0.5, 5);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#0e2a33"; ctx.fillRect(2, -32, 24, 32);
+  }
+
+  // banner
+  const px = -w / 2 + 7, py = -h - 10;
+  ctx.strokeStyle = dark; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - 40); ctx.stroke();
+  ctx.fillStyle = side.isPlayer ? "#5b8fc7" : "#c75b5b";
+  ctx.beginPath();
+  for (let i = 0; i <= 5; i++) {
+    const t = i / 5;
+    ctx.lineTo(px + t * 25, py - 38 + Math.sin(G.t * 4.5 + t * 3.4) * 2.6);
+  }
+  for (let i = 5; i >= 0; i--) {
+    const t = i / 5;
+    ctx.lineTo(px + t * 25, py - 25 + Math.sin(G.t * 4.5 + t * 3.4) * 2.6);
+  }
+  ctx.closePath(); ctx.fill();
+
+  // battle damage: cracks first, then fire as it nears collapse
+  if (frac < 0.72) {
+    ctx.strokeStyle = "rgba(0,0,0,.5)";
+    ctx.lineWidth = 2;
+    const n = frac < 0.4 ? 5 : 3;
+    for (let i = 0; i < n; i++) {
+      const r1 = ((i * 5471 + 29) % 977) / 977, r2 = ((i * 8017 + 53) % 983) / 983;
+      const cx = -w / 2 + r1 * w, cy = -h * (0.15 + r2 * 0.7);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + 6 - r2 * 12, cy + 13 + r1 * 10);
+      ctx.lineTo(cx - 4 + r1 * 10, cy + 27 + r2 * 12);
+      ctx.stroke();
+    }
+  }
+  if (frac < 0.36) {
+    for (let i = 0; i < 3; i++) {
+      const r1 = ((i * 3301 + 7) % 991) / 991;
+      const fxx = -w / 2 + 8 + r1 * (w - 16);
+      const fh = 13 + Math.sin(G.t * 7 + i * 2.1) * 5 + (0.36 - frac) * 34;
+      ctx.globalAlpha = (1 - dying * 0.35) * 0.72;
+      ctx.fillStyle = "#ff9a3c";
+      ctx.beginPath();
+      ctx.moveTo(fxx - 5, -h + 4); ctx.lineTo(fxx, -h + 4 - fh);
+      ctx.lineTo(fxx + 5, -h + 4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffe08a";
+      ctx.beginPath();
+      ctx.moveTo(fxx - 2, -h + 4); ctx.lineTo(fxx, -h + 4 - fh * 0.55);
+      ctx.lineTo(fxx + 2, -h + 4); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1 - dying * 0.35;
+    }
+  }
+
+  // turrets on the roof
+  side.turrets.forEach((t, i) => {
+    const tx = -w / 2 + 14 + i * ((w - 24) / Math.max(1, TURRET_SLOTS[age] - 1 || 1));
+    const ty = -h - 8;
+    const recoil = clamp(1 - t.cd / (t.def.cd || 1), 0, 1);   // kicks back when it fires
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.roundRect(tx - 9, ty, 18, 14, 2); ctx.fill();
+    ctx.fillStyle = side.isPlayer ? "#93a7c4" : "#c49393";
+    ctx.beginPath(); ctx.arc(tx, ty + 2, 6, Math.PI, 0); ctx.fill();
+    ctx.fillRect(tx - 1 - (1 - recoil) * 4, ty - 8, 24, 5);
+    ctx.fillStyle = "#12151a";
+    ctx.fillRect(tx + 21 - (1 - recoil) * 4, ty - 9, 4, 7);
+  });
+  ctx.restore();
+}
+
+function drawUnit(u, fade) {
+  const x = u.x, y = GROUND_Y + u.lane * 0.35;
+  const p = u.side.isPlayer;
+  const S = Math.min(0.9 + u.d.hp / 3000, 1.9) * 1.35;
+  const bob = Math.sin(u.step) * 1.6;
+  const cls = u.slot == null ? 0 : u.slot, age = u.age;
+  // lunge forward on the swing so a hit reads as an impact, not a pose
+  const lunge = u.d.kind === "melee"
+    ? clamp((u.cd - u.d.cd * 0.72) / (u.d.cd * 0.28 || 1), 0, 1) * 6 * u.dir : 0;
+  ctx.save();
+  ctx.translate(x + lunge, y + u.lane * 0.12);
+  if (fade !== undefined) { ctx.globalAlpha = fade; ctx.rotate((1 - fade) * 1.1 * u.dir); }
+  ctx.scale(u.dir, 1);
+
+  ctx.fillStyle = "rgba(0,0,0,.32)";
+  ctx.beginPath(); ctx.ellipse(0, 1, 13 * S, 4 * S, 0, 0, 7); ctx.fill();
+
+  const skin = p ? "#7fb2e0" : "#e08a7f";
+  const kit  = p ? "#3f6a99" : "#99453f";
+  const trim = p ? "#cfe4f7" : "#f7d2cf";
+  const dark = p ? "#2a4a6e" : "#6e2f2a";
+  const H = 30 * S;
+  const swing = Math.sin(u.step) * 5;
+
+  if (cls === 2 && age === 0) {                 // beast and rider
+    ctx.strokeStyle = dark; ctx.lineWidth = 3 * S; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-7 * S, -8 * S); ctx.lineTo(-7 * S + swing, 0);
+    ctx.moveTo(7 * S, -8 * S);  ctx.lineTo(7 * S - swing, 0);
+    ctx.stroke();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(0, -12 * S, 14 * S, 7 * S, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(10 * S, -16 * S); ctx.lineTo(19 * S, -23 * S);
+    ctx.lineTo(22 * S, -20 * S); ctx.lineTo(12 * S, -13 * S); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = kit; ctx.beginPath();
+    ctx.roundRect(-5 * S, -27 * S, 9 * S, 13 * S, 2 * S); ctx.fill();
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(-0.5 * S, -30 * S, 4.2 * S, 0, 7); ctx.fill();
+    ctx.strokeStyle = trim; ctx.lineWidth = 2.4 * S;
+    ctx.beginPath(); ctx.moveTo(2 * S, -26 * S); ctx.lineTo(13 * S, -33 * S); ctx.stroke();
+
+  } else if (cls === 2 && age === 2) {          // field gun on wheels
+    ctx.fillStyle = dark;
+    for (const wx of [-7, 6]) { ctx.beginPath(); ctx.arc(wx * S, -6 * S, 6.5 * S, 0, 7); ctx.fill(); }
+    ctx.fillStyle = "#12151a";
+    for (const wx of [-7, 6]) { ctx.beginPath(); ctx.arc(wx * S, -6 * S, 2.2 * S, 0, 7); ctx.fill(); }
+    ctx.fillStyle = kit;
+    ctx.beginPath(); ctx.roundRect(-12 * S, -16 * S, 22 * S, 8 * S, 2 * S); ctx.fill();
+    ctx.fillStyle = trim; ctx.fillRect(4 * S, -20 * S, 20 * S, 5 * S);
+    ctx.fillStyle = dark;  ctx.fillRect(22 * S, -21 * S, 4 * S, 7 * S);
+    ctx.fillStyle = kit;   ctx.fillRect(-19 * S, -20 * S, 6 * S, 14 * S);
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(-16 * S, -23 * S, 4.2 * S, 0, 7); ctx.fill();
+
+  } else if (cls === 2 && age === 3) {          // tank
+    ctx.fillStyle = "#15181d";
+    ctx.beginPath(); ctx.roundRect(-18 * S, -11 * S, 36 * S, 10 * S, 4 * S); ctx.fill();
+    ctx.fillStyle = dark;
+    for (let i = 0; i < 7; i++) ctx.fillRect((-16 + i * 5) * S, -9 * S, 3 * S, 6 * S);
+    ctx.fillStyle = kit;
+    ctx.beginPath(); ctx.roundRect(-15 * S, -19 * S, 30 * S, 9 * S, 2 * S); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-8 * S, -27 * S, 17 * S, 9 * S, 3 * S); ctx.fill();
+    ctx.fillStyle = trim; ctx.fillRect(7 * S, -25 * S, 24 * S, 4 * S);
+    ctx.fillStyle = dark;  ctx.fillRect(29 * S, -26 * S, 4 * S, 6 * S);
+
+  } else if (cls === 2 && age === 4) {          // titan walker
+    ctx.strokeStyle = kit; ctx.lineWidth = 6.5 * S; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-4 * S, -20 * S); ctx.lineTo(swing * 0.8, -10 * S); ctx.lineTo(swing * 0.5, 0);
+    ctx.moveTo(4 * S, -20 * S);  ctx.lineTo(-swing * 0.8, -10 * S); ctx.lineTo(-swing * 0.5, 0);
+    ctx.stroke();
+    ctx.fillStyle = kit;
+    ctx.beginPath(); ctx.roundRect(-13 * S, -40 * S, 26 * S, 21 * S, 5 * S); ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.roundRect(-9 * S, -46 * S, 15 * S, 7 * S, 3 * S); ctx.fill();
+    ctx.fillStyle = "#59e3ff";
+    ctx.fillRect(-6 * S, -44 * S, 10 * S, 2.5 * S);
+    ctx.fillStyle = trim; ctx.fillRect(11 * S, -36 * S, 26 * S, 6 * S);
+    ctx.fillStyle = dark;  ctx.fillRect(35 * S, -37 * S, 5 * S, 8 * S);
+
+  } else {                                       // humanoid
+    const armY0 = -H * 0.66 + bob * .3;
+
+    // cape / coat behind the body, swaying against the stride
+    if (age === 1 && cls === 2) {
+      ctx.fillStyle = dark;
+      ctx.beginPath();
+      ctx.moveTo(-3 * S, -H * 0.84);
+      ctx.lineTo(-11 * S - swing * 0.5, -H * 0.30);
+      ctx.lineTo(-5 * S - swing * 0.3, -H * 0.06);
+      ctx.lineTo(-1 * S, -H * 0.40);
+      ctx.closePath(); ctx.fill();
+    } else if (age === 2) {
+      ctx.fillStyle = dark;
+      ctx.beginPath();
+      ctx.moveTo(-4 * S, -H * 0.55);
+      ctx.lineTo(-8 * S - swing * 0.4, -H * 0.16);
+      ctx.lineTo(-2 * S, -H * 0.22);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // rear arm swings opposite the legs
+    ctx.strokeStyle = dark; ctx.lineWidth = 2.7 * S; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-1 * S, armY0); ctx.lineTo(-5 * S - swing * 0.7, armY0 + 8 * S);
+    ctx.stroke();
+
+    ctx.strokeStyle = kit; ctx.lineWidth = 3.4 * S;
+    ctx.beginPath();
+    ctx.moveTo(0, -H * 0.42); ctx.lineTo(swing, 0);
+    ctx.moveTo(0, -H * 0.42); ctx.lineTo(-swing, 0);
+    ctx.stroke();
+    ctx.fillStyle = kit;
+    ctx.beginPath(); ctx.roundRect(-5 * S, -H * 0.82 + bob * .3, 10 * S, H * 0.44, 3); ctx.fill();
+    if (age >= 3) { ctx.fillStyle = dark; ctx.fillRect(-7 * S, -H * 0.78 + bob * .3, 4 * S, H * 0.3); }
+
+    if (age === 0) {                             // ragged fur hem
+      ctx.fillStyle = dark;
+      for (let k = 0; k < 4; k++) {
+        const fxp = -5 * S + k * 2.7 * S;
+        ctx.beginPath();
+        ctx.moveTo(fxp, -H * 0.38 + bob * .3);
+        ctx.lineTo(fxp + 1.4 * S, -H * 0.30 + bob * .3);
+        ctx.lineTo(fxp + 2.8 * S, -H * 0.38 + bob * .3);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+
+    const hy = -H * 0.92 + bob * .3;
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(1.5 * S, hy, 4.4 * S, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(12,16,22,.72)";        // eye, so the unit reads as facing forward
+    ctx.beginPath(); ctx.arc(3.6 * S, hy - 0.4 * S, 1.15 * S, 0, 7); ctx.fill();
+    ctx.fillStyle = trim;
+    if (age === 1) {
+      ctx.beginPath(); ctx.arc(1.5 * S, hy, 4.9 * S, Math.PI, 0); ctx.fill();
+      if (cls === 2) { ctx.fillStyle = "#e6c464"; ctx.fillRect(0.5 * S, hy - 10 * S, 2 * S, 6 * S); }
+    } else if (age === 2) {
+      ctx.fillRect(-4 * S, hy - 4 * S, 12 * S, 1.8 * S);
+      ctx.fillRect(-1 * S, hy - 6.5 * S, 6 * S, 3 * S);
+    } else if (age >= 3) {
+      ctx.beginPath(); ctx.arc(1.5 * S, hy - 0.6 * S, 5.1 * S, Math.PI, 0); ctx.fill();
+    }
+    if (age === 1 && cls === 2) {
+      ctx.fillStyle = trim;
+      ctx.beginPath(); ctx.roundRect(5 * S, -H * 0.76 + bob * .3, 5 * S, H * 0.4, 2); ctx.fill();
+    }
+
+    const armY = -H * 0.66 + bob * .3;
+    const wind = u.cd > u.d.cd * 0.72 ? -5 * S : 0;
+    ctx.strokeStyle = trim; ctx.lineWidth = 2.6 * S; ctx.lineCap = "round";
+    if (u.d.kind === "shot") {
+      ctx.beginPath(); ctx.moveTo(2 * S, armY); ctx.lineTo(16 * S, armY - 2 * S); ctx.stroke();
+      if (age === 0) {
+        ctx.fillStyle = trim;
+        ctx.beginPath(); ctx.arc(18 * S, armY + 3 * S, 2.6 * S, 0, 7); ctx.fill();
+      } else if (age === 1) {
+        ctx.lineWidth = 1.7 * S;
+        ctx.beginPath(); ctx.arc(13 * S, armY - 1 * S, 7.5 * S, -1.15, 1.15); ctx.stroke();
+      } else {
+        ctx.fillStyle = dark; ctx.fillRect(15 * S, armY - 3.6 * S, 5 * S, 3.2 * S);
+      }
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(2 * S, armY); ctx.lineTo(12 * S, armY - 11 * S + wind); ctx.stroke();
+      if (age === 0) {
+        ctx.lineWidth = 5 * S;
+        ctx.beginPath(); ctx.moveTo(11 * S, armY - 9 * S + wind);
+        ctx.lineTo(13.5 * S, armY - 14 * S + wind); ctx.stroke();
+      } else if (age >= 1) {
+        ctx.lineWidth = 1.8 * S;
+        ctx.beginPath(); ctx.moveTo(6 * S, armY - 5 * S + wind);
+        ctx.lineTo(12 * S, armY - 3 * S + wind); ctx.stroke();
+      }
+    }
+    if (u.d.splash) { ctx.fillStyle = trim; ctx.fillRect(15 * S, armY - 5 * S, 5 * S, 5 * S); }
+  }
+
+  if (u.flash > 0) {
+    ctx.globalAlpha = clamp(u.flash * 4, 0, .34);
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.roundRect(-8 * S, -H * 1.15, 16 * S, H * 1.15, 4); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+
+  if (fade === undefined && u.hp < u.maxHp) {
+    const w = 26 * S, hx = x - w / 2, hy2 = y - 44 * S;
+    ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(hx, hy2, w, 3.4);
+    ctx.fillStyle = p ? "#5fd07a" : "#e0645a";
+    ctx.fillRect(hx, hy2, w * clamp(u.hp / u.maxHp, 0, 1), 3.4);
+  }
+}
+
+function drawShot(s) {
+  const c = s.side.isPlayer ? "#bfe0ff" : "#ffc0b8";
+  // shells lob; bullets and arrows fly flat
+  let ay = 0;
+  if (s.splash) {
+    const t = clamp(Math.hypot(s.x - s.sx, s.y - s.sy) / (s.d0 || 1), 0, 1);
+    ay = -Math.sin(t * Math.PI) * Math.min(70, (s.d0 || 0) * 0.3);
+  }
+  s.ay = ay;
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.arc(s.x, s.y + ay, s.splash ? 4.5 : 2.6, 0, 7);
+  ctx.fill();
+  ctx.strokeStyle = c; ctx.globalAlpha = .35; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(s.x, s.y + ay);
+  const dx = (s.target && !s.target.dead ? s.target.x : s.tx) - s.x;
+  ctx.lineTo(s.x - Math.sign(dx) * 10, s.y + ay); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawFx(f) {
+  const a = clamp(f.life / f.max, 0, 1);
+  if (f.corpse) { drawUnit(Object.assign(f.corpse, { x: f.x }), a); return; }
+
+  if (f.plane) {                                  // age-3 strike aircraft
+    ctx.globalAlpha = clamp(a * 2.2, 0, 1);
+    ctx.save(); ctx.translate(f.x, f.y); ctx.scale(f.dir, 1);
+    ctx.fillStyle = f.c;
+    ctx.beginPath();
+    ctx.moveTo(-26, 0); ctx.lineTo(16, -4); ctx.lineTo(26, 0); ctx.lineTo(16, 4); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-4, 0); ctx.lineTo(-16, -13); ctx.lineTo(-6, -1); ctx.closePath();
+    ctx.moveTo(-4, 0); ctx.lineTo(-16, 13); ctx.lineTo(-6, 1); ctx.closePath(); ctx.fill();
+    ctx.restore(); ctx.globalAlpha = 1;
+    return;
+  }
+
+  if (f.incoming) {                               // the round on its way down
+    const prog = 1 - a;
+    const y0 = view.top - 20, y1 = GROUND_Y - 14;
+    const y = y0 + (y1 - y0) * prog * prog;       // accelerating fall
+    ctx.globalAlpha = clamp(a * 1.6, 0, 1);
+    ctx.strokeStyle = f.c; ctx.fillStyle = f.c;
+    if (f.age === 1) {                            // arrow volley
+      ctx.lineWidth = 1.7;
+      for (let k = -2; k <= 2; k++) {
+        const ox = k * 11, oy = Math.abs(k) * 14;
+        ctx.beginPath(); ctx.moveTo(f.x + ox, y - oy); ctx.lineTo(f.x + ox - 5, y - oy - 15); ctx.stroke();
+      }
+    } else if (f.age === 4) {                     // orbital beam column
+      const g = ctx.createLinearGradient(0, y0, 0, y1);
+      g.addColorStop(0, "rgba(126,240,255,0)");
+      g.addColorStop(1, "rgba(126,240,255,.75)");
+      ctx.fillStyle = g;
+      ctx.fillRect(f.x - 9 - prog * 5, y0, 18 + prog * 10, y1 - y0);
+      ctx.fillStyle = "#eaffff";
+      ctx.fillRect(f.x - 2, y0, 4, y1 - y0);
+    } else {                                      // meteor / shell / bomb
+      ctx.lineWidth = f.age === 0 ? 5 : 3;
+      ctx.beginPath(); ctx.moveTo(f.x, y); ctx.lineTo(f.x - 7, y - 34); ctx.stroke();
+      ctx.beginPath(); ctx.arc(f.x, y, f.age === 0 ? 6 : 4, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
+  ctx.globalAlpha = a;
+  ctx.fillStyle = f.c;
+  if (f.txt) {
+    ctx.font = "bold 16px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.strokeStyle = "rgba(0,0,0,.55)"; ctx.lineWidth = 3;
+    ctx.strokeText(f.txt, f.x, f.y); ctx.fillText(f.txt, f.x, f.y);
+    ctx.globalAlpha = 1; ctx.textAlign = "left";
+    return;
+  }
+  if (f.ring) {
+    ctx.strokeStyle = f.c; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (1.4 - a * 0.6), 0, 7); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.r * a, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------------- audio: fully synthesised, no assets ---------------- */
+
+let ac = null, master = null, muted = false, nbuf = null;
+const lastAt = {};
+
+function actx() {
+  if (!ac) {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    master = ac.createGain();
+    master.gain.value = 0.55;
+    const comp = ac.createDynamicsCompressor();   // a full battlefield stacks a
+    master.connect(comp); comp.connect(ac.destination);   // lot of voices at once
+  }
+  if (ac.state === "suspended") ac.resume();
+  return ac;
+}
+
+function noiseSrc() {
+  const c = actx();
+  if (!nbuf) {
+    nbuf = c.createBuffer(1, Math.floor(c.sampleRate * 0.5), c.sampleRate);
+    const d = nbuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const s = c.createBufferSource(); s.buffer = nbuf; return s;
+}
+
+function envTo(node, vol, atk, dec) {
+  const c = actx(), g = c.createGain();
+  g.gain.setValueAtTime(0.0001, c.currentTime);
+  g.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0002), c.currentTime + atk);
+  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + atk + dec);
+  node.connect(g); g.connect(master);
+}
+
+function tone(type, f0, f1, vol, atk, dec) {
+  const c = actx(), o = c.createOscillator();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, c.currentTime);
+  if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), c.currentTime + atk + dec);
+  envTo(o, vol, atk, dec);
+  o.start(); o.stop(c.currentTime + atk + dec + 0.03);
+}
+
+function noiseHit(vol, atk, dec, lp0, lp1, q) {
+  const c = actx(), s = noiseSrc(), f = c.createBiquadFilter();
+  f.type = "lowpass"; f.Q.value = q || 1;
+  f.frequency.setValueAtTime(lp0, c.currentTime);
+  f.frequency.exponentialRampToValueAtTime(Math.max(lp1, 40), c.currentTime + atk + dec);
+  s.connect(f); envTo(f, vol, atk, dec);
+  s.start(); s.stop(c.currentTime + atk + dec + 0.03);
+}
+
+// dozens of units can swing on the same frame — rate-limit per sound
+function gate(k, ms) {
+  const t = performance.now();
+  if (lastAt[k] && t - lastAt[k] < ms) return false;
+  lastAt[k] = t; return true;
+}
+
+function seq(freqs, gap, vol, dec) {
+  freqs.forEach((f, i) => setTimeout(() => { if (!muted) tone("triangle", f, f, vol, 0.01, dec); }, i * gap));
+}
+
+function sfx(kind) {
+  if (muted) return;
+  try {
+    switch (kind) {
+      case "order":   if (!gate(kind, 40)) return; tone("square", 520, 720, 0.05, 0.005, 0.05); break;
+      case "spawn":   if (!gate(kind, 60)) return; tone("triangle", 250, 380, 0.07, 0.01, 0.10); break;
+      case "build":   tone("square", 300, 540, 0.09, 0.01, 0.18); break;
+      case "melee":   if (!gate(kind, 55)) return;
+                      noiseHit(0.10, 0.002, 0.07, 5000, 700, 3);
+                      tone("square", 190, 90, 0.05, 0.002, 0.08); break;
+      case "bow":     if (!gate(kind, 55)) return; noiseHit(0.07, 0.004, 0.11, 3200, 480, 2); break;
+      case "gun":     if (!gate(kind, 45)) return;
+                      noiseHit(0.12, 0.001, 0.06, 7000, 900, 1);
+                      tone("square", 130, 60, 0.06, 0.002, 0.06); break;
+      case "cannon":  if (!gate(kind, 70)) return;
+                      noiseHit(0.18, 0.004, 0.30, 1600, 120, 1);
+                      tone("sine", 110, 38, 0.16, 0.004, 0.30); break;
+      case "hit":     if (!gate(kind, 50)) return; noiseHit(0.06, 0.002, 0.05, 3000, 800, 1); break;
+      case "boom":    if (!gate(kind, 40)) return;
+                      noiseHit(0.22, 0.003, 0.35, 2000, 90, 1);
+                      tone("sine", 90, 32, 0.14, 0.004, 0.30); break;
+      case "die":     if (!gate(kind, 70)) return; tone("triangle", 300, 90, 0.07, 0.005, 0.18); break;
+      case "evolve":  seq([330, 415, 494, 659], 90, 0.10, 0.22); break;
+      case "special": noiseHit(0.30, 0.02, 0.9, 2200, 80, 1);
+                      tone("sawtooth", 180, 30, 0.18, 0.02, 0.80); break;
+      case "start":   seq([440, 554, 659], 100, 0.10, 0.25); break;
+      case "win":     seq([523, 659, 784, 1047], 130, 0.12, 0.35); break;
+      case "lose":    seq([392, 330, 262, 196], 160, 0.12, 0.40); break;
+    }
+  } catch (e) { /* audio is optional — never let it break the game */ }
+}
+
+/* --- ambient score: slow pads, no melody, so it never competes with play --- */
+
+const MUSIC = [
+  { root: 110.0, chord: [0, 7, 12],     hold: 4.6 },   // Stone: bare fifth
+  { root: 116.5, chord: [0, 3, 7, 10],  hold: 4.2 },   // Medieval: minor
+  { root: 146.8, chord: [0, 4, 7, 11],  hold: 3.9 },   // Renaissance: major 7th
+  { root: 130.8, chord: [0, 3, 7, 14],  hold: 3.6 },   // Modern: tense minor
+  { root: 164.8, chord: [0, 5, 7, 14],  hold: 3.3 },   // Future: suspended
+];
+let musicOn = true, musicStep = 0;
+
+function pad(freq, dur, vol) {
+  const c = actx(), o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
+  o.type = "triangle"; o.frequency.value = freq;
+  f.type = "lowpass"; f.frequency.value = 820;
+  g.gain.setValueAtTime(0.0001, c.currentTime);
+  g.gain.exponentialRampToValueAtTime(vol, c.currentTime + dur * 0.4);
+  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+  o.connect(f); f.connect(g); g.connect(master);
+  o.start(); o.stop(c.currentTime + dur + 0.05);
+}
+
+// one scheduler for the whole session; it re-checks state each time rather
+// than being started and stopped, so timers can never stack up
+function musicTick() {
+  let wait = 1000;
+  try {
+    if (musicOn && !muted && running && !paused && G && !G.finishing) {
+      const m = MUSIC[Math.max(G.p.age, G.e.age)];
+      const semi = iv => m.root * Math.pow(2, iv / 12);
+      // drop the root an octave every other bar for a little movement
+      const bass = musicStep % 2 ? 0.5 : 1;
+      m.chord.forEach((iv, i) =>
+        setTimeout(() => {
+          if (musicOn && !muted && running && !paused) pad(semi(iv) * (i ? 1 : bass), m.hold, 0.03);
+        }, i * 70));
+      musicStep++;
+      wait = m.hold * 1000 * 0.85;
+    }
+  } catch (e) { /* score is optional */ }
+  setTimeout(musicTick, wait);
+}
+setTimeout(musicTick, 1200);
+
+/* --- preferences survive a reload --- */
+function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem("aow") || "{}");
+    if (typeof p.muted === "boolean") muted = p.muted;
+    if (typeof p.music === "boolean") musicOn = p.music;
+    if (typeof p.difficulty === "number") difficulty = p.difficulty;
+    if (p.mode === "2p" || p.mode === "ai") mode = p.mode;
+  } catch (e) { /* private mode or no storage: defaults are fine */ }
+}
+function savePrefs() {
+  try {
+    localStorage.setItem("aow", JSON.stringify({ muted, music: musicOn, difficulty, mode }));
+  } catch (e) { /* ignore */ }
+}
+
+function setMuted(v) {
+  muted = v;
+  const b = document.getElementById("muteBtn");
+  if (b) { b.textContent = muted ? "\u2715 sound" : "\u266a sound"; b.classList.toggle("off", muted); }
+  savePrefs();
+}
+function setMusic(v) {
+  musicOn = v;
+  const b = document.getElementById("musicBtn");
+  if (b) { b.textContent = musicOn ? "\u266b score" : "\u2715 score"; b.classList.toggle("off", !musicOn); }
+  savePrefs();
+}
+
+/* ---------------- UI ---------------- */
+
+const el = id => document.getElementById(id);
+
+const KEYS = { p: { u: ["1","2","3"], t: "T", e: "E", q: "Q" },
+               e: { u: ["7","8","9"], t: "O", e: "I", q: "U" } };
+let decks = {};
+
+function act(fn) { if (running && !paused) fn(); }
+
+function buildDeck(hostId, sk) {
+  const host = el(hostId), keys = KEYS[sk], cls = sk === "p" ? "b1" : "b2";
+  host.innerHTML = "";
+  const mk = (extra, key, fn) => {
+    const b = document.createElement("button");
+    b.className = "btn " + cls + (extra ? " " + extra : "");
+    b.innerHTML = `<span class="k">${key}</span><span class="n"></span><span class="c"></span><i class="cd"></i>`;
+    const run = () => act(() => fn(G[sk]));
+    // Fire on touchstart and swallow the event: relying on the synthesised
+    // click means two players tapping together get read as a pinch and
+    // neither tap lands.
+    b.addEventListener("touchstart", ev => {
+      ev.preventDefault();
+      b.dataset.t = String(performance.now());
+      run();
+    }, { passive: false });
+    b.addEventListener("click", () => {
+      if (b.dataset.t && performance.now() - +b.dataset.t < 700) return;   // already handled
+      run();
+    });
+    host.appendChild(b);
+    return b;
+  };
+  return { units: [0,1,2].map(i => mk("", keys.u[i], s => spawn(s, i))),
+           turret: mk("", keys.t, buyTurret),
+           evo:    mk("evo", keys.e, evolve),
+           spec:   mk("spec", keys.q, useSpecial) };
+}
+
+function syncDeck(side, d, other) {
+  // flag the class that counters whatever the other side is fielding most
+  let rec = -1;
+  if (other) {
+    const c = [0, 0, 0];
+    for (const u of other.units) if (u.slot != null) c[u.slot]++;
+    let dom = -1, most = 0;
+    for (let i = 0; i < 3; i++) if (c[i] > most) { most = c[i]; dom = i; }
+    if (dom >= 0) rec = [0, 1, 2].find(x => COUNTER[x][dom] > 1);
+  }
+  for (let i = 0; i < 3; i++) {
+    const def = spec(side, i), b = d.units[i];
+    b.querySelector(".n").textContent = def.n;
+    const q = side.qs[i], full = side.units.length >= MAX_UNITS;
+    b.querySelector(".c").textContent =
+      q ? def.cost + "g  x" + q
+        : (full ? "field full" : def.cost + "g \u00b7 " + CLASS_NAME[i]);
+    b.disabled = side.gold < def.cost || q >= QUEUE_MAX;
+    b.classList.toggle("rec", i === rec);
+    b.querySelector(".cd").style.width = (side.cds[i] / SPAWN_CD[i] * 100) + "%";
+  }
+  const t = AGES[side.age].turret, left = TURRET_SLOTS[side.age] - side.turrets.length;
+  const selling = left <= 0;
+  d.turret.querySelector(".n").textContent = selling ? "Sell " + t.name : t.name;
+  d.turret.querySelector(".c").textContent = selling
+    ? "+" + Math.round(t.cost * 0.5) + "g"
+    : t.cost + "g \u00b7 " + left;
+  d.turret.disabled = selling ? false : side.gold < t.cost;
+
+  const maxed = side.age >= AGES.length - 1, need = AGES[side.age].xpNext;
+  d.evo.querySelector(".n").textContent = maxed ? "Max Age" : "\u2192 " + AGES[side.age + 1].name;
+  d.evo.querySelector(".c").textContent = maxed ? "\u2014" : Math.max(0, Math.ceil(need - side.xp)) + " xp";
+  d.evo.disabled = maxed || side.xp < need;
+
+  d.spec.querySelector(".n").textContent = AGES[side.age].special.name;
+  d.spec.querySelector(".c").textContent = side.specialCd > 0 ? Math.ceil(side.specialCd) + "s" : "READY";
+  d.spec.disabled = side.specialCd > 0;
+  d.spec.querySelector(".cd").style.width = (1 - side.specialCd / SPECIAL_CD) * 100 + "%";
+}
+
+function syncTop(side, n) {
+  el("gold" + n).textContent = Math.floor(side.gold).toLocaleString();
+  el("age" + n).textContent = AGES[side.age].name;
+  el("hpBar" + n).style.width = (side.hp / side.maxHp * 100) + "%";
+  el("hpTxt" + n).textContent = Math.ceil(side.hp) + "/" + side.maxHp;
+  const need = AGES[side.age].xpNext;
+  el("xpBar" + n).style.width = (need === Infinity ? 100 : clamp(side.xp / need, 0, 1) * 100) + "%";
+  el("xpTxt" + n).textContent = need === Infinity ? "max" : Math.floor(side.xp) + "/" + need;
+}
+
+function syncUI() {
+  if (!G) return;
+  syncTop(G.p, 1); syncTop(G.e, 2);
+  syncDeck(G.p, decks.p, G.e);
+  syncDeck(G.e, decks.e, G.p);
+}
+
+decks.p = buildDeck("deckP1", "p");
+decks.e = buildDeck("deckP2", "e");
+
+document.addEventListener("keydown", ev => {
+  if (!running) { if (ev.key === "Enter") start(); return; }
+  const k = ev.key.toLowerCase();
+  if (k === "p") { paused = !paused; return; }
+  if (k === "m") { setMuted(!muted); return; }
+  if (k === "n") { setMusic(!musicOn); return; }
+  if (k === "h" || ev.key === "Escape") { toggleStats(); return; }
+  if (paused) return;
+  const map = { "1":["p",0], "2":["p",1], "3":["p",2], "e":["p","evo"], "t":["p","tur"], "q":["p","spc"] };
+  if (mode === "2p") Object.assign(map,
+    { "7":["e",0], "8":["e",1], "9":["e",2], "i":["e","evo"], "o":["e","tur"], "u":["e","spc"] });
+  const m = map[k];
+  if (!m) return;
+  const side = G[m[0]];
+  if (typeof m[1] === "number") spawn(side, m[1]);
+  else if (m[1] === "evo") evolve(side);
+  else if (m[1] === "tur") buyTurret(side);
+  else useSpecial(side);
+});
+
+document.querySelectorAll(".modebtn").forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll(".modebtn").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    mode = b.dataset.m; savePrefs();
+    el("diffRow").style.display = mode === "2p" ? "none" : "flex";
+  };
+});
+document.querySelectorAll(".diffbtn").forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll(".diffbtn").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    difficulty = parseFloat(b.dataset.d); savePrefs();
+  };
+});
+el("ovBtn").onclick = start;
+el("muteBtn").onclick = () => setMuted(!muted);
+el("musicBtn").onclick = () => setMusic(!musicOn);
+el("helpBtn").onclick = () => toggleStats();
+el("statsPanel").onclick = () => toggleStats(false);
+
+function statTable(side, label) {
+  const a = side.age;
+  let h = `<h3 style="color:${side.isPlayer ? "#7fb2e0" : "#e08a7f"}">${label} \u2014 ${AGES[a].name}</h3>`;
+  h += '<table><tr><th>Troop</th><th>Class</th><th class="num">Cost</th><th class="num">HP</th>' +
+       '<th class="num">Damage</th><th class="num">Reach</th><th class="num">Speed</th><th class="num">Bounty</th></tr>';
+  for (let i = 0; i < 3; i++) {
+    const d = UNITS[a][i];
+    h += `<tr><td>${d.n}${d.splash ? " (splash)" : ""}</td><td>${CLASS_NAME[i]}</td>` +
+         `<td class="num">${d.cost}g</td><td class="num">${d.hp}</td>` +
+         `<td class="num">${Math.round(d.dmg / d.cd)}/s</td><td class="num">${d.rng}</td>` +
+         `<td class="num">${d.spd}</td><td class="num">${d.gold}g</td></tr>`;
+  }
+  const t = AGES[a].turret, sp = AGES[a].special;
+  h += `<tr><td>${t.name} (turret)</td><td>base</td><td class="num">${t.cost}g</td><td class="num">\u2014</td>` +
+       `<td class="num">${Math.round(t.dmg / t.cd)}/s</td><td class="num">${t.range}</td>` +
+       `<td class="num">\u2014</td><td class="num">sell +${Math.round(t.cost * 0.5)}g</td></tr>`;
+  h += `<tr><td>${sp.name} (special)</td><td>ability</td><td class="num">free</td><td class="num">\u2014</td>` +
+       `<td class="num">${sp.dmg}</td><td class="num">half field</td><td class="num">\u2014</td>` +
+       `<td class="num">${SPECIAL_CD}s</td></tr>`;
+  return h + '</table>';
+}
+
+function toggleStats(force) {
+  const el2 = el("statsPanel");
+  const open = force === undefined ? el2.style.display !== "flex" : force;
+  if (open && G) {
+    el("statsInner").innerHTML =
+      statTable(G.p, "P1") + statTable(G.e, "P2") +
+      '<div class="tri"><b>Light</b> beats <b>Ranged</b> beats <b>Heavy</b> beats <b>Light</b> ' +
+      '(1.5&times; damage the right way, 0.7&times; the wrong way). The deck marks the countering slot with \u25b2.' +
+      '<br>Damage is shown per second, after cooldown. Reach is how close a troop must get before it attacks.' +
+      '<br>The turret button buys while you have empty mounts and sells your last turret once they are full.' +
+      '<br><br>Tap anywhere or press H to close.</div>';
+  }
+  el2.style.display = open ? "flex" : "none";
+  el("helpBtn").classList.toggle("on", open);
+}
+
+function endGame(result) {              // result "win" = P1 (blue) took the right base
+  running = false;
+  const p1 = result === "win";
+  el("overlay").style.display = "flex";
+  el("diffRow").style.display = mode === "2p" ? "none" : "flex";
+  el("ovTitle").textContent = mode === "2p"
+    ? (p1 ? "Blue Wins" : "Red Wins")
+    : (p1 ? "Victory" : "Defeat");
+  el("ovTitle").style.color = p1 ? "#7fb2e0" : "#e08a7f";
+  el("ovText").innerHTML = mode === "2p"
+    ? `${p1 ? "Blue (P1)" : "Red (P2)"} razed the enemy base in ${Math.floor(G.t)}s, ending in the ${AGES[p1 ? G.p.age : G.e.age].name}.`
+    : (p1 ? `You razed the enemy base in ${Math.floor(G.t)}s.` : `Your base fell after ${Math.floor(G.t)}s.`);
+  if (p1) series.p++; else series.e++;
+  const w = p1 ? G.p : G.e, l = p1 ? G.e : G.p;
+  el("ovText").innerHTML +=
+    `<br><br><span style="color:#8d99ad">Kills ${w.kills} to ${l.kills}` +
+    ` \u00b7 gold from kills ${Math.round(w.earned).toLocaleString()} to ${Math.round(l.earned).toLocaleString()}` +
+    ` \u00b7 ${AGES[G.p.age].name} vs ${AGES[G.e.age].name}</span>` +
+    `<br><b style="color:#7fb2e0">Blue ${series.p}</b>` +
+    ` <span style="color:#8d99ad">\u2014</span> ` +
+    `<b style="color:#e08a7f">${series.e} Red</b>`;
+  el("ovBtn").textContent = "Play Again";
+  sfx(p1 ? "win" : "lose");
+}
+
+function start() {
+  aiPower = mode === "2p" ? 1
+            : difficulty < 0.9 ? 0.55 : difficulty > 1.15 ? 1.75 : 0.78;
+  reset();
+  resize();
+  running = true; paused = false;
+  el("overlay").style.display = "none";
+  sfx("start");
+}
+
+/* ---------------- main loop ---------------- */
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  if (running && !paused) update(dt);
+  draw();
+  if (paused && running) {
+    ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(0, view.top, FIELD_W, view.bot - view.top);
+    ctx.fillStyle = "#e7ecf3"; ctx.font = "bold 34px system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.fillText("PAUSED", FIELD_W / 2, FIELD_H / 2);
+    ctx.font = "14px system-ui, sans-serif"; ctx.fillStyle = "#8d99ad";
+    ctx.fillText("press P to resume", FIELD_W / 2, FIELD_H / 2 + 26);
+  }
+  syncUI();
+  requestAnimationFrame(frame);
+}
+
+loadPrefs();
+setMuted(muted); setMusic(musicOn);
+document.querySelectorAll(".modebtn").forEach(b => b.classList.toggle("on", b.dataset.m === mode));
+document.querySelectorAll(".diffbtn").forEach(b => b.classList.toggle("on", +b.dataset.d === difficulty));
+el("diffRow").style.display = mode === "2p" ? "none" : "flex";
+reset();
+resize();
+el("overlay").style.display = "flex";
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
