@@ -3,6 +3,9 @@
 A one-screen, two-player take on **Miragine War**. Single HTML file, no build step, no
 dependencies, no network — open `index.html` in a browser and hit FIGHT.
 
+Works on a phone or tablet in landscape: tap the cards to buy. Turn the device sideways — it asks
+you to.
+
 Also playable solo: pick **VS CPU** on the menu (easy / normal / hard).
 
 ## How it plays
@@ -124,6 +127,10 @@ in are two different jobs.
   screen and take almost nothing back. Counter-picking now beats blind teching 5-1, and picking the
   *wrong* counter loses 6-0, which is the shape you want.
 - **Colour is never the only cue.** Blue rings are solid, red rings are dashed.
+- **One virtual resolution.** The world is always 1400 units wide and the canvas scales to fit, so a
+  phone in landscape sees the same proportions a desktop does rather than desktop-sized troops on a
+  250-pixel strip of field. The shop collapses on short screens — smaller cards, then icons instead
+  of names — so the battlefield always keeps about three quarters of the height.
 - **Rendering.** Sprites are baked at three quantised perspective scales and blitted at native size
   on integer origins, which is far cheaper than scaled draws: a 680-unit battle draws in ~13 ms in
   software rendering, down from ~41 ms, and simulates in ~3.6 ms.

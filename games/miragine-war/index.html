@@ -11,6 +11,8 @@
     background: #0b100d; color: #eae4d3;
     font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
     overflow: hidden; user-select: none; -webkit-user-select: none;
+    overscroll-behavior: none; -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
   }
   #wrap { display: flex; flex-direction: column; height: 100%; }
   #stage { position: relative; flex: 1 1 auto; min-height: 0; }
@@ -40,10 +42,10 @@
            background: #14100b; border-top: 3px solid #372c19; }
   .half { flex: 1 1 0; min-width: 0; }
   .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; }
-  .card { cursor: pointer; position: relative; min-width: 0;
+  .card { cursor: pointer; position: relative; min-width: 0; touch-action: manipulation;
           background: #241c12; border: 2px solid #4a3c22; border-radius: 4px;
           padding: 1px 1px 2px; text-align: center; transition: transform .05s, background .1s, border-color .1s; }
-  .card:hover { background: #33291a; border-color: #7d6738; }
+  @media (hover: hover) { .card:hover { background: #33291a; border-color: #7d6738; } }
   .card.hit { transform: translateY(2px); background: #6b5a33; }
   .card.poor { opacity: .32; }
   .card canvas { width: 100%; height: 32px; display: block; }
@@ -53,6 +55,10 @@
   .card .key { position: absolute; top: 0; left: 2px; font-size: 9px; color: #b09a6c; font-weight: bold; }
   .card .arm { position: absolute; top: 0; right: 2px; font-size: 9px; font-weight: bold; }
   .card .arm.a { color: #9fd0ff; } .card .arm.l { color: #ffd0a0; }
+  .card .pip { position: absolute; left: 0; right: 0; top: 40%; font-size: 15px;
+               font-weight: bold; color: #9fffd8; text-shadow: 0 2px 3px #000;
+               opacity: 0; pointer-events: none; transition: opacity .1s, transform .25s; }
+  .card .pip.go { opacity: 1; transform: translateY(-12px); transition: none; }
   .card .advbg { height: 3px; background: #16110a; border-radius: 2px; margin: 1px 2px 0; overflow: hidden; }
   .card .adv { height: 100%; width: 0; background: #6de06d; transition: width .25s linear, background .25s linear; }
   #vs { flex: 0 0 auto; align-self: center; font-size: 20px; font-weight: bold;
@@ -83,9 +89,51 @@
             text-shadow: 0 4px 0 #000, 0 0 22px #ffae00; pointer-events: none;
             opacity: 0; transition: opacity .2s; }
   .banner.show { opacity: 1; }
+
+  /* ---------- small screens: the battlefield always keeps the room ---------- */
+  @media (max-height: 620px) {
+    #shops { padding: 3px 4px 1px; gap: 5px; }
+    .card canvas { height: 22px; }
+    .banner { font-size: 30px; top: 22%; }
+    .card .nm { font-size: 8px; line-height: 9px; }
+    .card .cost { font-size: 9px; line-height: 10px; }
+    .card .key, .card .arm { font-size: 8px; }
+    .ctrls { font-size: 8px; padding: 1px 0 0; }
+    #vs { font-size: 15px; padding: 0 2px; }
+    .stats { font-size: 11px; }
+    .hpbar { height: 14px; } .hpbar span { font-size: 10px; line-height: 11px; }
+    #round { font-size: 14px; padding: 0 10px; }
+    #tick, #shrine { font-size: 9px; }
+  }
+  /* Too narrow for a readable name — the sprite identifies the unit better than
+     "N…" does, so keep the picture and drop the label. */
+  @media (max-height: 460px) {
+    .card { padding: 1px 1px 2px; }
+    .card canvas { height: 19px; }
+    .card .nm { display: none; }
+    .card .cost { font-size: 9px; line-height: 10px; }
+    .card .key, .card .arm { font-size: 7px; }
+    .ctrls { display: none; }
+    #hud { padding: 3px 6px; }
+    .stats { font-size: 10px; margin-top: 1px; }
+    .hpbar { height: 12px; } .hpbar span { font-size: 9px; line-height: 9px; }
+    .banner { font-size: 24px; top: 20%; }
+  }
+
+  /* ---------- portrait hint ---------- */
+  #rotate { position: fixed; inset: 0; display: none; z-index: 50;
+            background: #0b100d; color: #eae4d3; text-align: center;
+            align-items: center; justify-content: center; flex-direction: column; gap: 14px; padding: 24px; }
+  #rotate div { font-size: 46px; }
+  @media (orientation: portrait) and (max-width: 900px) {
+    #rotate { display: flex; }
+  }
 </style>
 </head>
 <body>
+<div id="rotate"><div>⟳</div><b style="font-size:20px;color:#ffd75e">Turn your device sideways</b>
+  <p style="max-width:320px;color:#cfc6ae;font-size:14px;line-height:1.5">Mirage War is a two-player
+  battlefield — it needs the long edge of your screen.</p></div>
 <div id="wrap">
   <div id="stage">
     <canvas id="cv"></canvas>
@@ -260,6 +308,8 @@ function repair(team) {
 const cv = document.getElementById("cv");
 let ctx = cv.getContext("2d");
 let DPR = 1;
+const WORLD_W = 1400;       // everything is authored in these units
+let VIEW = 1;               // world -> css pixels
 // static layers, painted once instead of every frame
 const bgCv = document.createElement("canvas"), bgCtx = bgCv.getContext("2d");
 const decCv = document.createElement("canvas"), decCtx = decCv.getContext("2d");
@@ -267,11 +317,15 @@ const decCv = document.createElement("canvas"), decCtx = decCv.getContext("2d");
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   const r = cv.getBoundingClientRect();
-  G.W = Math.max(320, r.width); G.H = Math.max(200, r.height);
-  cv.width = Math.round(G.W*DPR); cv.height = Math.round(G.H*DPR);
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const cssW = Math.max(300, r.width), cssH = Math.max(150, r.height);
+  VIEW = cssW / WORLD_W;
+  G.W = WORLD_W;
+  G.H = Math.max(300, cssH / VIEW);          // world height follows the aspect
+  cv.width = Math.round(cssW*DPR); cv.height = Math.round(cssH*DPR);
+  const q = VIEW*DPR;
+  ctx.setTransform(q, 0, 0, q, 0, 0);
   for (const c of [bgCv, decCv]) { c.width = cv.width; c.height = cv.height; }
-  bgCtx.setTransform(DPR,0,0,DPR,0,0); decCtx.setTransform(DPR,0,0,DPR,0,0);
+  bgCtx.setTransform(q,0,0,q,0,0); decCtx.setTransform(q,0,0,q,0,0);
   buildTerrain();
   paintBackground();
   if (typeof spriteCache !== "undefined") spriteCache.clear();
@@ -1263,12 +1317,12 @@ function sprite(u, team, walk, sw, ps) {
   const key = u.idx + "_" + team + "_" + walk + "_" + sw + "_" + ps;
   let c = spriteCache.get(key);
   if (c) return c;
-  const k = PS_STEPS[ps];
+  const k = PS_STEPS[ps], q = Math.max(0.35, VIEW*DPR);
   const w = Math.ceil(u.size*4.6*k), h = Math.ceil(u.size*3.6*k);
   c = document.createElement("canvas");
-  c.width = Math.ceil(w*DPR); c.height = Math.ceil(h*DPR);
+  c.width = Math.ceil(w*q); c.height = Math.ceil(h*q);
   const g = c.getContext("2d");
-  g.setTransform(DPR*k, 0, 0, DPR*k, 0, 0);
+  g.setTransform(q*k, 0, 0, q*k, 0, 0);
   const real = ctx; ctx = g;
   drawUnitVector({ team, u, x:w/(2*k), y:h*0.6/k, hp:1, maxhp:1,
                    swing: sw/2, hurt:0, step: walk*Math.PI/2, dead:false, ghost:true });
@@ -1298,11 +1352,11 @@ function drawUnit(a) {
   const sw = a.swing > .45 ? 1 : 0;
   const c = sprite(a.u, a.team, walk, sw, psi);
   const dx = (a.x - c._w/2) | 0, dy = (a.y - c._h*0.6) | 0;
-  ctx.drawImage(c, dx, dy);                       // native size, integer origin
+  ctx.drawImage(c, dx, dy, c._w, c._h);           // world units; the view transform does the rest
   if (a.hurt > 0) {
     const op = ctx.globalCompositeOperation, al = ctx.globalAlpha;
     ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = al * .6;
-    ctx.drawImage(c, dx, dy);
+    ctx.drawImage(c, dx, dy, c._w, c._h);
     ctx.globalCompositeOperation = op; ctx.globalAlpha = al;
   }
   if (G.hi && G.hi.team === a.team && G.hi.idx === a.u.idx) {
@@ -1374,14 +1428,23 @@ function buildShops() {
         '<canvas width="80" height="46"></canvas>' +
         '<div class="nm">' + u.name + '</div>' +
         '<div class="cost">◆' + u.price + '</div>' +
-        '<div class="advbg"><div class="adv"></div></div>';
+        '<div class="advbg"><div class="adv"></div></div>' +
+        '<div class="pip">+1</div>';
       el.title = u.name + "   ◆" + u.price + "   income +" + u.income + "\n" +
         (u.type==="armored"?"ARMORED":"LIGHT") + "   hp " + u.hp + "   armour " + u.armour + "\n" +
         "damage vs light " + u.dL + "   vs armored " + u.dA + "\n" +
         "range " + u.rng + "   move " + u.spd + "   attack every " + u.ws + "s" +
         (u.splash ? "\nsplash radius " + u.splash : "") +
         (u.drain ? "\nheals for " + (u.drain*100) + "% of damage dealt" : "");
-      el.addEventListener("pointerdown", e => { e.preventDefault(); buy(team, i); });
+      let lastTap = 0;
+      el.addEventListener("pointerdown", e => {
+        e.preventDefault(); e.stopPropagation();
+        const now = e.timeStamp || performance.now();
+        if (now - lastTap < 90) return;      // one buy per press, never a repeat storm
+        lastTap = now;
+        buy(team, i);
+      });
+      el.addEventListener("contextmenu", e => e.preventDefault());
       el.addEventListener("mouseenter", () => { G.hi = { team, idx:i }; });
       el.addEventListener("mouseleave", () => { if (G.hi && G.hi.idx === i && G.hi.team === team) G.hi = null; });
       host.appendChild(el);
@@ -1403,6 +1466,8 @@ function drawIcon(c, i, team) {
 function flashCard(team, idx) {
   const el = cards[team][idx]; if (!el) return;
   el.classList.add("hit"); setTimeout(() => el.classList.remove("hit"), 80);
+  const pip = el.querySelector(".pip");
+  if (pip) { pip.classList.add("go"); setTimeout(() => pip.classList.remove("go"), 30); }
 }
 
 /* ---------- live counter advisor ----------
