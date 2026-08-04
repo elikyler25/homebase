@@ -102,6 +102,7 @@ function renderHud() {
     root.querySelector('.hpv').textContent = Math.max(0, Math.round(f.hp));
     root.querySelector('.nm').textContent = CHARS[f.char].name;
     root.querySelector('.nm').style.color = CHARS[f.char].accent;
+    drawPortrait($(i === ME ? '#por0' : '#por1'), f.char, i === ME ? 1 : -1);
     root.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('on', i < f.meter));
     const b = root.querySelector('.burst');
     b.querySelector('i').style.width = `${(f.burst / RULES.BURST_FULL) * 100}%`;
@@ -124,6 +125,26 @@ function renderHud() {
     ? `${teamAlive(game.state, ME)} v ${teamAlive(game.state, THEM)} · turns left`
     : `round ${game.state.round} · turns left`;
   $('#clock').classList.toggle('low', left <= 10);
+}
+
+/**
+ * A tiny pixel bust in the far corner, one per side — the reference game puts a portrait
+ * out at each edge of the health bars and it is a surprising amount of what makes the
+ * top of the screen read as a fighting game rather than a status bar.
+ */
+function drawPortrait(cv, charId, facing) {
+  if (!cv) return;
+  const g = cv.getContext('2d');
+  const c = CHARS[charId].accent;
+  g.clearRect(0, 0, cv.width, cv.height);
+  g.fillStyle = c;
+  g.fillRect(6, 1, 10, 9);                     // head
+  g.fillRect(4, 11, 14, 8);                    // shoulders
+  g.fillRect(2, 19, 18, 4);                    // chest
+  g.fillStyle = '#000';
+  g.fillRect(facing > 0 ? 12 : 7, 5, 2, 2);    // eye, looking across the screen
+  g.fillStyle = '#c2ccd6';
+  g.fillRect(facing > 0 ? 17 : 2, 12, 2, 9);   // a sliver of blade
 }
 
 /** Three slim bars a side in squad mode: who is on point, who is hurt, who is out. */
@@ -161,7 +182,6 @@ function renderMoves() {
   renderAssistBar();
   for (const grp of groupsFor(myChar(), pointOf(game.state, ME).state)) {
     const box = el('div', 'movegroup');
-    box.append(el('h3', null, grp.title));
     const grid = el('div', 'grid');
     for (const id of grp.ids) {
       const m = moveOf(myChar(), id);
@@ -199,6 +219,7 @@ function renderMoves() {
       grid.append(b);
     }
     box.append(grid);
+    box.append(el('h3', null, grp.title));   // the label sits under its row
     host.append(box);
   }
 }

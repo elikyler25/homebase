@@ -173,7 +173,7 @@ function drawRange(g, x, facing, range, colour, dashed, label) {
   g.stroke();
   g.setLineDash([]);
   if (label) {
-    activeStage?.label(label, tip - 8 * facing, GROUND + (dashed ? -172 : 62), colour, 8,
+    activeStage?.label(label, tip - 8 * facing, GROUND + (dashed ? 96 : 60), colour, 8,
       facing > 0 ? 'right' : 'left');
   }
   g.restore();
@@ -484,8 +484,8 @@ export class Stage {
     drawFighter(g, b.x, -facing, poseFor(idlePhase(b), stub, 0), sideColour(state, 1), { down: b.state === 'down' });
 
     // "You" over your own fighter, exactly as the source game labels the sides.
-    this.label('You', a.x, GROUND - 126, '#ffffff', 8);
-    this.label(`${Math.round(Math.abs(a.x - b.x))} apart`, (a.x + b.x) / 2, GROUND - 224, '#6a6a6a', 8);
+    this.label('You', a.x, GROUND - 122, '#ffffff', 8);
+    this.label(`${Math.round(Math.abs(a.x - b.x))} apart`, (a.x + b.x) / 2, GROUND - 168, '#5a5a5a', 8);
   }
 
   drawFrame(g) {
@@ -542,7 +542,7 @@ export class Stage {
     }
 
     this.label(`frame ${this.frame} / ${r.total}`, this.leftWorld + 34, this.topWorld + 46, '#5e5e5e', 8, 'left');
-    this.label('You', tl.x[0], GROUND - 128, '#ffffff', 8);
+    this.label('You', tl.x[0], GROUND - 122, '#ffffff', 8);
 
     // Frame advantage, printed once the exchange has settled. YOMIH puts this number
     // right next to the fighters because it is the single thing that decides the next turn.
