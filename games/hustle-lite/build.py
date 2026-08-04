@@ -51,7 +51,7 @@ def body_of(html: str) -> str:
 
 def build() -> str:
     html = (ROOT / "index.html").read_text(encoding="utf-8")
-    css = (SRC / "style.css").read_text(encoding="utf-8")
+    css = (SRC / "pixelfont.css").read_text(encoding="utf-8") + "\n" + (SRC / "style.css").read_text(encoding="utf-8")
     js = "\n\n".join(strip_module_syntax((SRC / m).read_text(encoding="utf-8")) for m in MODULES)
 
     # No <!doctype>, <html>, <head> or <body>: the host wraps this fragment. A <title>
@@ -64,8 +64,29 @@ def build() -> str:
     )
 
 
+DECL_RE = re.compile(r"^(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)", re.M)
+
+
+def clashes() -> list[str]:
+    """Top-level names declared in more than one module.
+
+    Concatenation puts every module in one scope, so two files each declaring `stage` is a
+    hard SyntaxError at load. Cheap to check here; invisible until the page is opened.
+    """
+    seen: dict[str, str] = {}
+    dupes = []
+    for mod in MODULES:
+        code = strip_module_syntax((SRC / mod).read_text(encoding="utf-8"))
+        # only lines with no leading indentation are top level
+        for name in DECL_RE.findall(code):
+            if name in seen and seen[name] != mod:
+                dupes.append(f"{name!r} declared in both {seen[name]} and {mod}")
+            seen.setdefault(name, mod)
+    return dupes
+
+
 def check(out: str) -> None:
-    problems = []
+    problems = clashes()
     if re.search(r"^\s*import\s+.*from\s", out, re.M):
         problems.append("an ES import survived the bundle")
     if re.search(r"^\s*export\s", out, re.M):
@@ -76,8 +97,12 @@ def check(out: str) -> None:
     for needed in ("id=\"arena\"", "id=\"rows\"", "threatBoard", "resolveTurn", "boot();"):
         if needed not in out:
             problems.append(f"missing expected content: {needed}")
-    if re.search(r'(src|href)\s*=\s*["\'](https?:)?//', out):
-        problems.append("output references an external host; it must be fully self-contained")
+    external = [m for m in re.findall(r'(?:src|href)\s*=\s*["\']([^"\']+)', out)
+                if m.startswith("http") or m.startswith("//")]
+    if external:
+        problems.append(f"output references external hosts: {external[:3]}")
+    if "Press Start 2P" in out and "data:font/woff2;base64," not in out:
+        problems.append("the pixel font is referenced but not embedded")
     if problems:
         for p in problems:
             print(f"  FAIL {p}", file=sys.stderr)

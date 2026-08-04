@@ -16,7 +16,18 @@ two of your fighters in the same turn so they combo together).
 
 Open `index.html` in a browser, or `dist/hustle-lite-standalone.html` for the single file.
 
-## The screen
+## The look
+
+Built to match the source game rather than to look like a dashboard: pure black, flat
+saturated colour, square corners, hard borders, and a bitmap typeface. The arena is drawn
+into a canvas half the size and blitted up with image smoothing off, so figures, sparks and
+captions all come out as chunky pixel art rather than smooth vectors. Fighters are solid
+silhouettes on a coarse grid, the floor is a white rule with ticks hanging off it, health is
+a fat yellow bar with a white outline, and frame advantage is printed under the fighters as
+`advantage: -10`.
+
+The typeface is [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P)
+(SIL OFL), embedded as a data URI in `src/pixelfont.css` so the page stays self-contained.
 
 The whole game fits the viewport and nothing scrolls — the move strip is pinned along the
 bottom and every button is reachable without hunting for it. On narrow screens the strip
@@ -188,6 +199,7 @@ retune. If matches ever start feeling passive again, look here first.
 | `src/render.js` | canvas replay of an engine timeline, plus synthesised sound |
 | `src/ui.js` | DOM, turn loop, input |
 | `src/style.css` | presentation |
+| `src/pixelfont.css` | the bitmap typeface, embedded as a data URI |
 | `index.html` | dev entry point, loads `src/*` as modules |
 | `build.py` | inlines everything into `dist/` (stdlib only) |
 | `tests/engine.test.mjs` | 182 assertions locking down the solo RPS web |

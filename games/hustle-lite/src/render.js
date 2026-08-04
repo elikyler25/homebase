@@ -10,7 +10,9 @@ import { RULES, CHARS, pointOf } from './engine.js';
 const W = 1000, H = 340;
 const GROUND = 282;
 const S = 1.28;          // fighter scale — YOMIH reads big and bold, not dainty
-const COL = { ink: '#e9eef4', dim: '#3a4653', floor: '#131a22' };
+const COL = { ink: '#ffffff', dim: '#555555', floor: '#000000' };
+const PX = 2;            // the scene is drawn this many times smaller, then blitted up
+const FONT = '"Press Start 2P", ui-monospace, monospace';
 
 // Player one always reads cool, player two always reads warm, whichever characters are
 // picked — you should never have to work out which fighter is yours.
@@ -53,78 +55,70 @@ const armAngle = (m) => (m.level === 'low' ? 0.95 : m.level === 'high' ? -1.35 :
 
 /* --------------------------------------------------------------- fighter */
 
+/*
+ * A fighter is a solid silhouette, not a stick figure: a blocky head, a torso that flares
+ * at the hips, two legs, and an arm that carries the weapon. Coordinates snap to a coarse
+ * grid so the shapes stay square once the scene is blitted up.
+ */
+const snap = (v) => Math.round(v / 4) * 4;
+
 function drawFighter(g, x, facing, pose, colour, opts = {}) {
   const { ghost = 0, flash = 0, down = false } = opts;
   const lean = pose.lean * facing;
-  const hipY = GROUND - 46 * S + pose.crouch * 24 * S;
-  const headY = hipY - 46 * S + pose.crouch * 12 * S;
+  const crouch = pose.crouch;
 
   g.save();
   g.globalAlpha = 1 - ghost;
-
-  // shadow
-  g.fillStyle = '#00000066';
-  g.beginPath();
-  g.ellipse(x, GROUND + 2, (20 - pose.crouch * 4) * S, 4.5, 0, 0, Math.PI * 2);
-  g.fill();
+  g.fillStyle = flash ? '#ffffff' : colour;
 
   if (down) {
-    // flat on the floor: a body lying along the ground, head toward the opponent
-    g.strokeStyle = colour; g.lineWidth = 6; g.lineCap = 'round';
-    g.beginPath();
-    g.moveTo(x - 26 * facing, GROUND - 8);
-    g.lineTo(x + 19 * facing, GROUND - 12);
-    g.stroke();
-    g.fillStyle = colour;
-    g.beginPath(); g.arc(x + 29 * facing, GROUND - 14, 10, 0, Math.PI * 2); g.fill();
+    g.fillRect(snap(x - 40 * facing), snap(GROUND - 22), snap(70), snap(22));
+    g.fillRect(snap(x + 28 * facing), snap(GROUND - 34), snap(24), snap(24));
     g.restore();
     return;
   }
 
-  const shoulderX = x + lean * 16 * S;
-  const shoulderY = hipY - 34 * S;
+  const hipY = snap(GROUND - 38 + crouch * 16);
+  const shoulderY = snap(hipY - 44);
+  const headY = snap(shoulderY - 32);      // leaves a gap: the head is its own shape
+  const cx = snap(x + lean * 10);
 
-  // legs
-  g.strokeStyle = colour; g.lineWidth = 5.5; g.lineCap = 'round'; g.lineJoin = 'round';
-  g.beginPath();
-  g.moveTo(x + lean * 5 * S, hipY);
-  g.lineTo(x - 12 * S * facing - lean * 4, GROUND);
-  g.moveTo(x + lean * 5 * S, hipY);
-  g.lineTo(x + 13 * S * facing + lean * 12, GROUND);
-  g.stroke();
+  // legs, set wide enough apart to read as two
+  g.fillRect(snap(cx - 20 - lean * 5), hipY, snap(14), snap(GROUND - hipY));
+  g.fillRect(snap(cx + 6 + lean * 10), hipY, snap(14), snap(GROUND - hipY));
 
-  // torso
-  g.lineWidth = 7.5;
+  // torso — narrow at the shoulders, flaring to the hips
+  const shW = 30, hipW = 40;
   g.beginPath();
-  g.moveTo(x + lean * 5 * S, hipY);
-  g.lineTo(shoulderX, shoulderY);
-  g.stroke();
-
-  // head
-  g.fillStyle = colour;
-  g.beginPath();
-  g.arc(shoulderX + lean * 5, headY, 11, 0, Math.PI * 2);
+  g.moveTo(snap(cx - shW / 2), shoulderY);
+  g.lineTo(snap(cx + shW / 2), shoulderY);
+  g.lineTo(snap(cx + hipW / 2), hipY + 5);
+  g.lineTo(snap(cx - hipW / 2), hipY + 5);
+  g.closePath();
   g.fill();
 
-  // weapon arm — the reach of this line is what the range arc is telling you about
-  const a = pose.arm * facing;
-  const len = (20 + pose.reach * 34) * S;
-  const hx = shoulderX + Math.cos(a) * len * facing;
-  const hy = shoulderY + Math.sin(a) * len;
-  g.strokeStyle = flash ? '#ffffff' : colour;
-  g.lineWidth = flash ? 6.5 : 5;
-  g.beginPath();
-  g.moveTo(shoulderX, shoulderY);
-  g.lineTo(hx, hy);
-  g.stroke();
+  // head
+  g.fillRect(snap(cx - 11 + lean * 6), headY, snap(22), snap(24));
 
-  // off arm
-  g.globalAlpha = (1 - ghost) * 0.6;
-  g.lineWidth = 4.5;
-  g.beginPath();
-  g.moveTo(shoulderX, shoulderY + 3);
-  g.lineTo(shoulderX - 15 * S * facing, shoulderY + 15 * S);
-  g.stroke();
+  // The arm and weapon only come out when the pose actually extends. An idle fighter in
+  // the source game is a plain silhouette; a raised arm at rest just reads as noise.
+  if (pose.reach > 0.42) {
+    const a = pose.arm * facing;
+    const len = 20 + pose.reach * 34;
+    const ax = cx + lean * 5;
+    const ay = shoulderY + 8;
+    for (let i = 1; i <= 4; i++) {
+      const d = (len * i) / 4;
+      g.fillRect(snap(ax + Math.cos(a) * d * facing - 5), snap(ay + Math.sin(a) * d - 5), snap(10), snap(10));
+    }
+    g.fillStyle = flash ? '#ffffff' : '#c2ccd6';
+    const bx = ax + Math.cos(a) * len * facing;
+    const by = ay + Math.sin(a) * len;
+    for (let i = 1; i <= 5; i++) {
+      const d = (34 * i) / 5;
+      g.fillRect(snap(bx + Math.cos(a) * d * facing - 4), snap(by + Math.sin(a) * d - 4), snap(8), snap(8));
+    }
+  }
 
   g.restore();
 }
@@ -134,47 +128,34 @@ function drawFighter(g, x, facing, pose, colour, opts = {}) {
 function drawArena(g, shake, top, bot, left, right) {
   g.save();
   g.translate(shake.x, shake.y);
-  const L = left - 80, R = right + 80, wide = R - L;
+  const L = left - 80, R = right + 80;
 
-  const sky = g.createLinearGradient(0, top, 0, GROUND);
-  sky.addColorStop(0, '#070c12');
-  sky.addColorStop(1, '#0c131c');
-  g.fillStyle = sky;
-  g.fillRect(L, top - 80, wide, GROUND - top + 80);
+  // Black. Not near-black, not a gradient — the source game is pure black and everything
+  // else in the palette is calibrated against it.
+  g.fillStyle = '#000';
+  g.fillRect(L, top - 120, R - L, bot - top + 240);
 
-  // A far backdrop of vertical bars. Parallax at a third of camera speed, which is what
-  // makes the movement game legible: you can see yourself crossing the stage.
-  g.strokeStyle = '#111a24'; g.lineWidth = 6;
-  for (let x = Math.floor(L / 120) * 120; x < R; x += 120) {
-    const px = x + (x - (L + R) / 2) * -0.66;
-    g.beginPath(); g.moveTo(px, GROUND - 250); g.lineTo(px, GROUND - 30); g.stroke();
-  }
-
-  // distance ticks — a quiet ruler so spacing is readable at a glance
-  g.strokeStyle = '#18222d'; g.lineWidth = 1.5;
-  for (let x = Math.ceil(L / 50) * 50; x < R; x += 50) {
-    const tall = x % 250 === 0;
-    g.beginPath(); g.moveTo(x, GROUND - (tall ? 22 : 11)); g.lineTo(x, GROUND); g.stroke();
-  }
-
-  g.fillStyle = COL.floor;
-  g.fillRect(L, GROUND, wide, bot - GROUND + 80);
-  g.strokeStyle = '#2b3949'; g.lineWidth = 2.5;
+  // The floor: one white rule with tall ticks hanging off it. This single element does
+  // more to place the game than anything else on screen — it is the spacing readout.
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = 3;
   g.beginPath(); g.moveTo(L, GROUND); g.lineTo(R, GROUND); g.stroke();
+  g.lineWidth = 5;
+  for (let x = Math.ceil(L / 100) * 100; x < R; x += 100) {
+    g.beginPath(); g.moveTo(x, GROUND + 2); g.lineTo(x, GROUND + 24); g.stroke();
+  }
 
-  // the walls you can be cornered against
-  g.fillStyle = '#090f16';
-  if (L < RULES.ARENA_MIN) g.fillRect(L, top - 80, RULES.ARENA_MIN - L, GROUND - top + 80);
-  if (R > RULES.ARENA_MAX) g.fillRect(RULES.ARENA_MAX, top - 80, R - RULES.ARENA_MAX, GROUND - top + 80);
-  g.strokeStyle = '#26333f'; g.lineWidth = 2;
+  // The walls, marked rather than shaded.
+  g.strokeStyle = '#2e2e2e'; g.lineWidth = 4;
   g.beginPath();
-  g.moveTo(RULES.ARENA_MIN, top); g.lineTo(RULES.ARENA_MIN, GROUND);
-  g.moveTo(RULES.ARENA_MAX, top); g.lineTo(RULES.ARENA_MAX, GROUND);
+  g.moveTo(RULES.ARENA_MIN, GROUND - 130); g.lineTo(RULES.ARENA_MIN, GROUND);
+  g.moveTo(RULES.ARENA_MAX, GROUND - 130); g.lineTo(RULES.ARENA_MAX, GROUND);
   g.stroke();
   g.restore();
 }
 
 /** A translucent wedge showing exactly how far a move reaches. */
+let activeStage = null;   // the live Stage, so world-space helpers can read the zoom
 function drawRange(g, x, facing, range, colour, dashed, label) {
   if (!range) return;
   g.save();
@@ -192,11 +173,8 @@ function drawRange(g, x, facing, range, colour, dashed, label) {
   g.stroke();
   g.setLineDash([]);
   if (label) {
-    g.globalAlpha = 0.85;
-    g.fillStyle = colour;
-    g.font = '600 10px ui-monospace, monospace';
-    g.textAlign = facing > 0 ? 'right' : 'left';
-    g.fillText(label, tip - 4 * facing, GROUND + 18);
+    activeStage?.label(label, tip - 8 * facing, GROUND + (dashed ? -172 : 62), colour, 8,
+      facing > 0 ? 'right' : 'left');
   }
   g.restore();
 }
@@ -225,6 +203,7 @@ export class Stage {
     this.floats = [];
     this.state = null;        // whose colours to draw with
     this.mode = 'preview';    // 'preview' | 'playback'
+    activeStage = this;
     this.boxes = false;       // hitbox / hurtbox overlay
     this.adv = null;          // frame advantage to print once the exchange settles
   }
@@ -245,7 +224,14 @@ export class Stage {
     this.dpr = dpr;
     this.cssW = w;
     this.cssH = h;
-    this.groundPx = h * 0.88;   // thin floor strip; the room belongs to the fighters
+    this.groundPx = h * 0.84;
+
+    // Everything is drawn into a canvas a third of the size and blitted up with smoothing
+    // off. That single step is what makes the whole scene — figures, sparks, text — read as
+    // chunky pixel art instead of smooth vectors, without redrawing any of it by hand.
+    if (!this.off) { this.off = document.createElement('canvas'); this.og = this.off.getContext('2d'); }
+    this.off.width = Math.max(120, Math.round(w / PX));
+    this.off.height = Math.max(80, Math.round(h / PX));
   }
 
   /**
@@ -255,9 +241,9 @@ export class Stage {
    */
   aimCamera(x0, x1, snap = false) {
     const gap = Math.abs(x0 - x1);
-    const visW = Math.min(W, Math.max(540, gap + 470));
+    const visW = Math.min(W + 40, Math.max(840, gap + 620));
     const target = {
-      scale: Math.min(this.cssW / visW, this.cssH / 300),
+      scale: Math.min(this.cssW / visW, this.cssH / 260),
       x: Math.max(RULES.ARENA_MIN - 30, Math.min(RULES.ARENA_MAX + 30, (x0 + x1) / 2)),
     };
     if (!this.cam || snap) this.cam = { ...target };
@@ -273,11 +259,35 @@ export class Stage {
     this.rightWorld = this.leftWorld + this.cssW / s;
   }
 
-  /** Put the canvas into world coordinates for the rest of the drawing code. */
+  /** World point to offscreen pixel, for text that must not scale with the camera. */
+  toScreen(wx, wy) {
+    return [
+      (this.cssW / 2 - this.cam.x * this.scale + wx * this.scale) / PX,
+      (this.groundPx + (wy - GROUND) * this.scale) / PX,
+    ];
+  }
+
+  /**
+   * Draw labels at a fixed pixel size regardless of zoom. Text drawn in world units grows
+   * and shrinks with the camera, which at close range turns a caption into a billboard.
+   */
+  label(text, wx, wy, colour, size = 8, align = 'center') {
+    const g = this.og;
+    const [x, y] = this.toScreen(wx, wy);
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = colour;
+    g.font = `${size}px ${FONT}`;
+    g.textAlign = align;
+    g.fillText(text, Math.round(x), Math.round(y));
+    g.restore();
+  }
+
+  /** Put the offscreen canvas into world coordinates for the rest of the drawing code. */
   applyTransform() {
-    const k = this.dpr * this.scale;
-    this.g.setTransform(k, 0, 0, k, this.dpr * (this.cssW / 2 - this.cam.x * this.scale),
-      this.dpr * (this.groundPx - GROUND * this.scale));
+    const k = this.scale / PX;
+    this.og.setTransform(k, 0, 0, k, (this.cssW / 2 - this.cam.x * this.scale) / PX,
+      (this.groundPx - GROUND * this.scale) / PX);
   }
 
   /** Show a static neutral pose — used between turns while you are choosing. */
@@ -362,7 +372,7 @@ export class Stage {
       if (e.type === 'hit') {
         this.shake.mag = Math.min(16, 5 + e.dmg * 0.4);
         this.hitstop = 0.09 + Math.min(0.11, e.dmg * 0.005);
-        this.burst(victim, GROUND - 60, e.counter ? 26 : 18, e.counter ? '#ffe066' : sideColour(this.state, e.by));
+        this.confetti(victim, GROUND - 110, e.counter ? 30 : 22);
         this.float(victim, GROUND - 96, `${e.counter ? 'COUNTER ' : ''}${e.dmg}`, e.counter ? '#ffe066' : '#ffffff');
       } else if (e.type === 'block') {
         this.shake.mag = 3; this.hitstop = 0.05;
@@ -388,19 +398,26 @@ export class Stage {
     this.floats.push({ x, y, text, colour, life: 0.95 });
   }
 
+  /** Multicoloured impact confetti, the way the source game punctuates a clean hit. */
+  confetti(x, y, n) {
+    const palette = ['#ffe14d', '#ff5f78', '#7dffb0', '#6fd8ff', '#c39bff', '#ffffff', '#ff9f43'];
+    for (let i = 0; i < n; i++) this.burst(x, y, 1, palette[i % palette.length]);
+  }
+
   burst(x, y, n, colour) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 60 + Math.random() * 260;
+      const sp = 90 + Math.random() * 360;
       this.sparks.push({
-        x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
-        life: 0.2 + Math.random() * 0.32, colour,
+        x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 90,
+        life: 0.22 + Math.random() * 0.4, colour, size: 7 + Math.round(Math.random() * 3) * 5,
       });
     }
   }
 
   draw() {
-    const g = this.g;
+    if (!this.off) this.resize();
+    const g = this.og;
     const pos = this.mode === 'playback' && this.result
       ? (this.result.timeline[this.frame]?.x ?? [400, 600])
       : (this.preview ? [pointOf(this.preview.state, 0).x, pointOf(this.preview.state, 1).x] : [400, 600]);
@@ -408,7 +425,8 @@ export class Stage {
     this.snapCam = false;
 
     g.setTransform(1, 0, 0, 1, 0, 0);
-    g.clearRect(0, 0, this.c.width, this.c.height);
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, this.off.width, this.off.height);
     this.applyTransform();
     drawArena(g, this.shake, this.topWorld, this.botWorld, this.leftWorld, this.rightWorld);
     g.save();
@@ -427,21 +445,26 @@ export class Stage {
     for (const s of this.sparks) {
       g.globalAlpha = Math.max(0, Math.min(1, s.life * 3));
       g.fillStyle = s.colour;
-      g.fillRect(s.x - 1.5, s.y - 1.5, 3, 3);
+      const sz = s.size ?? 8;
+      g.fillRect(Math.round(s.x / 6) * 6, Math.round(s.y / 6) * 6, sz, sz);
     }
     g.globalAlpha = 1;
 
-    for (const f of this.floats) {
-      g.globalAlpha = Math.max(0, Math.min(1, f.life * 1.6));
-      g.fillStyle = f.colour;
-      g.font = '700 15px ui-monospace, monospace';
-      g.textAlign = 'center';
-      g.strokeStyle = '#05080c'; g.lineWidth = 3;
-      g.strokeText(f.text, f.x, f.y);
-      g.fillText(f.text, f.x, f.y);
-    }
     g.globalAlpha = 1;
     g.restore();
+
+    for (const f of this.floats) {
+      this.og.globalAlpha = Math.max(0, Math.min(1, f.life * 1.6));
+      this.label(f.text, f.x, f.y, f.colour, 8);
+      this.og.globalAlpha = 1;
+    }
+
+    // Blit the low-res scene up with smoothing off — this is the pixel look.
+    const v = this.g;
+    v.setTransform(1, 0, 0, 1, 0, 0);
+    v.imageSmoothingEnabled = false;
+    v.clearRect(0, 0, this.c.width, this.c.height);
+    v.drawImage(this.off, 0, 0, this.off.width, this.off.height, 0, 0, this.c.width, this.c.height);
   }
 
   drawPreview(g) {
@@ -460,10 +483,9 @@ export class Stage {
     drawFighter(g, a.x, facing, poseFor(idlePhase(a), stub, 0), sideColour(state, 0), { down: a.state === 'down' });
     drawFighter(g, b.x, -facing, poseFor(idlePhase(b), stub, 0), sideColour(state, 1), { down: b.state === 'down' });
 
-    g.fillStyle = '#2c3846';
-    g.font = '600 10px ui-monospace, monospace';
-    g.textAlign = 'center';
-    g.fillText(`${Math.round(Math.abs(a.x - b.x))} apart`, (a.x + b.x) / 2, GROUND - 108);
+    // "You" over your own fighter, exactly as the source game labels the sides.
+    this.label('You', a.x, GROUND - 126, '#ffffff', 8);
+    this.label(`${Math.round(Math.abs(a.x - b.x))} apart`, (a.x + b.x) / 2, GROUND - 224, '#6a6a6a', 8);
   }
 
   drawFrame(g) {
@@ -519,23 +541,15 @@ export class Stage {
       g.globalAlpha = 1;
     }
 
-    g.fillStyle = '#3b4a5c';
-    g.font = '700 12px ui-monospace, monospace';
-    g.textAlign = 'left';
-    g.fillText(`FRAME ${String(this.frame).padStart(2, '0')} / ${r.total}`, this.leftWorld + 16, this.topWorld + 26);
+    this.label(`frame ${this.frame} / ${r.total}`, this.leftWorld + 34, this.topWorld + 46, '#5e5e5e', 8, 'left');
+    this.label('You', tl.x[0], GROUND - 128, '#ffffff', 8);
 
     // Frame advantage, printed once the exchange has settled. YOMIH puts this number
     // right next to the fighters because it is the single thing that decides the next turn.
     if (this.adv != null && this.frame >= r.total) {
-      const good = this.adv > 0;
-      g.font = '800 26px ui-monospace, monospace';
-      g.textAlign = 'center';
-      g.fillStyle = this.adv === 0 ? '#9aa7b6' : good ? '#5ef2a0' : '#ff7a8a';
-      const label = this.adv > 0 ? `+${this.adv}` : `${this.adv}`;
-      g.fillText(label, tl.x[0], GROUND - 150);
-      g.font = '700 9px ui-monospace, monospace';
-      g.fillStyle = '#5b6876';
-      g.fillText(this.adv === 0 ? 'EVEN' : good ? 'YOU ACT FIRST' : 'THEY ACT FIRST', tl.x[0], GROUND - 136);
+      const n = this.adv > 0 ? `+${this.adv}` : `${this.adv}`;
+      const col = this.adv === 0 ? '#cfd6dd' : this.adv > 0 ? '#7dffb0' : '#ff6b7f';
+      this.label(`advantage: ${n}`, (tl.x[0] + tl.x[1]) / 2, GROUND + 96, col, 10);
     }
   }
 
