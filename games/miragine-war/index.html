@@ -473,7 +473,7 @@ const FACTIONS = [
 const ALL_UNITS = [];
 FACTIONS.forEach(f => f.units.forEach(u => {
   u.faction = f; u.idx = f.units.indexOf(u); u.gid = ALL_UNITS.length;
-  u.baseSize = u.size; u.baseSpd = u.spd;
+  u.baseSize = u.size; u.baseSpd = u.spd; u.baseHp = u.hp; u.basePrice = u.price;
   ALL_UNITS.push(u);
 }));
 
@@ -508,13 +508,13 @@ let UNIT_CAP = 2600;        // safety valve so a runaway battle cannot stall the
 
 /* ---------- battle sizes ---------- */
 const SIZES = {
-  normal: { label:"NORMAL BATTLE", world:2600, gold: 1, auto:0.300, size:1,    spd:1,   hp: 6000, cap:2600 },
-  epic:   { label:"EPIC BATTLE",   world:5200, gold: 4, auto:0.050, size:1.45, spd:1.7, hp:18000, cap:2600 },
+  normal: { label:"NORMAL BATTLE", world:2600, gold: 1, auto:0.300, size:1,    spd:1,   hp: 6000, cap:2600, hero:{hp:1,   price:1  } },
+  epic:   { label:"EPIC BATTLE",   world:5200, gold: 4, auto:0.050, size:1.45, spd:1.7, hp:18000, cap:2600, hero:{hp:2.2, price:4  } },
   // CHAOS takes EPIC's dials ten times further wherever that stays playable.
   // Gold and recruit rate go the full 10x; the map cannot, because troops have to
   // stay visible on a screen two people share - so it grows as far as legibility
   // allows and bodies scale with it.
-  chaos:  { label:"CHAOS",         world:9000, gold:40, auto:0.005, size:3.0,  spd:3.0, hp:48000, cap:3000 },
+  chaos:  { label:"CHAOS",         world:9000, gold:40, auto:0.005, size:3.0,  spd:3.0, hp:48000, cap:3200, hero:{hp:4.5, price:14 } },
 };
 let sizeId = "normal";
 function applyBattleSize() {
@@ -522,7 +522,12 @@ function applyBattleSize() {
   WORLD_W = c.world; goldMul = c.gold; AUTO_GAP = c.auto; CRYSTAL_HP = c.hp; UNIT_CAP = c.cap;
   REPAIR_COST = Math.round(450 * c.gold);
   REPAIR_HEAL = Math.round(700 * (c.hp / 6000));
-  ALL_UNITS.forEach(u => { u.size = Math.round(u.baseSize*c.size); u.spd = Math.round(u.baseSpd*c.spd); });
+  ALL_UNITS.forEach(u => {
+    u.size = Math.round(u.baseSize*c.size);
+    u.spd  = Math.round(u.baseSpd*c.spd);
+    u.hp    = u.hero ? Math.round(u.baseHp    * c.hero.hp)    : u.baseHp;
+    u.price = u.hero ? Math.round(u.basePrice * c.hero.price) : u.basePrice;
+  });
   spriteCache.clear();
   resize();
 }
@@ -567,6 +572,7 @@ function resize() {
   cv.width = Math.round(cssW*DPR); cv.height = Math.round(cssH*DPR);
   const q = VIEW*DPR;
   ctx.setTransform(q, 0, 0, q, 0, 0);
+  ctx.imageSmoothingEnabled = false;      // sprites blit 1:1; filtering is pure cost
   for (const c of [bgCv, decCv]) { c.width = cv.width; c.height = cv.height; }
   bgCtx.setTransform(q,0,0,q,0,0); decCtx.setTransform(q,0,0,q,0,0);
   buildTerrain();
@@ -1240,6 +1246,7 @@ function draw() {
   const list = G.units.slice().sort((a,b) => a.y - b.y);
   const q = VIEW*DPR;
   G.crowd = list.length > 900;          // skip trimmings once the field is a wall of bodies
+  G.dense = list.length > 1800;         // and drop health bars entirely in a grinder
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, shx*q, shy*q);
   for (const a of list) drawUnit(a, q);
@@ -1833,7 +1840,7 @@ function drawUnit(a, q) {
     ctx.globalCompositeOperation = op; ctx.globalAlpha = al;
   }
   if (G.crowd) {                        // health only, and only when it matters
-    if (a.hp < a.maxhp * .55) {
+    if (!G.dense && a.hp < a.maxhp * .55) {
       const bw = s*1.9, f = Math.max(0, a.hp/a.maxhp);
       ctx.fillStyle = f>.25 ? "#ffd75e" : "#ff5e5e";
       ctx.fillRect(X-bw/2, Y-s*1.65, bw*f, 3*q);

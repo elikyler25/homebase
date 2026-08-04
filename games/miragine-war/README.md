@@ -16,7 +16,7 @@ Pick one on the menu, alongside the opponent:
 |---|---|---|---|---|---|
 | **NORMAL BATTLE** | 2600 wide | ×1 | one troop / 0.30s | 6,000 | 2,600 |
 | **EPIC BATTLE** | 5200 wide (4× the area) | ×4 | one troop / 0.05s | 18,000 | 2,600 |
-| **CHAOS** | 9000 wide (12× the area) | ×40 | one troop / 0.005s | 48,000 | 3,000 |
+| **CHAOS** | 9000 wide (12× the area) | ×40 | one troop / 0.005s | 48,000 | 3,200 |
 
 EPIC is the same game at a different scale: twice the map, four times the gold and six times the
 recruit rate, so armies run into the many hundreds and the front line becomes a solid wall of bodies.
@@ -24,7 +24,14 @@ recruit rate, so armies run into the many hundreds and the front line becomes a 
 CHAOS takes EPIC's dials ten times further — forty times the gold, sixty times the recruit rate.
 Troops pour out faster than they can die, the field saturates in seconds and stays that way, and a
 match is decided by which wall of bodies grinds through first. Measured with both sides recruiting
-flat out: **2,770 troops on the field**.
+flat out: **~2,900 troops on the field**, both sides pinned at the ceiling, ten thousand kills in the
+first two and a half minutes and neither crystal scratched — CHAOS is decided by sudden death far
+more often than by a breakthrough.
+
+**Champions scale with the battle size.** At forty times the gold a 5,600-gold champion was
+affordable in a tenth of a second and swallowed by the crowd immediately, which made it confetti.
+Champion price and HP now scale with the mode: ×4 price and ×2.2 HP in EPIC, ×14 and ×4.5 in CHAOS.
+A CHAOS champion arrives around the ten-second mark and is still standing minutes later.
 
 One honest limit: **the map could not go the full ten times.** Two people share one screen with no
 scrolling, so a wider world means smaller troops, and past a point they stop being visible at all —
@@ -206,6 +213,12 @@ underneath, so a rematch with different armies is one tap.
   ceiling and the per-unit size and speed multipliers all come from a single table, applied at the
   start of a match and restored cleanly when you switch back. Auto-recruit pauses at the ceiling so a
   runaway battle can't stall the frame — deliberate purchases are never blocked.
+- **Image smoothing off.** Sprites blit 1:1, so canvas filtering was pure waste — turning it off
+  took a 2,900-troop CHAOS frame from 28.8 ms to 12.9 ms with no visual change whatsoever. Easily the
+  cheapest win in the project.
+- **A blocky crowd renderer was tried and rejected.** Drawing troops as flat rectangles past 1,800
+  units tripled the frame rate, but a screenshot showed it read as Lego rather than an army. The
+  sprites stayed; the smoothing fix made them affordable anyway.
 - **Crowd rendering.** Past 900 troops the per-unit trimmings (hit flash, hover ring, veteran
   chevrons, full health bars) drop away, particles are capped, and separation resolves half the crowd
   per frame. Sprites for troops only a few pixels tall are baked in a cropped box, since the padding
