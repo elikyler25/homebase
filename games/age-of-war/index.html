@@ -129,7 +129,7 @@
   .btn.b1 { border-color: #2f4a6b; } .btn.b1 .n { color: #9dc6ec; }
   .btn.b2 { border-color: #6b3a34; } .btn.b2 .n { color: #eca9a1; }
   .half { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; min-width: 0; }
-  .btn { flex: 0 0 auto; width: 138px; }
+  .btn { flex: 0 0 auto; width: 144px; }
   .btn .n, .btn .c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .btn .n { padding-right: 13px; }   /* clear the key badge in the corner */
   #deckP2 { justify-content: flex-end; }
@@ -227,7 +227,7 @@ const AGES = [
   { name: "Medieval",     sky: ["#1b2436", "#38506e"], ground: "#2f4030", baseHp: 6000,  xpNext: 1900,
     turret: { cost: 400,  dmg: 20,  range: 178, cd: 1.25, name: "Ballista" },
     special: { name: "Arrow Rain",   dmg: 260,  cost: 0 } },
-  { name: "Renaissance",  sky: ["#241d2e", "#5b4a63"], ground: "#3c3a2c", baseHp: 9000,  xpNext: 5200,
+  { name: "High Seas",    sky: ["#241d2e", "#5b4a63"], ground: "#3c3a2c", baseHp: 9000,  xpNext: 5200,
     turret: { cost: 900,  dmg: 44,  range: 200, cd: 1.2, name: "Culverin" },
     special: { name: "Cannonade",    dmg: 520,  cost: 0 } },
   { name: "Modern",       sky: ["#151b22", "#3d4a58"], ground: "#33383a", baseHp: 12500, xpNext: 14000,
@@ -241,22 +241,22 @@ const AGES = [
 // [name, cost, hp, dmg, range, speed, atkCd, gold, xp, kind, splash]
 const UNITS = [
   [ // Stone
-    { n: "Clubman",   cost: 30,  hp: 60,   dmg: 10,  rng: 26,  spd: 40, cd: 0.85, gold: 22,  xp: 16,  kind: "melee" },
-    { n: "Slinger",   cost: 60,  hp: 45,   dmg: 13,  rng: 165, spd: 34, cd: 1.35, gold: 38,  xp: 26,  kind: "shot" },
-    { n: "Dino Rider",cost: 130, hp: 190,  dmg: 24,  rng: 30,  spd: 32, cd: 1.15, gold: 78,  xp: 52,  kind: "melee" },
+    { n: "Bonker",    cost: 30,  hp: 60,   dmg: 10,  rng: 26,  spd: 40, cd: 0.85, gold: 22,  xp: 16,  kind: "melee" },
+    { n: "Rock Chucker",cost: 60,  hp: 45,   dmg: 13,  rng: 165, spd: 34, cd: 1.35, gold: 38,  xp: 26,  kind: "shot" },
+    { n: "Mammoth",   cost: 130, hp: 190,  dmg: 24,  rng: 30,  spd: 32, cd: 1.15, gold: 78,  xp: 52,  kind: "melee" },
   ],
   [ // Medieval
-    { n: "Swordsman", cost: 90,  hp: 160,  dmg: 22,  rng: 28,  spd: 44, cd: 0.8,  gold: 55,  xp: 38,  kind: "melee" },
-    { n: "Archer",    cost: 150, hp: 105,  dmg: 28,  rng: 205, spd: 38, cd: 1.25, gold: 88,  xp: 60,  kind: "shot" },
+    { n: "Pitchfork Mob",cost: 90,  hp: 160,  dmg: 22,  rng: 28,  spd: 44, cd: 0.8,  gold: 55,  xp: 38,  kind: "melee" },
+    { n: "Chicken Man",cost: 150, hp: 105,  dmg: 28,  rng: 205, spd: 38, cd: 1.25, gold: 88,  xp: 60,  kind: "shot" },
     { n: "Knight",    cost: 260, hp: 420,  dmg: 46,  rng: 32,  spd: 34, cd: 1.05, gold: 155, xp: 105, kind: "melee" },
   ],
   [ // Renaissance
-    { n: "Duelist",   cost: 260, hp: 400,  dmg: 52,  rng: 30,  spd: 50, cd: 0.72, gold: 150, xp: 100, kind: "melee" },
-    { n: "Musketeer", cost: 340, hp: 290,  dmg: 68,  rng: 240, spd: 39, cd: 1.15, gold: 195, xp: 130, kind: "shot" },
+    { n: "Buccaneer", cost: 260, hp: 400,  dmg: 52,  rng: 30,  spd: 50, cd: 0.72, gold: 150, xp: 100, kind: "melee" },
+    { n: "Octo Pirate",cost: 340, hp: 290,  dmg: 68,  rng: 240, spd: 39, cd: 1.15, gold: 195, xp: 130, kind: "shot" },
     { n: "Bombard",   cost: 560, hp: 860,  dmg: 118, rng: 62,  spd: 27, cd: 1.55, gold: 320, xp: 215, kind: "shot", splash: 46 },
   ],
   [ // Modern
-    { n: "Shotgunner",cost: 520, hp: 640,  dmg: 98,  rng: 54,  spd: 58, cd: 0.72, gold: 290, xp: 195, kind: "shot" },
+    { n: "Riot Cop",  cost: 520, hp: 640,  dmg: 98,  rng: 54,  spd: 58, cd: 0.72, gold: 290, xp: 195, kind: "shot" },
     { n: "Rifleman",  cost: 760, hp: 500,  dmg: 148, rng: 250, spd: 38, cd: 1.1,  gold: 410, xp: 280, kind: "shot" },
     { n: "Tank",      cost: 1300,hp: 2300, dmg: 255, rng: 66,  spd: 29, cd: 1.4,  gold: 700, xp: 470, kind: "shot", splash: 56 },
   ],
@@ -676,7 +676,13 @@ function update(dt) {
         const bx = shooter.isPlayer ? BASE_X.e : BASE_X.p;
         if (Math.abs(bx - s.x) < 60) hitBase(other, s.dmg, shooter);
       }
-      for (let i = 0; i < 4; i++) burst(s.x, s.y, "#ffd88a");
+      if (s.age === 1 && s.slot === 1) {
+        for (let i = 0; i < 9; i++) burst(s.x, s.y, i % 3 ? "#f4f1e8" : "#e0483c");   // feathers
+      } else if (s.age === 2 && s.slot === 1) {
+        for (let i = 0; i < 9; i++) burst(s.x, s.y, i % 3 ? "#9a5fc4" : "#5e2f7e");   // ink
+      } else {
+        for (let i = 0; i < 4; i++) burst(s.x, s.y, "#ffd88a");
+      }
       sfx(s.splash ? "boom" : "hit");
     } else {
       s.x += dx / dist * move;
@@ -910,22 +916,34 @@ function drawSkyline(age, x0, x1) {
       const w = 13 + r1 * 7;
       ctx.fillRect(x - w / 2, base - h, w, h);
       for (let k = 0; k < 3; k++) ctx.fillRect(x - w / 2 + k * (w / 3), base - h - 6, w / 4.2, 6);
-    } else if (age === 2) {                            // windmills and spires
+    } else if (age === 2) {                            // masts and palms
       if (i % 2) {
-        ctx.fillRect(x - 6, base - h, 12, h);
-        ctx.save(); ctx.translate(x, base - h - 2);
-        ctx.rotate(G.t * 0.5 + i);
-        ctx.lineWidth = 3;
-        for (let k = 0; k < 4; k++) {
-          ctx.beginPath(); ctx.moveTo(0, 0);
-          ctx.lineTo(Math.cos(k * Math.PI / 2) * 20, Math.sin(k * Math.PI / 2) * 20); ctx.stroke();
+        ctx.fillRect(x - 2, base - h - 16, 4, h + 16);              // mast
+        for (let k = 0; k < 2; k++) {                                // square sails
+          const sy = base - h - 10 + k * 20, sw = 15 - k * 3;
+          ctx.beginPath();
+          ctx.moveTo(x - sw, sy); ctx.lineTo(x + sw, sy);
+          ctx.lineTo(x + sw - 2, sy + 15); ctx.lineTo(x - sw + 2, sy + 15);
+          ctx.closePath(); ctx.fill();
         }
-        ctx.restore();
+        ctx.beginPath();                                             // hull
+        ctx.moveTo(x - 20, base - 2); ctx.lineTo(x + 20, base - 2);
+        ctx.lineTo(x + 13, base + 7); ctx.lineTo(x - 13, base + 7);
+        ctx.closePath(); ctx.fill();
       } else {
-        ctx.beginPath();
-        ctx.moveTo(x - 9, base); ctx.lineTo(x - 9, base - h * 0.6);
-        ctx.lineTo(x, base - h - 14); ctx.lineTo(x + 9, base - h * 0.6);
-        ctx.lineTo(x + 9, base); ctx.closePath(); ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.beginPath();                                             // palm trunk
+        ctx.moveTo(x, base);
+        ctx.quadraticCurveTo(x + 6, base - h * 0.6, x + 2, base - h);
+        ctx.stroke();
+        for (let k = 0; k < 5; k++) {                                // fronds
+          const a = -2.5 + k * 0.55;
+          ctx.beginPath();
+          ctx.moveTo(x + 2, base - h);
+          ctx.quadraticCurveTo(x + 2 + Math.cos(a) * 13, base - h + Math.sin(a) * 13 - 4,
+                               x + 2 + Math.cos(a) * 22, base - h + Math.sin(a) * 22 + 5);
+          ctx.stroke();
+        }
       }
     } else if (age === 3) {                            // chimneys and blocks
       if (i % 3 === 0) {
@@ -1107,29 +1125,70 @@ function meleeWeapon(age, S, trim, dark) {
   ctx.restore();
 }
 
+// A live chicken, used both as a held prop and as a projectile in flight.
+function drawChicken(z, flap) {
+  ctx.fillStyle = "#f4f1e8";
+  ctx.beginPath(); ctx.ellipse(0, 0, 5.2 * z, 4.2 * z, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(4.4 * z, -3.4 * z, 2.7 * z, 0, 7); ctx.fill();
+  ctx.fillStyle = "#e0483c";
+  ctx.beginPath(); ctx.arc(4.0 * z, -6.0 * z, 1.5 * z, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(5.6 * z, -1.3 * z, 1.0 * z, 0, 7); ctx.fill();
+  ctx.fillStyle = "#f0a63c";
+  ctx.beginPath();
+  ctx.moveTo(6.7 * z, -3.7 * z); ctx.lineTo(9.8 * z, -2.9 * z); ctx.lineTo(6.7 * z, -2.1 * z);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#f0a63c"; ctx.lineWidth = 1.1 * z; ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-1 * z, 3.6 * z); ctx.lineTo(-1.6 * z, 6.4 * z);
+  ctx.moveTo(1.6 * z, 3.6 * z); ctx.lineTo(2.2 * z, 6.4 * z); ctx.stroke();
+  ctx.fillStyle = "#dcd7c8";                       // wing, mid-flap
+  ctx.save(); ctx.translate(-0.6 * z, -0.6 * z); ctx.rotate(Math.sin(flap) * 0.85);
+  ctx.beginPath(); ctx.ellipse(0, 0, 4.2 * z, 2.1 * z, 0, 0, 7); ctx.fill();
+  ctx.restore();
+}
+
+// An extremely unhappy octopus.
+function drawOctopus(z, wig) {
+  ctx.strokeStyle = "#8348a8"; ctx.lineWidth = 1.7 * z; ctx.lineCap = "round";
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo((-2.6 + i * 1.3) * z, 2 * z);
+    ctx.quadraticCurveTo((-5 + i * 2.5) * z, (6 + Math.sin(wig + i) * 1.8) * z,
+                         (-7 + i * 3.5) * z, (9.5 + Math.cos(wig + i * 1.4) * 2.2) * z);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#9a5fc4";
+  ctx.beginPath(); ctx.ellipse(0, -1 * z, 5.2 * z, 4.6 * z, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath(); ctx.arc(-1.7 * z, -2.5 * z, 1.6 * z, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(2.1 * z, -2.5 * z, 1.6 * z, 0, 7); ctx.fill();
+  ctx.fillStyle = "#241833";
+  ctx.beginPath(); ctx.arc(-1.4 * z, -2.3 * z, 0.8 * z, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(2.4 * z, -2.3 * z, 0.8 * z, 0, 7); ctx.fill();
+}
+
 function rangedWeapon(age, S, trim, dark) {
   ctx.save();
   ctx.lineCap = "round";
-  if (age === 0) {                                   // sling
-    ctx.strokeStyle = trim; ctx.lineWidth = 2.2 * S;
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(9 * S, -2.5 * S); ctx.stroke();
-    ctx.strokeStyle = dark; ctx.lineWidth = 1.1 * S;
-    ctx.beginPath(); ctx.moveTo(9 * S, -2.5 * S); ctx.lineTo(13 * S, 3.5 * S); ctx.stroke();
+  if (age === 0) {                                   // a rock, hoisted overhead
+    ctx.strokeStyle = trim; ctx.lineWidth = 2.3 * S;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(7 * S, -6 * S); ctx.stroke();
     ctx.fillStyle = "#9a8f7d";
-    ctx.beginPath(); ctx.arc(13.5 * S, 4.6 * S, 2.5 * S, 0, 7); ctx.fill();
-  } else if (age === 1) {                            // bow with nocked arrow
-    ctx.strokeStyle = "#8a6a44"; ctx.lineWidth = 2.1 * S;
-    ctx.beginPath(); ctx.arc(11 * S, 0, 8.5 * S, -1.3, 1.3); ctx.stroke();
-    const ex = 11 * S + 8.5 * S * Math.cos(1.3), ey = 8.5 * S * Math.sin(1.3);
-    ctx.strokeStyle = "#e6e0d0"; ctx.lineWidth = 0.9 * S;
-    ctx.beginPath(); ctx.moveTo(ex, -ey); ctx.lineTo(6 * S, 0); ctx.lineTo(ex, ey); ctx.stroke();
-    ctx.strokeStyle = "#d8c9a8"; ctx.lineWidth = 1.3 * S;
-    ctx.beginPath(); ctx.moveTo(5 * S, 0); ctx.lineTo(18 * S, 0); ctx.stroke();
-  } else if (age === 2) {                            // musket
-    ctx.strokeStyle = "#7a5636"; ctx.lineWidth = 3.2 * S;
-    ctx.beginPath(); ctx.moveTo(-2 * S, 1.4 * S); ctx.lineTo(7 * S, -1 * S); ctx.stroke();
-    ctx.strokeStyle = trim; ctx.lineWidth = 1.9 * S;
-    ctx.beginPath(); ctx.moveTo(6 * S, -1 * S); ctx.lineTo(20 * S, -2.6 * S); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(5 * S, -8 * S); ctx.lineTo(11 * S, -9.5 * S); ctx.lineTo(12 * S, -4.5 * S);
+    ctx.lineTo(6 * S, -3.5 * S); ctx.closePath(); ctx.fill();
+  } else if (age === 1) {                            // a chicken, held by the feet
+    ctx.strokeStyle = trim; ctx.lineWidth = 2.2 * S;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(8 * S, -3 * S); ctx.stroke();
+    ctx.save(); ctx.translate(13 * S, -4 * S); ctx.rotate(0.35);
+    drawChicken(S * 0.95, G.t * 11);
+    ctx.restore();
+  } else if (age === 2) {                            // an octopus, likewise
+    ctx.strokeStyle = trim; ctx.lineWidth = 2.2 * S;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(8 * S, -4 * S); ctx.stroke();
+    ctx.save(); ctx.translate(13 * S, -6 * S);
+    drawOctopus(S * 0.9, G.t * 7);
+    ctx.restore();
   } else if (age === 3) {                            // scoped rifle
     ctx.strokeStyle = "#3d434c"; ctx.lineWidth = 3.2 * S;
     ctx.beginPath(); ctx.moveTo(-2 * S, 1.4 * S); ctx.lineTo(15 * S, -1 * S); ctx.stroke();
@@ -1180,6 +1239,15 @@ function drawUnit(u, fade) {
     ctx.beginPath(); ctx.ellipse(0, -12 * S, 14 * S, 7 * S, 0, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.moveTo(10 * S, -16 * S); ctx.lineTo(19 * S, -23 * S);
     ctx.lineTo(22 * S, -20 * S); ctx.lineTo(12 * S, -13 * S); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = dark; ctx.lineWidth = 2.6 * S; ctx.lineCap = "round";
+    ctx.beginPath();                                    // trunk
+    ctx.moveTo(21 * S, -19 * S);
+    ctx.quadraticCurveTo(27 * S, -14 * S, 24 * S, -6 * S); ctx.stroke();
+    ctx.strokeStyle = "#e8e2d0"; ctx.lineWidth = 2.2 * S;
+    ctx.beginPath();                                    // tusks
+    ctx.moveTo(20 * S, -17 * S); ctx.quadraticCurveTo(27 * S, -15 * S, 28 * S, -20 * S);
+    ctx.moveTo(19 * S, -15 * S); ctx.quadraticCurveTo(26 * S, -12 * S, 27 * S, -17 * S);
+    ctx.stroke();
     ctx.fillStyle = kit; ctx.beginPath();
     ctx.roundRect(-5 * S, -27 * S, 9 * S, 13 * S, 2 * S); ctx.fill();
     ctx.fillStyle = skin;
@@ -1364,16 +1432,15 @@ function drawShot(s) {
     ctx.moveTo(-3.4, -2.4); ctx.lineTo(3.2, -3.2); ctx.lineTo(3.4, 2.6);
     ctx.lineTo(-2.6, 3.4); ctx.closePath(); ctx.fill();
 
-  } else if (s.age === 1) {                              // arrow
+  } else if (s.age === 1 && s.slot === 1) {              // an airborne chicken
     ctx.translate(s.x, y); ctx.scale(dir, 1);
-    ctx.strokeStyle = "#d8c9a8"; ctx.lineWidth = 1.7;
-    ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(7, 0); ctx.stroke();
-    ctx.fillStyle = "#eef2f8";
-    ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(6, -2.5); ctx.lineTo(6, 2.5); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = "#c9c2b0"; ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(-10, 0); ctx.lineTo(-13.5, -2.8);
-    ctx.moveTo(-10, 0); ctx.lineTo(-13.5, 2.8); ctx.stroke();
+    ctx.rotate(Math.sin(G.t * 9 + s.sx * 0.2) * 0.4);
+    drawChicken(1.15, G.t * 26);
+
+  } else if (s.age === 2 && s.slot === 1) {              // a tumbling octopus
+    ctx.translate(s.x, y); ctx.scale(dir, 1);
+    ctx.rotate(Math.sin(G.t * 6 + s.sx * 0.15) * 0.5);
+    drawOctopus(1.1, G.t * 12);
 
   } else if (s.age === 4) {                              // laser bolt
     ctx.strokeStyle = p ? "#8ef0ff" : "#ffb0a0";
