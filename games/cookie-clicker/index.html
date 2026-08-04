@@ -27,29 +27,33 @@
   <!-- ── Left: the bakery ─────────────────────────────────────── -->
   <section class="col col-left" id="stage" aria-label="Bakery">
 
-    <label class="bakery-name">
-      <span class="sr-only">Name your bakery</span>
-      <input id="bakeryName" maxlength="24" spellcheck="false" value="Your">
-      <span class="bakery-suffix" aria-hidden="true">'s bakery</span>
-    </label>
-
-    <div class="counter">
-      <output id="cookieCount" class="counter-num" aria-live="polite" aria-atomic="true">0</output>
-      <span class="counter-label">cookies baked</span>
-      <span class="rate">
-        <span id="cpsCount">0</span> per second
-        <span id="cpsBuffTag" class="buff-tag" hidden></span>
-      </span>
-    </div>
-
+    <!-- The whole cookie stage lives inside one bright scene. -->
     <div class="cookie-well">
+      <div class="rays" aria-hidden="true"></div>
+      <div class="cookie-rain" id="cookieRain" aria-hidden="true"></div>
+
+      <label class="bakery-name">
+        <span class="sr-only">Name your bakery</span>
+        <input id="bakeryName" maxlength="24" spellcheck="false" value="Your">
+        <span class="bakery-suffix" aria-hidden="true">'s bakery</span>
+      </label>
+
+      <div class="counter">
+        <output id="cookieCount" class="counter-num" aria-live="polite" aria-atomic="true">0</output>
+        <span class="counter-label">cookies baked</span>
+        <span class="rate">
+          <span id="cpsCount">0</span> per second
+          <span id="cpsBuffTag" class="buff-tag" hidden></span>
+        </span>
+      </div>
+
       <button type="button" id="bigCookie" class="big-cookie" aria-describedby="clickHint">
         <span class="cookie-face" aria-hidden="true">🍪</span>
         <span class="sr-only">Bake a cookie</span>
       </button>
-    </div>
 
-    <p id="clickHint" class="hint">Click the cookie — or press <kbd>Space</kbd></p>
+      <p id="clickHint" class="hint">Click the cookie — or press <kbd>Space</kbd></p>
+    </div>
 
     <div class="click-stats">
       <div class="cs">
@@ -97,13 +101,23 @@
 
     <div class="panelbox framed">
       <div class="tabs" role="tablist" aria-label="Records">
-        <button type="button" role="tab" class="tab active" data-tab="achievements" aria-selected="true">
+        <button type="button" role="tab" class="tab active" data-tab="bakery" aria-selected="true">
+          Bakery
+        </button>
+        <button type="button" role="tab" class="tab" data-tab="achievements" aria-selected="false">
           Badges
         </button>
         <button type="button" role="tab" class="tab" data-tab="stats" aria-selected="false">Stats</button>
       </div>
 
-      <div class="tabpanel" data-panel="achievements">
+      <div class="tabpanel scenes-panel" data-panel="bakery">
+        <div id="sceneList" class="scenes"></div>
+        <p id="sceneEmpty" class="empty">
+          Buy something from the store and watch your bakery fill up.
+        </p>
+      </div>
+
+      <div class="tabpanel" data-panel="achievements" hidden>
         <p class="panel-note">
           Every badge permanently adds <b>+0.5%</b> to cookies per second, and badges survive a
           new legacy. <span id="achCount"></span>

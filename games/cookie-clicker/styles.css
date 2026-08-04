@@ -214,7 +214,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 .bakery-name {
   display: flex; align-items: baseline; justify-content: center; gap: 1px;
-  width: 100%; font-size: 15px; color: var(--muted-s);
+  width: 100%; font-size: 14px; color: #eaf6ff;
+  text-shadow: 1px 1px 0 #0e2a44, -1px 1px 0 #0e2a44, 1px -1px 0 #0e2a44, -1px -1px 0 #0e2a44;
 }
 .bakery-name input {
   background: transparent; border: 0; border-bottom: 1px dashed transparent;
@@ -222,7 +223,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   padding: 0 1px; max-width: 60%; min-width: 40px;
   field-sizing: content;
 }
-.bakery-name input:hover { border-bottom-color: var(--frame); }
+.bakery-name input { color: #ffe066; }
+.bakery-name input:hover { border-bottom-color: #ffffff99; }
 .bakery-name input:focus { outline: none; border-bottom-color: var(--gold); }
 
 .counter { text-align: center; }
@@ -234,25 +236,77 @@ button { font: inherit; color: inherit; cursor: pointer; }
      2px 2px 0 #1b1005, -2px 2px 0 #1b1005, 2px -2px 0 #1b1005, -2px -2px 0 #1b1005,
      0 0 14px #000a;
 }
-[data-theme="light"] .counter-num { color: #4a3208;
-  text-shadow: 2px 2px 0 #fffdf7, -2px 2px 0 #fffdf7, 2px -2px 0 #fffdf7,
-               -2px -2px 0 #fffdf7, 0 3px 6px #00000024; }
-.counter-label { display: block; color: var(--muted-s); font-size: 12.5px; margin-top: 2px; }
-.rate { display: block; color: var(--muted-s); font-size: 13px;
+.counter-label, .cookie-well .rate {
+  color: #fff; text-shadow: 1px 1px 0 #0e2a44, -1px 1px 0 #0e2a44,
+    1px -1px 0 #0e2a44, -1px -1px 0 #0e2a44;
+}
+.counter-label { display: block; font-size: 12.5px; margin-top: 2px; }
+.rate { display: block; font-size: 13px;
   font-variant-numeric: tabular-nums; margin-top: 4px; }
-#cpsCount { color: var(--gold); font-weight: 800; }
+#cpsCount { color: #ffe066; font-weight: 800; }
 
 .buff-tag { margin-left: 5px; padding: 1px 7px; border-radius: 999px;
   background: var(--gold); color: #24160a; font-weight: 800; font-size: 11.5px; }
 
+/* The cookie sits in a bright candy scene: sprinkled wallpaper, a slow
+ * sunburst, and cookies drifting past. This panel stays vivid in both themes —
+ * it is scenery, not chrome. */
 .cookie-well {
-  display: grid; place-items: center; width: 100%; padding: 4px 0 0;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 8px;
+  flex: 1; min-height: 330px;          /* absorbs the column's spare height */
+  width: calc(100% + 28px); margin: -16px -14px 0; padding: 18px 12px 22px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 22%, #ff9ec744 0 7px, transparent 8px),
+    radial-gradient(circle at 78% 14%, #7fe0ff44 0 6px, transparent 7px),
+    radial-gradient(circle at 32% 78%, #ffe07a44 0 6px, transparent 7px),
+    radial-gradient(circle at 88% 72%, #b6ff9e44 0 7px, transparent 8px),
+    radial-gradient(circle at 55% 44%, #ffffff22 0 5px, transparent 6px),
+    linear-gradient(180deg, #2b6fb0, #4aa3d8 55%, #6cc2ea);
+  background-size: 130px 130px, 150px 150px, 170px 170px, 190px 190px, 110px 110px, auto;
+  border-top: 2px solid #00000038; border-bottom: 2px solid #00000038;
+  box-shadow: inset 0 8px 20px #0000004d, inset 0 -8px 20px #0000004d;
+}
+[data-theme="light"] .cookie-well {
+  background:
+    radial-gradient(circle at 12% 22%, #ff8fbe55 0 7px, transparent 8px),
+    radial-gradient(circle at 78% 14%, #63d3ff55 0 6px, transparent 7px),
+    radial-gradient(circle at 32% 78%, #ffd45f55 0 6px, transparent 7px),
+    radial-gradient(circle at 88% 72%, #9df58055 0 7px, transparent 8px),
+    radial-gradient(circle at 55% 44%, #ffffff44 0 5px, transparent 6px),
+    linear-gradient(180deg, #6cc2ea, #9adcf4 55%, #c6eefb);
+  background-size: 130px 130px, 150px 150px, 170px 170px, 190px 190px, 110px 110px, auto;
+}
+
+/* Sunburst rays, turning slowly behind the cookie. */
+.cookie-well > *:not(.rays):not(.cookie-rain) { position: relative; z-index: 2; }
+
+.rays {
+  position: absolute; left: 50%; top: 50%; width: 210%; aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg,
+    #ffffff33 0deg 7deg, transparent 7deg 14deg);
+  animation: spin 90s linear infinite;
+  pointer-events: none;
+}
+@keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+.cookie-rain { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.rain-cookie {
+  position: absolute; top: -40px; font-size: 22px; opacity: .5;
+  animation: rainfall linear infinite;
+}
+@keyframes rainfall {
+  to { transform: translateY(340px) rotate(var(--spin, 200deg)); }
 }
 
 .big-cookie {
   background: none; border: 0; padding: 0; line-height: 1;
-  font-size: clamp(112px, 13vw, 168px);
-  filter: drop-shadow(0 12px 20px #000b);
+  font-size: clamp(108px, 11vw, 178px);
+  filter: drop-shadow(0 10px 18px #00000073) drop-shadow(0 0 26px #ffffff5c);
+  margin: 2px 0;
   transition: transform .08s cubic-bezier(.2,.9,.3,1.4);
   user-select: none; -webkit-tap-highlight-color: transparent;
 }
@@ -263,10 +317,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes critpop {
   0%   { transform: scale(.9);  filter: drop-shadow(0 0 0 var(--crit)); }
   40%  { transform: scale(1.14); filter: drop-shadow(0 0 26px var(--crit)); }
-  100% { transform: scale(1);   filter: drop-shadow(0 12px 20px #000b); }
+  100% { transform: scale(1);   filter: drop-shadow(0 10px 18px #00000073); }
 }
 
-.hint { color: var(--muted-s); font-size: 12px; margin: 0; text-align: center; }
+.hint { font-size: 12px; margin: 2px 0 0; text-align: center; color: #eaf6ff;
+  text-shadow: 1px 1px 0 #0e2a44, -1px 1px 0 #0e2a44, 1px -1px 0 #0e2a44, -1px -1px 0 #0e2a44; }
+.hint kbd { background: #ffffff2e; border-color: #ffffff5c; color: #fff; }
 kbd { border: 1px solid var(--frame); border-bottom-width: 2px; border-radius: 4px;
   padding: 1px 5px; font-size: 11px; font-family: ui-monospace, monospace;
   background: var(--panel-2); }
@@ -338,6 +394,47 @@ kbd { border: 1px solid var(--frame); border-bottom-width: 2px; border-radius: 4
 @keyframes tickerIn { from { opacity: 0; transform: translateY(5px); } }
 
 .panelbox { display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── Building scenes ─────────────────────────────────────────── */
+
+.scenes-panel { padding: 8px; }
+.scenes { display: flex; flex-direction: column; gap: 6px; }
+
+.scene {
+  position: relative; min-height: 72px; border-radius: 6px; overflow: hidden;
+  display: flex; align-items: flex-end;
+  border: 1px solid #00000055;
+  box-shadow: inset 0 2px 10px #00000047, inset 0 -14px 22px #00000030;
+}
+
+.scene-label {
+  position: absolute; left: 7px; top: 5px; z-index: 2;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .3px; color: #fff;
+  text-shadow: 1px 1px 0 #000a, -1px 1px 0 #000a, 1px -1px 0 #000a, -1px -1px 0 #000a;
+  pointer-events: none;
+}
+.scene-more {
+  position: absolute; right: 7px; top: 5px; z-index: 2;
+  font-size: 10px; font-weight: 800; color: #fff;
+  background: #0000006b; border-radius: 999px; padding: 1px 7px;
+  pointer-events: none;
+}
+
+/* Sprites pack into wrapping rows and sit on the horizon. No measuring
+ * needed, so this renders correctly even while the tab is hidden. */
+.scene-sprites {
+  display: flex; flex-wrap: wrap; align-content: flex-end;
+  width: 100%; max-height: 76px; overflow: hidden;
+  padding: 14px 5px 3px;
+}
+.sprite {
+  width: 19px; font-size: 21px; line-height: 20px; text-align: center;
+  margin-right: -1px;
+  filter: drop-shadow(0 2px 2px #00000066);
+  animation: bob 2.6s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+@keyframes bob { 50% { transform: translateY(-3px); } }
 
 .tabs { display: flex; background: var(--sunk); border-bottom: 1px solid #0006; }
 .tab {
@@ -482,13 +579,12 @@ kbd { border: 1px solid var(--frame); border-bottom-width: 2px; border-radius: 4
 .fx { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 25; }
 
 .float {
-  position: absolute; font-weight: 800; font-size: 18px; color: #fff;
-  text-shadow: 1px 1px 0 #1b1005, -1px 1px 0 #1b1005, 1px -1px 0 #1b1005,
-               -1px -1px 0 #1b1005, 0 2px 10px #000c;
+  position: absolute; font: 800 25px/1 Georgia, "Times New Roman", serif; color: #fff;
+  -webkit-text-stroke: 4px #1b1005; paint-order: stroke fill;
   will-change: transform, opacity; animation: floatup .95s ease-out forwards;
 }
-.float.is-crit { color: #ffd0a3; font-size: 27px; }
-.float.is-gold { color: var(--gold); font-size: 23px; }
+.float.is-crit { color: #ffd23f; font-size: 40px; -webkit-text-stroke-width: 5px; }
+.float.is-gold { color: var(--gold); font-size: 32px; }
 
 @keyframes floatup {
   0%   { transform: translate(-50%, 0) scale(.8); opacity: 0; }
@@ -609,9 +705,11 @@ kbd { border: 1px solid var(--frame); border-bottom-width: 2px; border-radius: 4
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
-  .golden, .milk-fill::before { animation: none; }
+  .golden, .milk-fill::before, .rays, .rain-cookie, .sprite { animation: none; }
 }
 
 body.no-fx .float, body.no-fx .crumb { display: none; }
 body.no-fx .big-cookie { transition: none; }
-body.no-fx .milk-fill::before { animation: none; }
+body.no-fx .milk-fill::before, body.no-fx .rays,
+body.no-fx .sprite { animation: none; }
+body.no-fx .cookie-rain { display: none; }

@@ -58,8 +58,8 @@ can't earn, no nagging. It's a game about a number going up.
 ## The look
 
 The layout follows the genre's classic three-column shape, because it works: a
-bakery column on the left (name, counter, cookie, click stats, milk), news and
-records in the middle, the store on the right. On a wide screen the page itself
+bakery column on the left (name, counter, cookie, click stats, milk), your
+building scenes in the middle, the store on the right. On a wide screen the page itself
 doesn't scroll — each column scrolls inside its own frame. Below 1180px it
 collapses to two columns, and below 860px to one.
 
@@ -69,8 +69,17 @@ inner ring over a warm panel colour, the page grain is an inline SVG
 outline. No image files, no web fonts, no external requests of any kind — which
 is also why it works offline from `file://`.
 
-Two flourishes worth calling out:
+The middle column is the point of the whole thing: **every building you own
+gets a scene**, and every unit gets a sprite standing in it. Grandmothers fill
+a warm kitchen, farms sit under a blue sky, factories under an orange one,
+portals in a purple void. Buy something and you watch your bakery physically
+fill up — which is far more satisfying than a number going up next to a label.
 
+Around it:
+
+- **A bright candy stage** for the cookie — sprinkled wallpaper, a slowly
+  turning sunburst, cookies drifting past, and big chunky outlined numbers
+  flying off every click.
 - **A news ticker** that reacts to your bakery — headlines are gated on what
   you own, how much you've baked, and how many legacies you've run.
 - **Milk** at the foot of the left column that rises with your badge count and

@@ -89,6 +89,28 @@ var BUILDINGS = [
     flavor:'You do not bake it. You simply agree that it exists.' }
 ];
 
+/* Each building gets a scene in the middle column: a strip of sky over ground,
+ * populated with one sprite per unit you own. Watching the bakery physically
+ * fill up is most of the fun, so these are content, not decoration.
+ * The single gradient does sky and ground in one go — the hard stop is the
+ * horizon. */
+var SCENES = {
+  cursor:  { bg: 'linear-gradient(180deg,#404a7d 0%,#5b6aa8 58%,#2c3157 58%)' },
+  granny:  { bg: 'linear-gradient(180deg,#e8c9a8 0%,#dbb389 56%,#7a4f30 56%)' },
+  bakery:  { bg: 'linear-gradient(180deg,#a8d4ef 0%,#cfe6f6 54%,#8d8378 54%)' },
+  farm:    { bg: 'linear-gradient(180deg,#6fc3f0 0%,#a9e0f7 50%,#5fa845 50%)' },
+  factory: { bg: 'linear-gradient(180deg,#c96a2a 0%,#e8a05a 48%,#4a4038 48%)' },
+  port:    { bg: 'linear-gradient(180deg,#7fc9ee 0%,#bde6f8 46%,#2a6ea8 46%)' },
+  lab:     { bg: 'linear-gradient(180deg,#bfe7e2 0%,#e4f5f2 52%,#9aa8a6 52%)' },
+  portal:  { bg: 'linear-gradient(180deg,#6b2f9e 0%,#a94fd6 50%,#37154f 50%)' },
+  timex:   { bg: 'linear-gradient(180deg,#2b2358 0%,#5c4aa8 48%,#1b1638 48%)' },
+  anti:    { bg: 'linear-gradient(180deg,#0b1026 0%,#1d2a5c 46%,#070a18 46%)' },
+  singu:   { bg: 'linear-gradient(180deg,#150b22 0%,#3d1a5e 44%,#050308 44%)' },
+  idea:    { bg: 'linear-gradient(180deg,#f3d98a 0%,#fff4d0 50%,#c9a94f 50%)' }
+};
+
+var SCENE_SPRITE_CAP = 96;   // beyond this the row is summarised, not drawn
+
 /* Per-building upgrade tiers — generated, so twelve buildings cost twelve lines. */
 var TIERS = [
   { at:1,   name:'Reinforced',    mult:10 },
@@ -839,7 +861,8 @@ var EL_IDS = [
   'achCount','statList','toasts','settings','offlineDlg','offlineTime',
   'offlineEarned','offlineRate','optFx','optShort','optConfirm','exportBtn','importBtn',
   'wipeBtn','saveBox','saveStatus','themeBtn','tipbox',
-  'bakeryName','newsText','milk','milkFill','milkLabel'
+  'bakeryName','newsText','milk','milkFill','milkLabel',
+  'sceneList','sceneEmpty','cookieRain'
 ];
 
 /* Populated in boot(), so this file can also be required headlessly by the
@@ -996,6 +1019,59 @@ ui.paintBuffs = function () {
     d.querySelector('.buff-life').style.transform = 'scaleX(' + (left / b.dur) + ')';
     el.buffBar.appendChild(d);
   });
+};
+
+/* --- Building scenes ---------------------------------------------- */
+
+var sceneSig = null;
+
+ui.paintScenes = function () {
+  var sig = BUILDINGS.map(function (b) { return state.own[b.id]; }).join(',');
+  if (sig === sceneSig) return;
+  sceneSig = sig;
+
+  el.sceneList.textContent = '';
+  var any = false;
+
+  BUILDINGS.forEach(function (b) {
+    var owned = state.own[b.id];
+    if (owned <= 0) return;
+    any = true;
+
+    var row = document.createElement('div');
+    row.className = 'scene';
+    row.style.background = (SCENES[b.id] || {}).bg || 'linear-gradient(180deg,#555,#222)';
+
+    var label = document.createElement('span');
+    label.className = 'scene-label';
+    label.textContent = b.name + ' ×' + fmt(owned, 0);
+    row.appendChild(label);
+
+    var pen = document.createElement('div');
+    pen.className = 'scene-sprites';
+    var drawn = Math.min(owned, SCENE_SPRITE_CAP);
+    for (var i = 0; i < drawn; i++) {
+      var s = document.createElement('span');
+      s.className = 'sprite';
+      s.textContent = b.icon;
+      // Stagger the bob so the row never marches in lockstep.
+      s.style.setProperty('--d', (-(i % 17) * 0.13).toFixed(2) + 's');
+      pen.appendChild(s);
+    }
+    row.appendChild(pen);
+
+    if (owned > drawn) {
+      var more = document.createElement('span');
+      more.className = 'scene-more';
+      more.textContent = '+' + fmt(owned - drawn, 0) + ' more';
+      row.appendChild(more);
+    }
+
+    row.setAttribute('aria-label', owned + ' ' + b.name + (owned === 1 ? '' : 's'));
+    el.sceneList.appendChild(row);
+  });
+
+  el.sceneEmpty.hidden = any;
 };
 
 /* --- News ticker -------------------------------------------------- */
@@ -1279,13 +1355,14 @@ ui.paintStats = function () {
 
 /* --- Whole-store repaint ------------------------------------------ */
 
-var activeTab = 'achievements';
+var activeTab = 'bakery';
 
 /* Call whenever `state` is swapped wholesale or number formatting changes —
  * the cached signatures above would otherwise skip a needed redraw. */
 ui.invalidate = function () {
   upgradeSig = null;
   achievementSig = null;
+  sceneSig = null;
   ui.hideTip();
 };
 
@@ -1295,6 +1372,7 @@ ui.paintAll = function () {
   ui.paintLegacy();
   ui.paintBuildings();
   ui.paintUpgrades();
+  ui.paintScenes();
   ui.paintMilk();
   if (activeTab === 'achievements') ui.paintAchievements();
   if (activeTab === 'stats') ui.paintStats();
@@ -1487,6 +1565,21 @@ function wire() {
   });
 }
 
+function buildCookieRain() {
+  el.cookieRain.textContent = '';
+  for (var i = 0; i < 9; i++) {
+    var c = document.createElement('span');
+    c.className = 'rain-cookie';
+    c.textContent = '🍪';
+    c.style.left = (2 + i * 11 + Math.random() * 6) + '%';
+    c.style.fontSize = (14 + Math.random() * 14) + 'px';
+    c.style.animationDuration = (7 + Math.random() * 9).toFixed(1) + 's';
+    c.style.animationDelay = (-Math.random() * 14).toFixed(1) + 's';
+    c.style.setProperty('--spin', Math.round(Math.random() * 500 - 250) + 'deg');
+    el.cookieRain.appendChild(c);
+  }
+}
+
 function applyOpts() {
   el.bakeryName.value = state.bakery;
   el.optFx.checked = state.opts.fx;
@@ -1539,6 +1632,7 @@ function frame() {
     ui.paintLegacy();
     ui.paintBuildings();
     ui.paintUpgrades();
+    ui.paintScenes();
     ui.paintMilk();
     if (activeTab === 'stats') ui.paintStats();
     if (activeTab === 'achievements') ui.paintAchievements();
@@ -1563,6 +1657,7 @@ function boot() {
   recalc();
   checkAchievements(true);
   ui.buildBuildings();
+  buildCookieRain();
   ui.paintNews(true);
   ui.paintAll();
   ui.paintAchievements();
