@@ -27,7 +27,7 @@ recruit rate, so armies run into the many hundreds and the front line becomes a 
 CHAOS takes EPIC's dials ten times further — forty times the gold, sixty times the recruit rate.
 Troops pour out faster than they can die, the field saturates in seconds and stays that way, and a
 match is decided by which wall of bodies grinds through first. Measured with both sides recruiting
-flat out: **~3,100 troops on the field**, both sides pinned at the ceiling, eleven thousand kills in
+flat out: **4,200 troops on the field** — the ceiling — eleven thousand kills in
 the first two and a half minutes and neither crystal scratched — CHAOS is decided by sudden death far
 more often than by a breakthrough.
 
@@ -300,13 +300,49 @@ underneath, so a rematch with different armies is one tap.
   `getContext('webgl')` and by firing `WEBGL_lose_context` mid-battle — 3,100 troops kept rendering,
   no exceptions either time.
 - **The game measures the device and scales itself.** A battle size is written for a machine nobody
-  can know in advance: CHAOS asks for 4,200 troops, which a laptop shrugs off and an old phone does
-  not. Each frame times its own simulation and drawing — deliberately *not* the gap between frames,
-  since a 30 Hz display or a throttled background tab would otherwise look identical to a machine
-  that cannot keep up. Past 13 ms of work it sheds particles first and then the troop ceiling, 10% at
-  a time down to a floor of 500, and hands it all back when there is headroom again. Verified by
-  injecting 20 ms of busywork per frame: the ceiling fell 4,200 → 500 and climbed back once the load
-  cleared. When it is limiting, the HUD says so rather than leaving you wondering.
+  can know in advance: CHAOS asks for 4,200 troops and CHAOS ×10 for 20,000, which a laptop shrugs off
+  and an old phone does not. Each frame times its own simulation and drawing — deliberately *not* the
+  gap between frames, since a 30 Hz display or a throttled background tab would otherwise look
+  identical to a machine that cannot keep up. Past 13 ms of work it sheds; below 8 ms it gives the
+  load back. Against synthetic devices it now lands within half a percent of the right ceiling —
+  20,000 troops on a fast one, 12,955 where 13,000 was the theoretical limit, 6,471 where 6,500 was.
+- **The first version of that governor did not work, and CHAOS was unplayable because of it.** Three
+  separate faults, each of which alone was enough:
+  - **It discarded any frame over 200 ms as "a hitch".** So the worse a device was struggling, the
+    more certain the governor was to do nothing at all — on a machine taking 250 ms a frame it never
+    shed a single troop, and the smoothed frame time sat at a comfortable 7 ms while the game was a
+    slideshow. It clamps the sample now instead of throwing it away, and reacts fast to bad news
+    (0.3 smoothing on the way up) while giving load back slowly (0.05 on the way down).
+  - **It decided every 30 _frames_ and cut 10% each time.** At five frames a second that is a decision
+    every six seconds, so climbing down from a full field took about two minutes. It decides on
+    wall-clock now, and the cut is proportional: if a frame costs four times the budget the field is
+    four times too big, and one decision says so.
+  - **Throttling recruitment cannot shrink a field that is already full.** Measured on a device taking
+    250 ms a frame at CHAOS: the budget hit its floor within a second, and the battle then took **97
+    more seconds to resolve, every one of them a slideshow**, because the four thousand troops already
+    standing there were the cost. The governor now also retires the rear ranks — troops with nobody in
+    reach, furthest from the fighting, never a champion. Same scenario: **playable in under five
+    seconds.**
+- **Retiring troops cannot decide a battle.** They are removed rather than killed, so no kill is
+  credited and no body is left, and each side gives up the same *fraction* of its army — capped by
+  what the smaller side can actually spare. A flat proportional split looked fair and was not: a
+  player 13:1 ahead has thousands of troops walking up behind the line while the loser has none to
+  give, so the cut fell almost entirely on the winner and took their lead from 93% of the field to
+  71%. With the cap, a lopsided field keeps its 0.928 share exactly and a mirror match retires
+  460/461 down to 291/291.
+- **The renderer asks the device which of the two is faster.** The batch should win by a distance, and
+  does everywhere it can be measured here — but compositing a WebGL layer into a 2D canvas is a plain
+  texture copy on some drivers and a full readback on others, and a readback would make it lose. That
+  is not knowable from a machine with no GPU, so the game times both on the real one: a handful of
+  frames each way, once per battle, once the field is big enough for the answer to matter, bailing out
+  early once one is clearly 2.5× worse. The governor ignores the probe's frames, since the losing
+  renderer's samples are not the device's real speed.
+- **The buy sound had no throttle.** Every combat sound is rate-limited — "stops 200 swords becoming a
+  buzzsaw" — but the one that fires on every purchase was not, because nothing had ever purchased 200
+  times a second. Fixing the recruit rate made it do exactly that: **800 Web Audio nodes a second**
+  across both crystals, each with scheduled gain ramps. It measures at only 2.9% of a frame budget on
+  a desktop, but node creation on a phone is far more expensive, and 400 beeps a second was a buzzsaw
+  nobody could hear anyway. Throttled to 19.
 - **The radar is baked.** It repainted 3,000 blips a frame — about 2 ms of `fillRect`, with a
   `fillStyle` assignment per blip — and a cloud of two-pixel dots does not change meaningfully at
   60 Hz. Batched by side and cached into a small offscreen canvas refreshed every fifth frame:

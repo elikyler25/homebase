@@ -500,7 +500,7 @@ const BASE_INCOME = 300;
 const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed:1,
             units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false,
             shrine:{ owner:-1, prog:0 }, sudden:false, zones:[], poorT:0,
-            ft:8, govT:0, budget:1e9 };
+            ft:8, govMs:0, budget:1e9 };
 let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
@@ -743,7 +743,7 @@ function throttled(key, ms, fn) {                    // stops 200 swords becomin
   if ((lastSfx[key] || 0) + ms > now) return;
   lastSfx[key] = now; fn();
 }
-const sfxBuy   = () => tone(600, .06, "square", .04, 900);
+const sfxBuy   = () => throttled("buy", 55, () => tone(600, .06, "square", .04, 900));
 const sfxDeny  = () => tone(140, .08, "sawtooth", .035, 90);
 const sfxPay   = () => { tone(660,.1,"triangle",.05,990); setTimeout(()=>tone(880,.12,"triangle",.05,1180),90); };
 const sfxThud  = () => tone(85, .15, "sawtooth", .06, 45);
@@ -1421,7 +1421,7 @@ function draw() {
   for (const a of list) if (a.dead) drawFallen(a, q);
   // The batch carries a fixed cost - clearing and compositing a full-screen
   // layer - that a small army never earns back, so skirmishes stay on 2D.
-  if (list.length < GPU_MIN || !gpuUnits(list, q))
+  if (list.length < GPU_MIN || probe.use2D || !gpuUnits(list, q))
     { for (const a of list) if (!a.dead) drawUnit(a, q); }
   // In a dense field drawTrim draws nothing at all, so skip the walk entirely.
   if (!G.dense) for (const a of list) if (!a.dead) drawTrim(a, q);
@@ -2590,6 +2590,7 @@ function newGame() {
   G.round=1; G.tick=TICK_T; G.shake=0; G.speed=1;
   G.shrine={ owner:-1, prog:0 }; G.sudden=false; G.hi=null; G.help=false;
   cards.forEach(row => row.forEach(el => el.classList.remove("sel")));
+  probe.phase = 0; probe.use2D = false;
   G.running=true; G.over=false; G.paused=false;
   document.getElementById("overlay").classList.add("hide");
   document.getElementById("resultBox").classList.remove("show");
@@ -2630,23 +2631,131 @@ let last = performance.now();
 // the map. Five hundred troops is a fight on the normal field and scattered dust
 // on CHAOS x10's, which is forty-four thousand units wide.
 const govFloor = () => Math.max(400, UNIT_CAP * 0.12) | 0;
+const GOV_HI = 13, GOV_LO = 8;   // ms of our own work per frame: shed above, restore below
 function capNow() { return Math.min(UNIT_CAP, G.budget); }
+/* ---------- renderer probe ----------
+   Which renderer is faster is not knowable in advance. The batch should win by a
+   distance, and does everywhere it can be measured - but compositing a WebGL
+   layer into a 2D canvas is a plain texture copy on some drivers and a full
+   readback on others, and a readback would make it lose. Rather than assume,
+   time both on the actual device: a couple of dozen frames each way, once per
+   battle, once the field is big enough for the answer to matter. The loser is
+   never used again for that battle. */
+const probe = { phase:0, n:0, gpu:0, cpu:0, gpuN:0, cpuN:0, use2D:false };
+const PROBE_WARM = 5, PROBE_RUN = 16;
+// Returns true while it is actively measuring, so the governor can ignore those
+// frames - the losing renderer's samples are not the device's real speed, and
+// letting them through would shed troops for no reason.
+function probeStep(ms) {
+  if (probe.phase >= 3 || !gpu.ok || !G.running || G.over) return false;
+  if (probe.phase === 0) {                      // wait for a field worth measuring
+    if (G.units.length < GPU_MIN * 2) return false;
+    probe.phase = 1; probe.n = 0;
+    probe.gpu = probe.cpu = probe.gpuN = probe.cpuN = 0;
+    return true;
+  }
+  probe.n++;
+  if (probe.n <= PROBE_WARM) return true;       // let the first frames settle
+  if (probe.phase === 1) {
+    probe.gpu += ms; probe.gpuN++;
+    if (probe.n >= PROBE_WARM + PROBE_RUN) { probe.phase = 2; probe.n = 0; probe.use2D = true; }
+    return true;
+  }
+  probe.cpu += ms; probe.cpuN++;
+  // Bail out early once the answer is obvious rather than sitting through the
+  // full run on whichever renderer is losing badly - on a field this size that
+  // could be several seconds of deliberate stutter.
+  const a = probe.gpu/Math.max(1,probe.gpuN), b = probe.cpu/Math.max(1,probe.cpuN);
+  const done = probe.n >= PROBE_WARM + PROBE_RUN
+            || (probe.cpuN >= 4 && (b > a*2.5 || a > b*2.5));
+  if (done) { probe.phase = 3; probe.use2D = b < a; return false; }
+  return true;
+}
+
+/* Cutting recruitment does not shrink a field that is already too big. Measured
+   on a device taking 250ms a frame at CHAOS: the budget drops to the floor within
+   a second, and the battle then takes 97 more seconds to resolve - every one of
+   them a slideshow, because the four thousand troops already standing there are
+   what costs the time. So when the field is far over budget the governor also
+   retires the rear ranks.
+
+   Retired troops are removed, not killed: nobody is credited a kill, no body is
+   left, and each side loses the same share of its army so this can never decide
+   who wins. It takes the troops with nobody in reach, furthest from the fighting,
+   and never a champion - so what disappears is the crowd still walking up behind
+   the line, which is the part you are least likely to be watching. */
+function retire(target) {
+  const us = G.units, n = us.length;
+  if (n <= target) return 0;
+  const live = [0, 0], spare = [0, 0];
+  for (let i = 0; i < n; i++) {
+    const a = us[i];
+    if (a.dead) continue;
+    live[a.team]++;
+    if (!a.u.hero && !a.tgt) spare[a.team]++;
+  }
+  const tot = live[0] + live[1];
+  if (!tot) return 0;
+  // Each side gives up the same *fraction* of its army, and never more than it
+  // can actually spare. A flat proportional split looked fair and was not: a
+  // player 13:1 ahead has thousands of troops walking up behind the line and the
+  // loser has none to give, so the cut fell almost entirely on the winner and
+  // took their lead from 93% of the field to 71%. Capping by the smaller side's
+  // spare capacity means this can shrink a battle but never decide one.
+  let f = (n - target) / tot;
+  for (const t of [0, 1]) if (live[t]) f = Math.min(f, spare[t]/live[t]);
+  if (f <= 0) return 0;
+  const quota = [Math.round(f*live[0]), Math.round(f*live[1])];
+  let gone = 0;
+  // pass 0 takes only the rear; pass 1 widens to anything not in contact.
+  for (let pass = 0; pass < 2; pass++) {
+    if (quota[0] <= 0 && quota[1] <= 0) break;
+    for (let i = n-1; i >= 0; i--) {
+      const a = us[i];
+      if (a.dead || a.u.hero || a.tgt) continue;
+      const t = a.team;
+      if (quota[t] <= 0) continue;
+      if (pass === 0) {
+        const home = crystalX(t), foe = crystalX(1-t);
+        if (Math.abs(a.x - home) > Math.abs(foe - home) * 0.45) continue;
+      }
+      a.dead = true; a.fade = 0;          // removed outright, so no corpse and no credit
+      quota[t]--; gone++;
+    }
+  }
+  return gone;
+}
+
 function govern(ms) {
   // Measure our own work, not the gap between frames: a display capped at 30Hz,
   // or a browser throttling a background tab, would otherwise look exactly like a
   // machine that cannot keep up, and the field would shrink for no reason.
-  if (!(ms >= 0) || ms > 200) return;             // a hitch is not the device
-  G.ft += (ms - G.ft) * 0.06;                     // ~1s of smoothing: no oscillation
-  if (--G.govT > 0 || !G.running || G.over) return;
-  G.govT = 30;                                    // re-decide about twice a second
-  if (G.ft > 13) {                 // over 13ms of work leaves nothing for the browser
+  if (!(ms >= 0)) return;
+  // Clamp the sample, never discard it. This used to ignore anything over 200ms
+  // as "a hitch" - which meant the worse a device was struggling, the more
+  // certain the governor was to do nothing at all.
+  const s = ms > 600 ? 600 : ms;
+  // Rise fast, fall slow: react to trouble within a few frames, give the load
+  // back only once the headroom has clearly lasted.
+  G.ft += (s - G.ft) * (s > G.ft ? 0.3 : 0.05);
+  // Decide on wall-clock, not on a frame count. At five frames a second a
+  // 30-frame interval is six seconds between decisions, and shaving 10% each
+  // time took two minutes to get from a stalled field to a playable one.
+  G.govMs += s;
+  if (G.govMs < 350 || !G.running || G.over) return;
+  G.govMs = 0;
+  const floor = govFloor();
+  if (G.ft > GOV_HI) {
     FX_CAP = 300;
-    const floor = govFloor();
-    if (G.units.length > floor)
-      G.budget = Math.max(floor, Math.min(G.units.length, G.budget) * 0.9 | 0);
-  } else if (G.ft < 8) {                          // room to spare: take it back
+    // Proportional, not a fixed 10% nibble: if a frame costs four times the
+    // budget, the field is four times too big and one decision should say so.
+    const want = (G.units.length * (GOV_HI / G.ft)) | 0;
+    G.budget = Math.max(floor, Math.min(G.budget, want));
+    // Stopping the tap is not enough when the bath is already full.
+    if (G.units.length > G.budget * 1.25) retire((G.budget * 1.1) | 0);
+  } else if (G.ft < GOV_LO && G.budget < UNIT_CAP) {
     FX_CAP = FX_MAX;
-    if (G.budget < UNIT_CAP) G.budget = Math.min(UNIT_CAP, G.budget * 1.08 + 25 | 0);
+    G.budget = Math.min(UNIT_CAP, G.budget * 1.08 + 25 | 0);
   }
 }
 
@@ -2660,7 +2769,8 @@ function frame(now) {
   if (bannerT && now > bannerT) { document.getElementById("banner").classList.remove("show"); bannerT=0; }
   draw();
   if (P.length) { updateHUD(); updateAdvice(dt); }
-  govern(performance.now() - t0);
+  const cost = performance.now() - t0;
+  if (!probeStep(cost)) govern(cost);
   requestAnimationFrame(frame);
 }
 
