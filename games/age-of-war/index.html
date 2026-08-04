@@ -50,6 +50,25 @@
     background: rgba(20,25,34,.72); color: var(--muted); border: 1px solid var(--line);
     border-radius: 6px; padding: 4px 9px; font: 600 11px inherit; cursor: pointer;
   }
+  #helpBtn {
+    position: absolute; top: 8px; right: 160px; z-index: 4;
+    background: rgba(20,25,34,.72); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px 9px; font: 600 11px inherit; cursor: pointer;
+  }
+  #helpBtn.on { color: var(--gold); border-color: #6a5a2a; }
+  #statsPanel {
+    position: absolute; inset: 0; display: none; z-index: 6;
+    align-items: center; justify-content: center;
+    background: rgba(8,10,15,.82); padding: 12px; overflow: auto;
+  }
+  #statsInner { max-width: 900px; width: 100%; }
+  #statsPanel h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: .04em; }
+  #statsPanel table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 12px; }
+  #statsPanel th { text-align: left; color: var(--muted); font-weight: 600;
+    font-size: 10px; letter-spacing: .07em; text-transform: uppercase; padding: 3px 6px; }
+  #statsPanel td { padding: 3px 6px; border-top: 1px solid var(--line); }
+  #statsPanel .num { text-align: right; font-variant-numeric: tabular-nums; }
+  #statsPanel .tri { color: var(--muted); font-size: 12px; line-height: 1.6; }
   #musicBtn {
     position: absolute; top: 8px; right: 84px; z-index: 4;
     background: rgba(20,25,34,.72); color: var(--muted); border: 1px solid var(--line);
@@ -161,6 +180,8 @@
     <canvas id="cv"></canvas>
     <button id="muteBtn">&#9834; sound</button>
     <button id="musicBtn">&#9835; score</button>
+    <button id="helpBtn">? stats</button>
+    <div id="statsPanel"><div id="statsInner"></div></div>
     <div id="overlay">
       <h1 id="ovTitle">Age of War</h1>
       <p id="ovText">Two players, one screen. P1 (blue) holds the left base, P2 (red) the right. Spawn troops, bank XP to evolve through five ages, and smash the other base.<br><b>P1:</b> 1 2 3 spawn &middot; E evolve &middot; T turret &middot; Q special<br><b>P2:</b> 7 8 9 spawn &middot; I evolve &middot; O turret &middot; U special<br>Or just tap the buttons &mdash; both sides are touch-friendly.<br><br><b>Light</b> beats <b>Ranged</b> beats <b>Heavy</b> beats <b>Light</b> &mdash; slots 1/2/3 in every age. Counter what they field.<br><span style="font-size:12px">P pauses &middot; M mutes &middot; N toggles the score</span></p>
@@ -346,10 +367,21 @@ function emit(side, slot) {
   return true;
 }
 
+// Buys while there is an empty mount; once they are full the same control
+// sells the last turret back at half price, so over-investing in defence is
+// recoverable instead of permanent.
+function sellTurret(side) {
+  if (!side.turrets.length) return false;
+  side.turrets.pop();
+  side.gold += AGES[side.age].turret.cost * 0.5;
+  sfx("build");
+  return true;
+}
+
 function buyTurret(side) {
   const t = AGES[side.age].turret;
+  if (side.turrets.length >= TURRET_SLOTS[side.age]) return sellTurret(side);
   if (side.gold < t.cost) return false;
-  if (side.turrets.length >= TURRET_SLOTS[side.age]) return false;
   side.gold -= t.cost;
   side.turrets.push({ side, def: t, cd: 0, slot: side.turrets.length, age: side.age });
   sfx("build");
@@ -1516,9 +1548,12 @@ function syncDeck(side, d, other) {
     b.querySelector(".cd").style.width = (side.cds[i] / SPAWN_CD[i] * 100) + "%";
   }
   const t = AGES[side.age].turret, left = TURRET_SLOTS[side.age] - side.turrets.length;
-  d.turret.querySelector(".n").textContent = t.name;
-  d.turret.querySelector(".c").textContent = left > 0 ? t.cost + "g \u00b7 " + left : "no slots";
-  d.turret.disabled = left <= 0 || side.gold < t.cost;
+  const selling = left <= 0;
+  d.turret.querySelector(".n").textContent = selling ? "Sell " + t.name : t.name;
+  d.turret.querySelector(".c").textContent = selling
+    ? "+" + Math.round(t.cost * 0.5) + "g"
+    : t.cost + "g \u00b7 " + left;
+  d.turret.disabled = selling ? false : side.gold < t.cost;
 
   const maxed = side.age >= AGES.length - 1, need = AGES[side.age].xpNext;
   d.evo.querySelector(".n").textContent = maxed ? "Max Age" : "\u2192 " + AGES[side.age + 1].name;
@@ -1557,6 +1592,7 @@ document.addEventListener("keydown", ev => {
   if (k === "p") { paused = !paused; return; }
   if (k === "m") { setMuted(!muted); return; }
   if (k === "n") { setMusic(!musicOn); return; }
+  if (k === "h" || ev.key === "Escape") { toggleStats(); return; }
   if (paused) return;
   const map = { "1":["p",0], "2":["p",1], "3":["p",2], "e":["p","evo"], "t":["p","tur"], "q":["p","spc"] };
   if (mode === "2p") Object.assign(map,
@@ -1588,6 +1624,46 @@ document.querySelectorAll(".diffbtn").forEach(b => {
 el("ovBtn").onclick = start;
 el("muteBtn").onclick = () => setMuted(!muted);
 el("musicBtn").onclick = () => setMusic(!musicOn);
+el("helpBtn").onclick = () => toggleStats();
+el("statsPanel").onclick = () => toggleStats(false);
+
+function statTable(side, label) {
+  const a = side.age;
+  let h = `<h3 style="color:${side.isPlayer ? "#7fb2e0" : "#e08a7f"}">${label} \u2014 ${AGES[a].name}</h3>`;
+  h += '<table><tr><th>Troop</th><th>Class</th><th class="num">Cost</th><th class="num">HP</th>' +
+       '<th class="num">Damage</th><th class="num">Reach</th><th class="num">Speed</th><th class="num">Bounty</th></tr>';
+  for (let i = 0; i < 3; i++) {
+    const d = UNITS[a][i];
+    h += `<tr><td>${d.n}${d.splash ? " (splash)" : ""}</td><td>${CLASS_NAME[i]}</td>` +
+         `<td class="num">${d.cost}g</td><td class="num">${d.hp}</td>` +
+         `<td class="num">${Math.round(d.dmg / d.cd)}/s</td><td class="num">${d.rng}</td>` +
+         `<td class="num">${d.spd}</td><td class="num">${d.gold}g</td></tr>`;
+  }
+  const t = AGES[a].turret, sp = AGES[a].special;
+  h += `<tr><td>${t.name} (turret)</td><td>base</td><td class="num">${t.cost}g</td><td class="num">\u2014</td>` +
+       `<td class="num">${Math.round(t.dmg / t.cd)}/s</td><td class="num">${t.range}</td>` +
+       `<td class="num">\u2014</td><td class="num">sell +${Math.round(t.cost * 0.5)}g</td></tr>`;
+  h += `<tr><td>${sp.name} (special)</td><td>ability</td><td class="num">free</td><td class="num">\u2014</td>` +
+       `<td class="num">${sp.dmg}</td><td class="num">half field</td><td class="num">\u2014</td>` +
+       `<td class="num">${SPECIAL_CD}s</td></tr>`;
+  return h + '</table>';
+}
+
+function toggleStats(force) {
+  const el2 = el("statsPanel");
+  const open = force === undefined ? el2.style.display !== "flex" : force;
+  if (open && G) {
+    el("statsInner").innerHTML =
+      statTable(G.p, "P1") + statTable(G.e, "P2") +
+      '<div class="tri"><b>Light</b> beats <b>Ranged</b> beats <b>Heavy</b> beats <b>Light</b> ' +
+      '(1.5&times; damage the right way, 0.7&times; the wrong way). The deck marks the countering slot with \u25b2.' +
+      '<br>Damage is shown per second, after cooldown. Reach is how close a troop must get before it attacks.' +
+      '<br>The turret button buys while you have empty mounts and sells your last turret once they are full.' +
+      '<br><br>Tap anywhere or press H to close.</div>';
+  }
+  el2.style.display = open ? "flex" : "none";
+  el("helpBtn").classList.toggle("on", open);
+}
 
 function endGame(result) {              // result "win" = P1 (blue) took the right base
   running = false;
