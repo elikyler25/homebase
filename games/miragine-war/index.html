@@ -184,6 +184,7 @@
       reverse. Cheap swarms literally cannot hurt an Iron Knight — a Vampire drains it dry.
       <b>Your standing army is your economy:</b> every living unit pays income at each payday.</p>
       <div class="modes" id="modes"></div>
+      <div class="modes" id="sizes"></div>
       <div class="keys">
         <div><b style="color:#bfe6ff">PLAYER 1 — left</b><br>
           <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><br>
@@ -196,6 +197,7 @@
           lane: <kbd>Right Shift</kbd> &nbsp; stance: <kbd>'</kbd>
         </div>
       </div>
+      <p style="font-size:12px;color:#9e8b63" id="sizeNote"></p>
       <p style="font-size:12px;color:#9e8b63">The bar under each card rates that unit against the enemy's current army. &nbsp;
       <kbd>5</kbd><kbd>6</kbd> mend crystal &nbsp; <kbd>H</kbd> counters &nbsp; <kbd>Space</kbd> pause &nbsp; <kbd>-</kbd><kbd>=</kbd> game speed
         &nbsp; <kbd>`</kbd> mute &nbsp; click a card to buy &nbsp; hover a card for full stats</p>
@@ -278,7 +280,7 @@ const holdX = t => crystalX(t) + (t === 0 ? 1 : -1) * G.W * 0.3;
 /* ============================================================
    STATE
    ============================================================ */
-const CRYSTAL_HP  = 6000;
+let CRYSTAL_HP    = 6000;
 const START_GOLD  = 900;
 const TICK_T      = 10;
 const BASE_INCOME = 300;
@@ -289,12 +291,32 @@ const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed
 let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
-const REPAIR_COST = 450, REPAIR_HEAL = 700;
-const AUTO_GAP = 0.30;      // seconds between automatic recruits
+let REPAIR_COST = 450, REPAIR_HEAL = 700;
+let AUTO_GAP = 0.30;        // seconds between automatic recruits
+let goldMul = 1;            // battle-size gold multiplier
+const UNIT_CAP = 2600;      // safety valve so a runaway epic cannot stall the frame
+
+/* ---------- battle sizes ---------- */
+const BASE_SIZE = UNITS.map(u => u.size);
+const BASE_SPD  = UNITS.map(u => u.spd);
+const SIZES = {
+  normal: { label: "NORMAL BATTLE", world: 2600, gold: 1, auto: 0.30, size: 1,    spd: 1,   hp: 6000  },
+  epic:   { label: "EPIC BATTLE",   world: 5200, gold: 4, auto: 0.05, size: 1.45, spd: 1.7, hp: 18000 },
+};
+let sizeId = "normal";
+function applyBattleSize() {
+  const c = SIZES[sizeId];
+  WORLD_W = c.world; goldMul = c.gold; AUTO_GAP = c.auto; CRYSTAL_HP = c.hp;
+  REPAIR_COST = Math.round(450 * c.gold);
+  REPAIR_HEAL = Math.round(700 * (c.hp / 6000));
+  UNITS.forEach((u, i) => { u.size = Math.round(BASE_SIZE[i]*c.size); u.spd = Math.round(BASE_SPD[i]*c.spd); });
+  spriteCache.clear();
+  resize();
+}
 const SHRINE_R = 251, SHRINE_GOLD = 240, SUDDEN_ROUND = 28;
 const shrineX = () => G.W/2, shrineY = () => crystalY();
 function mkPlayer(team) {
-  return { team, gold: START_GOLD, hp: CRYSTAL_HP, cool: 0, kills: 0, lane: 0, spent: 0,
+  return { team, gold: START_GOLD*goldMul, hp: CRYSTAL_HP, cool: 0, kills: 0, lane: 0, spent: 0,
            built: {}, mend: 0, stance: 0, sel: null, autoT: 0 };
 }
 function repair(team) {
@@ -315,7 +337,7 @@ function repair(team) {
 const cv = document.getElementById("cv");
 let ctx = cv.getContext("2d");
 let DPR = 1;
-const WORLD_W = 2600;       // everything is authored in these units
+let WORLD_W = 2600;         // everything is authored in these units
 let VIEW = 1;               // world -> css pixels
 // static layers, painted once instead of every frame
 const bgCv = document.createElement("canvas"), bgCtx = bgCv.getContext("2d");
@@ -618,7 +640,7 @@ function step(dt) {
     if (p.mend > 0) p.mend -= dt;
     // your crystal keeps producing whatever you last selected, as long as the
     // gold lasts - no tapping once per soldier
-    if (p.sel !== null && !(CPU && CPU.team === p.team)) {
+    if (p.sel !== null && !(CPU && CPU.team === p.team) && G.units.length < UNIT_CAP) {
       p.autoT -= dt;
       if (p.autoT <= 0) {
         if (buy(p.team, p.sel)) p.autoT = AUTO_GAP;
@@ -649,8 +671,8 @@ function step(dt) {
     G.tick += TICK_T; G.round++;
     const inc = [0,0];
     for (const a of G.units) if (!a.dead) inc[a.team] += a.u.income;
-    for (const t of [0,1]) P[t].gold += BASE_INCOME + 170*G.round + inc[t];
-    if (G.shrine.owner >= 0) P[G.shrine.owner].gold += SHRINE_GOLD;
+    for (const t of [0,1]) P[t].gold += (BASE_INCOME + 170*G.round + inc[t]) * goldMul;
+    if (G.shrine.owner >= 0) P[G.shrine.owner].gold += SHRINE_GOLD*goldMul;
     banner("PAYDAY", 850); sfxPay();
     // no war lasts forever: past a point both crystals start crumbling on their own
     if (G.round >= SUDDEN_ROUND) {
@@ -899,7 +921,7 @@ function drawHelp() {
     ["Dread Lord is LIGHT: fast and lethal, but anti-light units eat it", "#ff9a9a"],
     ["Novice / Mage — hit both, from range", "#c9b6ff"],
     ["", ""],
-    ["Hold the shrine in the middle for +◆" + SHRINE_GOLD + " every payday.", "#e8dcb0"],
+    ["Hold the shrine in the middle for +◆" + SHRINE_GOLD*goldMul + " every payday.", "#e8dcb0"],
     ["", ""],
     ["5 / 6  mend crystal      L-SHIFT / R-SHIFT  lane      T / '  advance or hold", "#9fffd8"],
     ["SPACE pause     - / =  speed     `  mute     H  close", "#cfc6ae"],
@@ -1567,7 +1589,7 @@ function updateHUD() {
     document.getElementById("hp"+n).style.width = Math.max(0,p.hp/CRYSTAL_HP*100)+"%";
     document.getElementById("hpt"+n).textContent = Math.ceil(p.hp)+" / "+CRYSTAL_HP;
     document.getElementById("g"+n).textContent = Math.floor(p.gold);
-    document.getElementById("i"+n).textContent = BASE_INCOME + 170*G.round + inc[t];
+    document.getElementById("i"+n).textContent = Math.round((BASE_INCOME + 170*G.round + inc[t]) * goldMul);
     document.getElementById("a"+n).textContent = cnt[t];
     document.getElementById("l"+n).textContent =
       (CPU && CPU.team===t ? "CPU · " : "") + LANES[p.lane] + " · " + STANCES[p.stance];
@@ -1584,8 +1606,8 @@ function updateHUD() {
   }
   const sh = G.shrine;
   document.getElementById("shrine").textContent =
-    sh.owner === 0 ? "SHRINE: BLUE +◆" + SHRINE_GOLD
-    : sh.owner === 1 ? "SHRINE: RED +◆" + SHRINE_GOLD
+    sh.owner === 0 ? "SHRINE: BLUE +◆" + SHRINE_GOLD*goldMul
+    : sh.owner === 1 ? "SHRINE: RED +◆" + SHRINE_GOLD*goldMul
     : "SHRINE: neutral";
   document.getElementById("shrine").style.color =
     sh.owner === 0 ? "#bfe6ff" : sh.owner === 1 ? "#ffd0b0" : "#cfc6ae";
@@ -1604,6 +1626,25 @@ const MODES = [
   { id:"hard",   label:"VS CPU · HARD" },
 ];
 let modeId = "2p";
+function buildSizes() {
+  const host = document.getElementById("sizes");
+  host.innerHTML = "";
+  for (const id of Object.keys(SIZES)) {
+    const b = document.createElement("button");
+    b.className = "mode" + (id === sizeId ? " on" : "");
+    b.textContent = SIZES[id].label;
+    b.title = id === "epic"
+      ? "Twice the map, four times the gold, six times the recruit rate"
+      : "The standard battlefield";
+    b.addEventListener("click", () => { sizeId = id; buildSizes(); });
+    host.appendChild(b);
+  }
+  const note = document.getElementById("sizeNote");
+  if (note) note.textContent = sizeId === "epic"
+    ? "EPIC: twice the map, four times the gold, six times the recruit rate — armies in the thousands."
+    : "";
+}
+
 function buildModes() {
   const host = document.getElementById("modes");
   host.innerHTML = "";
@@ -1644,6 +1685,7 @@ window.addEventListener("keydown", e => {
 document.getElementById("startBtn").addEventListener("click", newGame);
 
 function newGame() {
+  applyBattleSize();
   P = [mkPlayer(0), mkPlayer(1)];
   CPU = modeId === "2p" ? null : { team:1, level:modeId, t:0 };
   G.units=[]; G.shots=[]; G.fx=[]; G.decals=0; decCtx.clearRect(0,0,G.W,G.H);
@@ -1690,7 +1732,7 @@ function frame(now) {
 }
 
 P = [mkPlayer(0), mkPlayer(1)];
-buildShops(); buildModes(); resize();
+buildShops(); buildModes(); buildSizes(); resize();
 requestAnimationFrame(frame);
 </script>
 </body>

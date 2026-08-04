@@ -8,6 +8,21 @@ you to.
 
 Also playable solo: pick **VS CPU** on the menu (easy / normal / hard).
 
+## Battle sizes
+
+Pick one on the menu, alongside the opponent:
+
+| | Map | Gold | Recruit rate | Crystal |
+|---|---|---|---|---|
+| **NORMAL BATTLE** | 2600 wide | ×1 | one troop / 0.30s | 6,000 |
+| **EPIC BATTLE** | 5200 wide (4× the area) | ×4 | one troop / 0.05s | 18,000 |
+
+EPIC is the same game at a different scale: twice the map, four times the gold and six times the
+recruit rate, so armies run into the many hundreds and the front line becomes a solid wall of bodies
+across the middle of the field. Troops are drawn a little larger in world units so they stay legible
+on the wider map, and they move faster so crossing it doesn't drag. Crystals are three times tougher
+so a match still lasts.
+
 ## How it plays
 
 **Pick a troop and your crystal keeps making it.** One tap or one key sets your selection, and that
@@ -132,6 +147,10 @@ in are two different jobs.
   screen and take almost nothing back. Counter-picking now beats blind teching 5-1, and picking the
   *wrong* counter loses 6-0, which is the shape you want.
 - **Colour is never the only cue.** Blue rings are solid, red rings are dashed.
+- **Battle size is one switch.** Map width, gold multiplier, recruit interval, crystal HP and the
+  per-unit size and speed multipliers all come from a single table, applied at the start of a match
+  and restored cleanly when you switch back. Auto-recruit also stops at a 2,600-unit safety cap so a
+  runaway epic can't stall the frame — deliberate purchases are never blocked.
 - **One virtual resolution.** The world is always 2000 units wide and the canvas scales to fit, so a
   phone in landscape sees the same proportions a desktop does rather than desktop-sized troops on a
   250-pixel strip of field. The shop collapses on short screens — smaller cards, then icons instead
