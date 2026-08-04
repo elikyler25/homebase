@@ -19,7 +19,7 @@ Pick one on the menu, alongside the opponent:
 | **NORMAL BATTLE** | 2600 wide | ×1 | one troop / 0.30s | 6,000 | 2,600 |
 | **EPIC BATTLE** | 5200 wide (4× the area) | ×4 | one troop / 0.05s | 18,000 | 2,600 |
 | **CHAOS** | 14000 wide (29× the area) | ×40 | one troop / 0.005s | 48,000 | 4,200 |
-| **CHAOS ×10** | 44000 wide (290× the area) | ×200 | one troop / 0.0025s | 200,000 | 20,000 |
+| **MAELSTROM** | 66000 wide (645× the area) | ×120 | one troop / 0.001s | 1,500,000 | 26,000 |
 
 EPIC is the same game at a different scale: twice the map, four times the gold and six times the
 recruit rate, so armies run into the many hundreds and the front line becomes a solid wall of bodies.
@@ -41,14 +41,35 @@ with no scrolling, so a wider world means smaller troops, and past a point they 
 all — at CHAOS's zoom a rank-and-file soldier is 7 pixels tall, which is about the floor for reading
 who is who. The map is 29× the area of NORMAL and bodies scale 3.4× to stay visible inside it.
 
-**CHAOS ×10** is CHAOS again: ten times the area, five times the gold, twice the recruit rate. A
-rank-and-file soldier is three pixels tall and individual troops stop being the unit of thought —
-you are moving continents of bodies, and the front line is a churning coastline hundreds of troops
-long. Measured with both sides recruiting flat out: **~19,700 troops on the field.**
+**MAELSTROM** is as large as the engine holds at sixty frames a second: a thousand troops a second
+per side, six hundred troop-widths across the screen, and a ceiling of **26,000 bodies**. A soldier is
+2.4 pixels tall and individual troops stop being the unit of thought — you are moving continents, and
+the front line is a churning coastline a thousand troops long.
+
+**Two different things cap this, and neither is the map.** A wider world with proportionally bigger
+troops looks *identical*, because the whole world is always on screen and never scrolls — so "bigger
+map" only ever means "smaller troops". What actually binds is:
+
+- **Legibility.** At 2.4 pixels the dark rim around each body can still separate it from the one
+  behind it. Below about 2 pixels the body is one pixel wide, the rim has nowhere to go, and the army
+  becomes noise rather than troops.
+- **JavaScript cost per troop.** Measured across whole matches with mixed armies on a mid machine:
+  16,000 troops run a 5.7 ms median simulation, 20,000 run 7.6 ms, 26,000 run 9.7 ms with a 12.6 ms
+  90th percentile, and 32,000 breaks down to a 23 ms 90th percentile — visible stutter. 26,000 is the
+  last rung that holds. A faster machine keeps all of it; a slower one gets trimmed by the governor.
+
+The first attempt at measuring this said 34,000, and was wrong: it sampled while the armies were still
+marching towards each other. A field that is *fighting* costs two to three times more than the same
+field walking, because that is where separation and combat resolution actually happen.
+
+MAELSTROM also runs **less** gold than CHAOS ×10 did, not more. Army income scales with the army, so
+at six times the troops a smaller multiplier already funds far more per second — at ×200 every unit
+price had become irrelevant and the only sensible move was to spam the most expensive thing on the
+board.
 
 Getting there needed a bug fixed first. The recruit loop bought at most one troop per frame and threw
 away the remainder, so every rate faster than about 1/60s silently clamped: CHAOS asked for 200
-troops a second and delivered 60, EPIC asked for 20 and delivered 15, and CHAOS ×10's whole point —
+troops a second and delivered 60, EPIC asked for 20 and delivered 15, and MAELSTROM's whole point —
 a faster gap — would have done nothing at all. It drains the accumulator now, and every size hits its
 stated rate exactly. CHAOS holds 4,200 troops as a result, up from ~3,100.
 
@@ -256,7 +277,7 @@ underneath, so a rematch with different armies is one tap.
   start of a match and restored cleanly when you switch back. Auto-recruit pauses at the ceiling so a
   runaway battle can't stall the frame — deliberate purchases are never blocked.
 - **Twenty thousand troops needed the simulation rewritten, not the renderer.** With the army already
-  batching into one draw call, CHAOS ×10 spent 86.7 ms a frame in plain JavaScript at 19,700 troops:
+  batching into one draw call, the largest battle spent 86.7 ms a frame in plain JavaScript at 19,700 troops:
   63.3 ms of `step`, 8.8 ms sorting for draw order, 14.6 ms filling the vertex buffer. It is now
   **11.1 ms** — about 8× — from four changes, in order of what they were worth:
   - **`findTarget` was running every frame for every troop that had nobody in sight.** The retarget
@@ -279,8 +300,8 @@ underneath, so a rematch with different armies is one tap.
 - **CHAOS got faster while carrying more.** The same work took it from 3,121 troops at 6.70 ms of
   `step` to 4,200 troops at **1.60 ms** — a third more army for a quarter of the cost.
 - **Small battles draw simplified bodies.** Below about eight pixels there is no room in a troop for
-  a walk cycle, a weapon swing or a perspective step — CHAOS draws soldiers at seven pixels, CHAOS ×10
-  at three, and a phone screen shrinks every size past that. Those battles bake **one flat silhouette
+  a walk cycle, a weapon swing or a perspective step — CHAOS draws soldiers at seven pixels, MAELSTROM
+  at 2.4, and a phone screen shrinks every size past that. Those battles bake **one flat silhouette
   per unit per side** instead of twenty-four animated variants. NORMAL and EPIC are untouched.
 
   The saving is not in the drawing — a sprite is baked once either way, so simpler *art* costs nothing
@@ -295,8 +316,16 @@ underneath, so a rematch with different armies is one tap.
   line is legible. The single biggest thing for readability was not detail but the dark rim around each
   body — at this density what makes a troop visible is the edge between it and the one behind it.
 
+- **Two things stop a crowd going quadratic.** A spatial hash is only a win while the crowd is spread
+  across cells, and there is a real case where it is not: when one army takes the field, the survivors
+  pile onto the enemy crystal and thousands of troops end up inside a couple of cells, each testing
+  itself against every other. Measured at 80 ms a frame for a 24,000-troop field. Separation now caps
+  the neighbours it tests per troop — pushing apart the nearest two dozen resolves the overlap just as
+  well and keeps the cost linear whatever the crowd does. It also runs for only a fifth of the army
+  each frame past 24,000 troops, since at two and a half pixels a body there is nothing to see.
+
 - **The game measures the device and scales itself.** A battle size is written for a machine nobody
-  can know in advance: CHAOS asks for 4,200 troops and CHAOS ×10 for 20,000, which a laptop shrugs off
+  can know in advance: CHAOS asks for 4,200 troops and MAELSTROM for 26,000, which a laptop shrugs off
   and an old phone does not. Each frame times its own simulation and drawing — deliberately *not* the
   gap between frames, since a 30 Hz display or a throttled background tab would otherwise look
   identical to a machine that cannot keep up. Past 13 ms of work it sheds; below 8 ms it gives the
