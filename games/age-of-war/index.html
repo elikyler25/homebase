@@ -91,6 +91,29 @@
   .btn.spec { border-color: #5a2a2a; }
   .btn.spec .c { color: var(--foe); }
   #hint { font-size: 11px; color: var(--muted); align-self: center; margin-left: auto; }
+  .btn.b1 { border-color: #2f4a6b; } .btn.b1 .n { color: #9dc6ec; }
+  .btn.b2 { border-color: #6b3a34; } .btn.b2 .n { color: #eca9a1; }
+  .half { display: flex; gap: 6px; flex: 1; }
+  #deckP2 { justify-content: flex-end; }
+  .pcol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .prow { display: flex; align-items: center; gap: 8px; }
+  .p2col .prow { justify-content: flex-end; }
+  .tag { font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 4px; letter-spacing: .06em; }
+  .t1 { background: #2f4a6b; color: #cfe4f7; } .t2 { background: #6b3a34; color: #f7d2cf; }
+  .g { color: var(--gold); font-weight: 700; font-size: 14px; }
+  .ag { font-weight: 600; font-size: 13px; }
+  .modebtn { background: var(--panel-hi); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .modebtn.on { border-color: var(--gold); color: var(--gold); }
+  /* phone in landscape: shrink chrome so the battlefield keeps the screen */
+  @media (max-height: 560px) {
+    #top { padding: 3px 8px; gap: 8px; }
+    .barlabel { font-size: 9px; margin-bottom: 1px; } .bar { height: 8px; }
+    #deck { padding: 5px 6px; gap: 6px; }
+    .btn { min-width: 66px; padding: 3px 6px; }
+    .btn .n { font-size: 10px; } .btn .c { font-size: 9px; } .btn .k { font-size: 9px; }
+    #hint { display: none; }
+  }
   @media (max-width: 760px) {
     .btn { min-width: 84px; padding: 6px 8px; }
     .btn .n { font-size: 11px; }
@@ -101,20 +124,18 @@
 <body>
 <div id="wrap">
   <div id="top">
-    <div class="stat"><span class="dot" style="background:var(--gold)"></span><span id="goldTxt">0</span></div>
-    <div class="stat" id="ageTxt">Stone Age</div>
-    <div class="bars">
-      <div class="barbox">
-        <div class="barlabel">Your Base <span id="hpTxt"></span></div>
-        <div class="bar"><i id="hpBar" style="background:var(--hp)"></i></div>
+    <div class="pcol p1col">
+      <div class="prow"><span class="tag t1">P1</span><span class="g" id="gold1">0</span><span class="ag" id="age1">Stone Age</span></div>
+      <div class="prow">
+        <div class="barbox"><div class="barlabel">Base <span id="hpTxt1"></span></div><div class="bar"><i id="hpBar1" style="background:var(--hp)"></i></div></div>
+        <div class="barbox"><div class="barlabel">XP <span id="xpTxt1"></span></div><div class="bar"><i id="xpBar1" style="background:var(--xp)"></i></div></div>
       </div>
-      <div class="barbox">
-        <div class="barlabel">XP to next age <span id="xpTxt"></span></div>
-        <div class="bar"><i id="xpBar" style="background:var(--xp)"></i></div>
-      </div>
-      <div class="barbox">
-        <div class="barlabel">Enemy Base <span id="ehpTxt"></span></div>
-        <div class="bar"><i id="ehpBar" style="background:var(--foe)"></i></div>
+    </div>
+    <div class="pcol p2col">
+      <div class="prow"><span class="ag" id="age2">Stone Age</span><span class="g" id="gold2">0</span><span class="tag t2">P2</span></div>
+      <div class="prow">
+        <div class="barbox"><div class="barlabel">XP <span id="xpTxt2"></span></div><div class="bar"><i id="xpBar2" style="background:var(--xp)"></i></div></div>
+        <div class="barbox"><div class="barlabel">Base <span id="hpTxt2"></span></div><div class="bar"><i id="hpBar2" style="background:var(--foe)"></i></div></div>
       </div>
     </div>
   </div>
@@ -123,8 +144,12 @@
     <canvas id="cv"></canvas>
     <div id="overlay">
       <h1 id="ovTitle">Age of War</h1>
-      <p id="ovText">Spawn units, earn gold from kills, bank XP to evolve through five ages, and smash the enemy base before they smash yours.</p>
-      <div class="diffrow" id="diffRow">
+      <p id="ovText">Two players, one screen. P1 (blue) holds the left base, P2 (red) the right. Spawn troops, bank XP to evolve through five ages, and smash the other base.<br><b>P1:</b> 1 2 3 spawn &middot; E evolve &middot; T turret &middot; Q special<br><b>P2:</b> 7 8 9 spawn &middot; I evolve &middot; O turret &middot; U special<br>Or just tap the buttons &mdash; both sides are touch-friendly.</p>
+      <div class="diffrow" id="modeRow">
+        <button class="modebtn on" data-m="2p">2 Players</button>
+        <button class="modebtn" data-m="ai">1 Player vs AI</button>
+      </div>
+      <div class="diffrow" id="diffRow" style="display:none">
         <button class="diffbtn" data-d="0.8">Easy</button>
         <button class="diffbtn on" data-d="1">Normal</button>
         <button class="diffbtn" data-d="1.3">Hard</button>
@@ -134,14 +159,8 @@
   </div>
 
   <div id="deck">
-    <div class="group" id="unitBtns"></div>
-    <div class="sep"></div>
-    <div class="group">
-      <button class="btn" id="turretBtn"><span class="k">T</span><span class="n">Turret</span><span class="c"></span></button>
-      <button class="btn evo" id="evoBtn"><span class="k">E</span><span class="n">Evolve</span><span class="c"></span></button>
-      <button class="btn spec" id="specBtn"><span class="k">Q</span><span class="n">Special</span><span class="c"></span><i class="cd" id="specCd"></i></button>
-    </div>
-    <div id="hint">1 / 2 / 3 spawn &nbsp;·&nbsp; E evolve &nbsp;·&nbsp; T turret &nbsp;·&nbsp; Q special &nbsp;·&nbsp; P pause</div>
+    <div class="half" id="deckP1"></div>
+    <div class="half" id="deckP2"></div>
   </div>
 </div>
 
@@ -217,6 +236,7 @@ const BASE_DMG_MULT = 2.6;                 // siege bonus: bases fall to a real 
 let G = null;
 let difficulty = 1;
 let aiPower = 1;              // enemy unit hp/dmg multiplier, set by difficulty
+let mode = "2p";              // "2p" = hotseat two-player, "ai" = P2 is the computer
 let running = false, paused = false;
 
 function newSide(isPlayer) {
@@ -396,7 +416,7 @@ function update(dt) {
     // passive gold is the floor that keeps a losing side in the game; kill
     // gold is the reward on top. Too little passive and the first lost fight
     // snowballs into an unrecoverable deficit.
-    const inc = (13 + side.age * 9) * (side.isPlayer ? 1 : 1 + (difficulty - 1) * 0.5);
+    const inc = (13 + side.age * 9) * (side.isPlayer || mode === "2p" ? 1 : 1 + (difficulty - 1) * 0.5);
     side.gold += inc * dt;
     for (let i = 0; i < 3; i++) side.cds[i] = Math.max(0, side.cds[i] - dt);
     side.specialCd = Math.max(0, side.specialCd - dt);
@@ -500,6 +520,7 @@ function update(dt) {
 /* ---------------- enemy AI ---------------- */
 
 function ai(dt) {
+  if (mode === "2p") return;          // P2 is a human, hands off
   const e = G.e;
   e.aiTimer -= dt;
   if (e.aiTimer > 0) return;
@@ -799,33 +820,99 @@ function beep(freq, dur, vol) {
 /* ---------------- UI ---------------- */
 
 const el = id => document.getElementById(id);
-const unitBtns = [];
 
-for (let i = 0; i < 3; i++) {
-  const b = document.createElement("button");
-  b.className = "btn";
-  b.innerHTML = `<span class="k">${i + 1}</span><span class="n"></span><span class="c"></span><i class="cd"></i>`;
-  b.onclick = () => { if (running && !paused) spawn(G.p, i); };
-  el("unitBtns").appendChild(b);
-  unitBtns.push(b);
+const KEYS = { p: { u: ["1","2","3"], t: "T", e: "E", q: "Q" },
+               e: { u: ["7","8","9"], t: "O", e: "I", q: "U" } };
+let decks = {};
+
+function act(fn) { if (running && !paused) fn(); }
+
+function buildDeck(hostId, sk) {
+  const host = el(hostId), keys = KEYS[sk], cls = sk === "p" ? "b1" : "b2";
+  host.innerHTML = "";
+  const mk = (extra, key, fn) => {
+    const b = document.createElement("button");
+    b.className = "btn " + cls + (extra ? " " + extra : "");
+    b.innerHTML = `<span class="k">${key}</span><span class="n"></span><span class="c"></span><i class="cd"></i>`;
+    b.onclick = () => act(() => fn(G[sk]));
+    host.appendChild(b);
+    return b;
+  };
+  return { units: [0,1,2].map(i => mk("", keys.u[i], s => spawn(s, i))),
+           turret: mk("", keys.t, buyTurret),
+           evo:    mk("evo", keys.e, evolve),
+           spec:   mk("spec", keys.q, useSpecial) };
 }
-el("turretBtn").onclick = () => { if (running && !paused) buyTurret(G.p); };
-el("evoBtn").onclick     = () => { if (running && !paused) evolve(G.p); };
-el("specBtn").onclick    = () => { if (running && !paused) useSpecial(G.p); };
+
+function syncDeck(side, d) {
+  for (let i = 0; i < 3; i++) {
+    const def = spec(side, i), b = d.units[i];
+    b.querySelector(".n").textContent = def.n;
+    b.querySelector(".c").textContent = def.cost + "g";
+    b.disabled = side.gold < def.cost || side.cds[i] > 0 || side.units.length >= MAX_UNITS;
+    b.querySelector(".cd").style.width = (side.cds[i] / SPAWN_CD[i] * 100) + "%";
+  }
+  const t = AGES[side.age].turret, left = TURRET_SLOTS[side.age] - side.turrets.length;
+  d.turret.querySelector(".n").textContent = t.name;
+  d.turret.querySelector(".c").textContent = left > 0 ? t.cost + "g \u00b7 " + left : "no slots";
+  d.turret.disabled = left <= 0 || side.gold < t.cost;
+
+  const maxed = side.age >= AGES.length - 1, need = AGES[side.age].xpNext;
+  d.evo.querySelector(".n").textContent = maxed ? "Max Age" : "\u2192 " + AGES[side.age + 1].name;
+  d.evo.querySelector(".c").textContent = maxed ? "\u2014" : Math.max(0, Math.ceil(need - side.xp)) + " xp";
+  d.evo.disabled = maxed || side.xp < need;
+
+  d.spec.querySelector(".n").textContent = AGES[side.age].special.name;
+  d.spec.querySelector(".c").textContent = side.specialCd > 0 ? Math.ceil(side.specialCd) + "s" : "READY";
+  d.spec.disabled = side.specialCd > 0;
+  d.spec.querySelector(".cd").style.width = (1 - side.specialCd / SPECIAL_CD) * 100 + "%";
+}
+
+function syncTop(side, n) {
+  el("gold" + n).textContent = Math.floor(side.gold).toLocaleString();
+  el("age" + n).textContent = AGES[side.age].name;
+  el("hpBar" + n).style.width = (side.hp / side.maxHp * 100) + "%";
+  el("hpTxt" + n).textContent = Math.ceil(side.hp) + "/" + side.maxHp;
+  const need = AGES[side.age].xpNext;
+  el("xpBar" + n).style.width = (need === Infinity ? 100 : clamp(side.xp / need, 0, 1) * 100) + "%";
+  el("xpTxt" + n).textContent = need === Infinity ? "max" : Math.floor(side.xp) + "/" + need;
+}
+
+function syncUI() {
+  if (!G) return;
+  syncTop(G.p, 1); syncTop(G.e, 2);
+  syncDeck(G.p, decks.p);
+  syncDeck(G.e, decks.e);
+}
+
+decks.p = buildDeck("deckP1", "p");
+decks.e = buildDeck("deckP2", "e");
 
 document.addEventListener("keydown", ev => {
   if (!running) { if (ev.key === "Enter") start(); return; }
   const k = ev.key.toLowerCase();
   if (k === "p") { paused = !paused; return; }
   if (paused) return;
-  if (k === "1") spawn(G.p, 0);
-  if (k === "2") spawn(G.p, 1);
-  if (k === "3") spawn(G.p, 2);
-  if (k === "e") evolve(G.p);
-  if (k === "t") buyTurret(G.p);
-  if (k === "q") useSpecial(G.p);
+  const map = { "1":["p",0], "2":["p",1], "3":["p",2], "e":["p","evo"], "t":["p","tur"], "q":["p","spc"] };
+  if (mode === "2p") Object.assign(map,
+    { "7":["e",0], "8":["e",1], "9":["e",2], "i":["e","evo"], "o":["e","tur"], "u":["e","spc"] });
+  const m = map[k];
+  if (!m) return;
+  const side = G[m[0]];
+  if (typeof m[1] === "number") spawn(side, m[1]);
+  else if (m[1] === "evo") evolve(side);
+  else if (m[1] === "tur") buyTurret(side);
+  else useSpecial(side);
 });
 
+document.querySelectorAll(".modebtn").forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll(".modebtn").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    mode = b.dataset.m;
+    el("diffRow").style.display = mode === "2p" ? "none" : "flex";
+  };
+});
 document.querySelectorAll(".diffbtn").forEach(b => {
   b.onclick = () => {
     document.querySelectorAll(".diffbtn").forEach(x => x.classList.remove("on"));
@@ -835,64 +922,24 @@ document.querySelectorAll(".diffbtn").forEach(b => {
 });
 el("ovBtn").onclick = start;
 
-function syncUI() {
-  if (!G) return;
-  const p = G.p;
-  el("goldTxt").textContent = Math.floor(p.gold).toLocaleString();
-  el("ageTxt").textContent  = AGES[p.age].name;
-
-  el("hpBar").style.width  = (p.hp / p.maxHp * 100) + "%";
-  el("hpTxt").textContent  = Math.ceil(p.hp) + " / " + p.maxHp;
-  el("ehpBar").style.width = (G.e.hp / G.e.maxHp * 100) + "%";
-  el("ehpTxt").textContent = Math.ceil(G.e.hp) + " / " + G.e.maxHp;
-  el("ehpTxt").title = AGES[G.e.age].name;
-
-  const need = AGES[p.age].xpNext;
-  el("xpBar").style.width = (need === Infinity ? 100 : clamp(p.xp / need, 0, 1) * 100) + "%";
-  el("xpTxt").textContent = need === Infinity ? "(max age)" : Math.floor(p.xp) + " / " + need;
-
-  for (let i = 0; i < 3; i++) {
-    const d = spec(p, i), b = unitBtns[i];
-    b.querySelector(".n").textContent = d.n;
-    b.querySelector(".c").textContent = d.cost + "g";
-    b.disabled = p.gold < d.cost || p.cds[i] > 0 || p.units.length >= MAX_UNITS;
-    b.querySelector(".cd").style.width = (p.cds[i] / SPAWN_CD[i] * 100) + "%";
-  }
-
-  const t = AGES[p.age].turret;
-  const slotsLeft = TURRET_SLOTS[p.age] - p.turrets.length;
-  const tb = el("turretBtn");
-  tb.querySelector(".n").textContent = t.name;
-  tb.querySelector(".c").textContent = slotsLeft > 0 ? `${t.cost}g · ${slotsLeft} slot${slotsLeft > 1 ? "s" : ""}` : "no slots";
-  tb.disabled = slotsLeft <= 0 || p.gold < t.cost;
-
-  const eb = el("evoBtn");
-  const maxed = p.age >= AGES.length - 1;
-  eb.querySelector(".n").textContent = maxed ? "Max Age" : "→ " + AGES[p.age + 1].name;
-  eb.querySelector(".c").textContent = maxed ? "—" : Math.max(0, Math.ceil(need - p.xp)) + " xp";
-  eb.disabled = maxed || p.xp < need;
-
-  const sb = el("specBtn");
-  sb.querySelector(".n").textContent = AGES[p.age].special.name;
-  sb.querySelector(".c").textContent = p.specialCd > 0 ? Math.ceil(p.specialCd) + "s" : "READY";
-  sb.disabled = p.specialCd > 0;
-  el("specCd").style.width = (1 - p.specialCd / SPECIAL_CD) * 100 + "%";
-}
-
-function endGame(result) {
+function endGame(result) {              // result "win" = P1 (blue) took the right base
   running = false;
+  const p1 = result === "win";
   el("overlay").style.display = "flex";
-  el("diffRow").style.display = "flex";
-  el("ovTitle").textContent = result === "win" ? "Victory" : "Defeat";
-  el("ovText").textContent = result === "win"
-    ? `You razed the enemy base in ${Math.floor(G.t)}s, ending in the ${AGES[G.p.age].name}.`
-    : `Your base fell after ${Math.floor(G.t)}s. The enemy reached the ${AGES[G.e.age].name}.`;
-  el("ovBtn").textContent = "Fight Again";
-  beep(result === "win" ? 780 : 130, 0.6, 0.06);
+  el("diffRow").style.display = mode === "2p" ? "none" : "flex";
+  el("ovTitle").textContent = mode === "2p"
+    ? (p1 ? "Blue Wins" : "Red Wins")
+    : (p1 ? "Victory" : "Defeat");
+  el("ovTitle").style.color = p1 ? "#7fb2e0" : "#e08a7f";
+  el("ovText").innerHTML = mode === "2p"
+    ? `${p1 ? "Blue (P1)" : "Red (P2)"} razed the enemy base in ${Math.floor(G.t)}s, ending in the ${AGES[p1 ? G.p.age : G.e.age].name}.`
+    : (p1 ? `You razed the enemy base in ${Math.floor(G.t)}s.` : `Your base fell after ${Math.floor(G.t)}s.`);
+  el("ovBtn").textContent = "Play Again";
+  beep(p1 ? 780 : 130, 0.6, 0.06);
 }
 
 function start() {
-  aiPower = 0.92 + (difficulty - 1) * 1.35;
+  aiPower = mode === "2p" ? 1 : 0.92 + (difficulty - 1) * 1.35;
   reset();
   resize();
   running = true; paused = false;
