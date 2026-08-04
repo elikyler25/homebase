@@ -888,13 +888,24 @@ const CPU_LEVELS = {
   // duels put value-buying ahead 7 games in 10, so hard plays that way.
   // What really separates them is awareness, not reaction speed: easy never looks
   // at what it is fighting, normal sees it through noise, hard sees it exactly.
-  easy:   { think: 2.0,  smart: 0.35, costPow: 0.00, maxPrice: 820,  blind: true,  mend: false },
-  normal: { think: 1.6,  smart: 0.60, costPow: 0.60, maxPrice: 1250, noise: 0.55,  mend: true  },
-  hard:   { think: 0.25, smart: 1.00, costPow: 1.00, maxPrice: 9999, noise: 0,     mend: true  },
+  // The CPU streams troops continuously at every level, exactly the way your own
+  // crystal does. Two dials shape the ladder on top of awareness:
+  //   gap   - how much slower than you it recruits. 1.0 is your rate exactly.
+  //   reach - how far past its purse it will commit, in paydays of income.
+  //           Recruiting flat out keeps gold near zero, so this is what decides
+  //           whether it streams cheap troops or stalls saving for one big one.
+  // hard's costPow is above 1: recruiting continuously makes value-per-gold the
+  // whole game, and at 1.0 it still liked the big expensive units enough to stall
+  // saving for them - it fielded six troops against a player's eighty-seven.
+  easy:   { think: 2.0,  smart: 0.35, costPow: 0.00, maxPrice: 820,  blind: true,  mend: false, gap: 5.0, reach: 0.4 },
+  normal: { think: 1.6,  smart: 0.60, costPow: 0.60, maxPrice: 1250, noise: 0.55,  mend: true,  gap: 2.2, reach: 0.4 },
+  hard:   { think: 0.25, smart: 1.00, costPow: 1.35, maxPrice: 9999, noise: 0,     mend: true,  gap: 1.0, reach: 0.4 },
 };
+function gapMul(team) {
+  return CPU && CPU.team === team ? CPU_LEVELS[CPU.level].gap : 1;
+}
 function cpuThink(dt) {
   if (!CPU) return;
-  if (G.units.length >= capNow()) return;
   const cfg = CPU_LEVELS[CPU.level], me = P[CPU.team], foe = 1 - CPU.team;
   CPU.t = (CPU.t || 0) - dt;
   if (CPU.t > 0) return;
@@ -904,11 +915,11 @@ function cpuThink(dt) {
   // difficulty lives: easy never looks (flat profile), normal sees it through
   // noise, hard sees it exactly.
   const prof = new Map();
-  let tot = 0, mine = 0, theirs = 0;
+  let tot = 0, mine = 0, theirs = 0, myInc = 0;
   for (const a of G.units) {
     if (a.dead) continue;
     if (a.team === foe) { theirs++; prof.set(a.u.gid, (prof.get(a.u.gid)||0) + a.hp); tot += a.hp; }
-    else mine++;
+    else { mine++; myInc += a.u.income; }
   }
   if (cfg.blind || !tot) { prof.clear(); tot = 0; }
   else if (cfg.noise) {
@@ -934,21 +945,41 @@ function cpuThink(dt) {
   };
 
   const losing = theirs > mine + 2 || me.hp < P[foe].hp * 0.9;
-  const canBuy = u => u.price <= me.gold && !(u.hero && me.heroes > 0);
-  const opts = me.roster.filter(u => canBuy(u) && u.price <= cfg.maxPrice);
-  const any  = me.roster.filter(canBuy);
+
+  // Mending needs a lump sum, and something that recruits continuously never has
+  // one - its purse sits near zero by design. So when the crystal is in real
+  // danger the CPU stops recruiting and saves up, the same way you would.
+  if (cfg.mend && me.hp < CRYSTAL_HP*0.6) {
+    if (me.gold >= REPAIR_COST && me.mend <= 0) repair(CPU.team);
+    else if (me.hp < CRYSTAL_HP*0.3 && me.gold < REPAIR_COST) { me.sel = null; return; }
+  }
+
+  // Affordability is judged against income, not gold in hand. Recruiting flat out
+  // keeps the purse near empty, so a "can I pay for it right now" filter would
+  // pin the CPU to fodder for the whole match; anything it can cover within about
+  // two paydays is fair game, and the auto-recruit loop saves up for it.
+  const payday = (BASE_INCOME + 170*G.round + myInc) * goldMul;
+  const reach = me.gold + payday * cfg.reach;
+  const usable = u => u.price <= reach && !(u.hero && me.heroes > 0);
+  const opts = me.roster.filter(u => usable(u) && u.price <= cfg.maxPrice);
+  const any  = me.roster.filter(usable);
+  let pick = null;
   if (Math.random() > cfg.smart) {                       // sloppy play on lower levels
-    if (any.length) buy(CPU.team, any[Math.floor(Math.random()*any.length)].idx);
+    if (any.length) pick = any[Math.floor(Math.random()*any.length)];
   } else {
     const pool = opts.length ? opts : any;
     if (pool.length) {
-      let pick = pool[0], best = -1;
+      pick = pool[0];
+      let best = -1;
       for (const u of pool) { const v = score(u); if (v > best) { best = v; pick = u; } }
-      buy(CPU.team, pick.idx);
-      if (losing && me.gold >= pick.price) buy(CPU.team, pick.idx);
     }
   }
-  if (cfg.mend && me.hp < CRYSTAL_HP*0.6 && me.gold > REPAIR_COST*2.5) repair(CPU.team);
+  // Losing means committing the purse rather than drip-feeding: drop the value
+  // discipline and take the hardest thing it can reach.
+  if (losing && pick && Math.random() < cfg.smart) {
+    for (const u of any) if (u.price > pick.price) pick = u;
+  }
+  if (pick && pick.idx !== me.sel) { me.sel = pick.idx; me.autoT = 0; }
   if (cfg.mend) {                       // easy never bothers with stances either
     if (theirs > mine + 5 && me.hp < CRYSTAL_HP*0.75) me.stance = 1;
     else if (mine >= theirs) me.stance = 0;
@@ -973,11 +1004,13 @@ function step(dt) {
     if (p.mend > 0) p.mend -= dt;
     p.goldAvg = p.goldAvg === undefined ? p.gold : p.goldAvg + (p.gold - p.goldAvg) * Math.min(1, dt*1.6);
     // your crystal keeps producing whatever you last selected, as long as the
-    // gold lasts - no tapping once per soldier
-    if (p.sel !== null && !(CPU && CPU.team === p.team) && G.units.length < capNow()) {
+    // gold lasts - no tapping once per soldier. The CPU runs through the very same
+    // loop, so a solo battle fills the field the way a two-player one does; all
+    // cpuThink does is choose which card is selected.
+    if (p.sel !== null && G.units.length < capNow()) {
       p.autoT -= dt;
       if (p.autoT <= 0) {
-        if (buy(p.team, p.sel)) p.autoT = AUTO_GAP;
+        if (buy(p.team, p.sel)) p.autoT = AUTO_GAP * gapMul(p.team);
         else p.autoT = 0.15;                 // broke: check again shortly
       }
     }

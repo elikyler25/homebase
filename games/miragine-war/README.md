@@ -6,7 +6,9 @@ dependencies, no network — open `index.html` in a browser and hit FIGHT.
 Works on a phone or tablet in landscape: tap the cards to buy. Turn the device sideways — it asks
 you to.
 
-Also playable solo: pick **VS CPU** on the menu (easy / normal / hard).
+Also playable solo: pick **VS CPU** on the menu (easy / normal / hard). The CPU recruits the same way
+you do — it selects a troop and its crystal keeps producing it — so a solo battle fills the field the
+way a two-player one does.
 
 ## Battle sizes
 
@@ -200,12 +202,29 @@ underneath, so a rematch with different armies is one tap.
   canvas; blood decals accumulate on a second one. Neither is repainted per frame.
 - **A spatial hash** backs targeting, splash and unit separation, so army size doesn't blow up the
   simulation (300 units simulate in ~1.3 ms/frame).
-- **The CPU** profiles the enemy army by remaining HP *per unit type*, then scores every affordable
-  unit by damage-after-their-armour against how long it would survive their damage output.
-  What separates the difficulties is *awareness*, not reaction speed: easy fights blind (it assumes
-  a 50/50 enemy composition and caps itself at cheap units), normal reads the enemy through noise,
-  hard reads it exactly. Benchmarked against a *strong* scripted player — one that counter-picks by
-  value every 0.4s — easy wins 0/6, normal 3/6, hard 5/6.
+- **The CPU recruits exactly the way you do.** It selects a card and its crystal streams that troop
+  continuously; `cpuThink` only chooses *which* card, and the same auto-recruit loop in `step()` does
+  the spawning. It used to buy one unit per think tick, which was survivable at the normal battle
+  size and absurd at CHAOS — you recruit 200 troops a second there and it managed one or two. It now
+  fields 1,000–3,300 troops in a CHAOS match instead of a handful.
+- **That change needed the CPU's economics rethought, not just its trigger.** Recruiting flat out
+  keeps its purse near zero, so the old "can I afford this right now" filter would have pinned it to
+  fodder for the entire match. Affordability is judged against *income* instead — anything it can
+  cover within a fraction of a payday is fair game and the recruit loop saves up for it. Mending
+  needed the same treatment: a lump sum is something a continuous spender never has, so when the
+  crystal is in real danger it stops recruiting and saves, the way a player would.
+- **The difficulty ladder had to be re-measured afterwards, and it had genuinely broken.** Against
+  four fixed player strategies at every battle size, the old build won 4/5/9 of 12 at EPIC and
+  6/11/12 at NORMAL for easy/normal/hard. Switching the CPU to continuous recruiting flattened that
+  to 7/6/9 and 8/11/9 — easy had become far too strong, and hard had got *weaker*, fielding six
+  troops against a player's eighty-seven. The cause was `costPow`: with continuous recruiting,
+  value-per-gold is the whole game, and at 1.0 hard still liked the big units enough to stall saving
+  for them. Raising hard's `costPow` to 1.35 and slowing the lower levels' recruit rate restores it —
+  now 4/9/12 at EPIC and 6/9/11 at NORMAL, and hard's army recovers from 39 troops to 273.
+- **What separates the difficulties** is still *awareness* above all: easy fights blind (it assumes a
+  50/50 enemy composition and caps itself at cheap units), normal reads the enemy through noise, hard
+  reads it exactly. On top of that it now recruits at 1/5 of your rate on easy, 1/2.2 on normal, and
+  at your exact rate on hard.
 - **Mirror matches were not 50/50.** Testing the factions turned up a fairness bug that had nothing
   to do with them: attacks resolve in array order, so troops earlier in the list strike first and can
   kill before being struck back — and team 0's troops are reliably earlier. The sweep now alternates
