@@ -38,6 +38,10 @@ with no scrolling, so a wider world means smaller troops, and past a point they 
 all — at CHAOS's zoom a rank-and-file soldier is 7 pixels tall, which is about the floor for reading
 who is who. The map is 29× the area of NORMAL and bodies scale 3.4× to stay visible inside it.
 
+Every battle size also **scales itself to your device.** The ceilings above are what the game will
+use if your machine can hold them; if it cannot, the field finds its own level rather than turning
+into a slideshow, and says so in the HUD. See the notes at the bottom for how.
+
 Card flicker is a real hazard at this pace: at one recruit every 5 ms the "just bought" pulse fires
 200 times a second and the affordability dimming flips every time gold crosses a price. Both are
 damped — the selected card's pulse is suppressed above NORMAL's recruit rate (its permanent gold
@@ -220,6 +224,39 @@ underneath, so a rematch with different armies is one tap.
   ceiling and the per-unit size and speed multipliers all come from a single table, applied at the
   start of a match and restored cleanly when you switch back. Auto-recruit pauses at the ceiling so a
   runaway battle can't stall the frame — deliberate purchases are never blocked.
+- **The army is one draw call.** Canvas2D charges about 4 microseconds of call overhead per
+  `drawImage`, so three thousand troops cost ~12 ms of CPU before a single pixel is filled — the
+  frame was draw-call bound, not fill bound (the whole army is roughly one screenful of pixels, and
+  a 3,100-troop frame used only 47 distinct sprites). Packing an atlas and drawing it with the
+  9-argument `drawImage` only recovered 16%, because the overhead is per call. So the baked sprites
+  now go into a WebGL texture and the entire army is submitted as a single triangle batch: **12.0 ms
+  of CPU becomes 1.0 ms** (0.52 ms filling the vertex buffer, 0.45 ms uploading and drawing, 0.01 ms
+  compositing the layer back into the 2D canvas). Everything else — ground, crystals, effects, bars,
+  radar — stays on 2D, so layering and screen shake are untouched.
+- **The batch is declined when it would not help.** Chrome silently falls back to a software GL
+  driver whenever the real GPU is blocklisted, and software-rasterising three thousand textured
+  quads is *slower* than the Canvas2D path it replaces — measured 30.0 ms against 16.2 ms on the
+  same frame. The renderer string is checked for SwiftShader/llvmpipe and the batch is refused.
+  Below 350 troops it is refused too: a full-screen GL layer has a fixed cost a skirmish never earns
+  back. Missing WebGL and a lost context both fall back the same way, verified by blocking
+  `getContext('webgl')` and by firing `WEBGL_lose_context` mid-battle — 3,100 troops kept rendering,
+  no exceptions either time.
+- **The game measures the device and scales itself.** A battle size is written for a machine nobody
+  can know in advance: CHAOS asks for 4,200 troops, which a laptop shrugs off and an old phone does
+  not. Each frame times its own simulation and drawing — deliberately *not* the gap between frames,
+  since a 30 Hz display or a throttled background tab would otherwise look identical to a machine
+  that cannot keep up. Past 13 ms of work it sheds particles first and then the troop ceiling, 10% at
+  a time down to a floor of 500, and hands it all back when there is headroom again. Verified by
+  injecting 20 ms of busywork per frame: the ceiling fell 4,200 → 500 and climbed back once the load
+  cleared. When it is limiting, the HUD says so rather than leaving you wondering.
+- **The radar is baked.** It repainted 3,000 blips a frame — about 2 ms of `fillRect`, with a
+  `fillStyle` assignment per blip — and a cloud of two-pixel dots does not change meaningfully at
+  60 Hz. Batched by side and cached into a small offscreen canvas refreshed every fifth frame:
+  2.05 ms → 0.23 ms. It was also still sized in *world* units, so growing CHAOS to 14000 wide had
+  quietly shrunk it to a 58×4 pixel smear; every dimension in it is now screen-relative.
+- **`Math.hypot` is not free.** V8's version guards against overflow that coordinates on a
+  14000-unit map can never reach, at several times the cost of a plain `sqrt`. It was being called a
+  few times per unit per frame.
 - **Image smoothing off.** Sprites blit 1:1, so canvas filtering was pure waste — turning it off
   took a 2,900-troop CHAOS frame from 28.8 ms to 12.9 ms with no visual change whatsoever. Easily the
   cheapest win in the project.
