@@ -77,22 +77,22 @@ A straight price ladder, cheapest to most expensive:
 
 | # | Unit | Price | Income | HP | Armour | Type | vs Light | vs Armored | Range |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Newbie | 22 | 2 | 70 | 0 | light | 12 | 5 | 22 |
-| 2 | Veteran | 55 | 4 | 140 | 1 | light | 21 | 10 | 24 |
-| 3 | Zombie | 95 | 5 | 320 | 2 | light | 18 | 13 | 22 |
-| 4 | Samurai | 185 | 7 | 190 | 2 | light | 58 | 14 | 26 |
-| 5 | Sword Man | 190 | 9 | 260 | 4 | **armored** | 33 | 24 | 26 |
-| 6 | Ninja | 330 | 11 | 170 | 1 | light | 98 | 9 | 24 |
-| 7 | Novice | 360 | 14 | 200 | 2 | light | 36 | 36 | 140 |
-| 8 | Heavy Sword | 520 | 17 | 540 | 8 | **armored** | 43 | 43 | 30 |
-| 9 | Monk | 820 | 20 | 260 | 3 | light | 26 | 152 | 112 |
-| 10 | Vampire | 1250 | 24 | 460 | 4 | light | 58 | 150 | 28 |
-| 11 | Cavalry | 1450 | 28 | 620 | 6 | **armored** | 76 | 38 | 30 |
-| 12 | Immortal | 1500 | 33 | 1150 | 12 | **armored** | 51 | 51 | 30 |
-| 13 | Mage | 1900 | 38 | 300 | 2 | light | 78 | 78 | 170 |
-| 14 | Iron Knight | 3200 | 44 | 1700 | 14 | **armored** | 78 | 58 | 34 |
-| 15 | Dread Lord | 4600 | 52 | 1500 | 4 | light | 128 | 110 | 36 |
-| 16 | High Lord | 8200 | 62 | 2200 | 12 | **armored** | 130 | 108 | 40 |
+| 1 | Newbie | 22 | 2 | 70 | 0 | light | 12 | 5 | 31 |
+| 2 | Veteran | 55 | 4 | 140 | 1 | light | 21 | 10 | 34 |
+| 3 | Zombie | 95 | 5 | 320 | 2 | light | 18 | 13 | 31 |
+| 4 | Samurai | 185 | 7 | 190 | 2 | light | 58 | 14 | 37 |
+| 5 | Sword Man | 190 | 9 | 260 | 4 | **armored** | 33 | 24 | 37 |
+| 6 | Ninja | 330 | 11 | 170 | 1 | light | 98 | 9 | 34 |
+| 7 | Novice | 360 | 14 | 200 | 2 | light | 36 | 36 | 200 |
+| 8 | Heavy Sword | 520 | 17 | 540 | 8 | **armored** | 43 | 43 | 43 |
+| 9 | Monk | 820 | 20 | 260 | 3 | light | 26 | 152 | 160 |
+| 10 | Vampire | 1250 | 24 | 460 | 4 | light | 58 | 150 | 40 |
+| 11 | Cavalry | 1450 | 28 | 620 | 6 | **armored** | 76 | 38 | 43 |
+| 12 | Immortal | 1500 | 33 | 1150 | 12 | **armored** | 51 | 51 | 43 |
+| 13 | Mage | 1900 | 38 | 300 | 2 | light | 78 | 78 | 243 |
+| 14 | Iron Knight | 3200 | 44 | 1700 | 14 | **armored** | 78 | 58 | 49 |
+| 15 | Dread Lord | 4600 | 52 | 1500 | 4 | light | 128 | 110 | 51 |
+| 16 | High Lord | 8200 | 62 | 2200 | 12 | **armored** | 130 | 108 | 57 |
 
 Mage and Cavalry carry the widest cleave — they are the answer to swarms. Dread Lord and High Lord
 cleave a little; the Iron Knight is a pure wall with none. Vampire drains. There is no unit cap —
@@ -127,10 +127,12 @@ in are two different jobs.
   screen and take almost nothing back. Counter-picking now beats blind teching 5-1, and picking the
   *wrong* counter loses 6-0, which is the shape you want.
 - **Colour is never the only cue.** Blue rings are solid, red rings are dashed.
-- **One virtual resolution.** The world is always 1400 units wide and the canvas scales to fit, so a
+- **One virtual resolution.** The world is always 2000 units wide and the canvas scales to fit, so a
   phone in landscape sees the same proportions a desktop does rather than desktop-sized troops on a
   250-pixel strip of field. The shop collapses on short screens — smaller cards, then icons instead
-  of names — so the battlefield always keeps about three quarters of the height.
+  of names — so the battlefield always keeps about three quarters of the height. Troops are drawn in
+  device space so each cached sprite blits 1:1 rather than being resampled — 9.3 ms versus 22.8 ms
+  for 680 sprites.
 - **Rendering.** Sprites are baked at three quantised perspective scales and blitted at native size
   on integer origins, which is far cheaper than scaled draws: a 680-unit battle draws in ~13 ms in
   software rendering, down from ~41 ms, and simulates in ~3.6 ms.

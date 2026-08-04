@@ -225,38 +225,38 @@ const U = (name, price, income, hp, armour, type, spd, dL, dA, rng, ws, size, co
   ({ name, price, income, hp, armour, type, spd, dL, dA, rng, ws, size, col, kind, art, ...(extra||{}) });
 
 const UNITS = [
-  U("Newbie",       22,  2,   70,  0, "light",    46,  12,   5,  22, 0.75, 14, "#b8b2a0", "melee",
+  U("Newbie",       22,  2,   70,  0, "light",     66,   12,   5,    31, 0.75, 17, "#b8b2a0", "melee",
     { head:"bare",  body:"tunic", weapon:"club" }),
-  U("Veteran",      55,  4,  140,  1, "light",    44,  21,  10,  24, 0.80, 16, "#c2a878", "melee",
+  U("Veteran",      55,  4,  140,  1, "light",     63,   21,  10,    34, 0.80, 19, "#c2a878", "melee",
     { head:"helm",  body:"tunic", weapon:"sword" }),
-  U("Zombie",       95,  5,  320,  2, "light",    26,  18,  13,  22, 1.00, 17, "#7fa86a", "melee",
+  U("Zombie",       95,  5,  320,  2, "light",     37,   18,  13,    31, 1.00, 20, "#7fa86a", "melee",
     { head:"bare",  body:"tatter", weapon:"claws", skin:"#93b87a", hunch:true }),
-  U("Samurai",     185,  7,  190,  2, "light",    52,  58,  14,  26, 0.70, 17, "#d96a6a", "melee",
+  U("Samurai",     185,  7,  190,  2, "light",     74,   58,  14,    37, 0.70, 20, "#d96a6a", "melee",
     { head:"kasa",  body:"tunic", weapon:"katana" }),
-  U("Sword Man",   190,  9,  260,  4, "armored",  44,  33,  24,  26, 0.80, 18, "#d9d9e2", "melee",
+  U("Sword Man",   190,  9,  260,  4, "armored",     63,   33,  24,    37, 0.80, 22, "#d9d9e2", "melee",
     { head:"helm",  body:"plate", weapon:"sword", shield:true }),
-  U("Ninja",       330, 11,  170,  1, "light",    96,  98,   9,  24, 0.55, 16, "#5f5f74", "melee",
+  U("Ninja",       330, 11,  170,  1, "light",    137,   98,   9,    34, 0.55, 19, "#5f5f74", "melee",
     { head:"mask",  body:"tunic", weapon:"daggers", scarf:true }),
-  U("Novice",      360, 14,  200,  2, "light",    40,  36,  36, 140, 1.10, 16, "#8fd98f", "ranged",
+  U("Novice",      360, 14,  200,  2, "light",     57,   36,  36,   200, 1.10, 19, "#8fd98f", "ranged",
     { head:"hood",  body:"tunic", weapon:"bow" }),
-  U("Heavy Sword", 520, 17,  540,  8, "armored",  36,  43,  43,  30, 0.90, 21, "#a9b4c2", "melee",
+  U("Heavy Sword", 520, 17,  540,  8, "armored",     51,   43,  43,    43, 0.90, 25, "#a9b4c2", "melee",
     { head:"visor", body:"plate", weapon:"greatsword", pauldrons:true }),
-  U("Monk",        820, 20,  260,  3, "light",    40,  26, 152, 112, 1.00, 17, "#e0c060", "ranged",
+  U("Monk",        820, 20,  260,  3, "light",     57,   26, 152,   160, 1.00, 20, "#e0c060", "ranged",
     { head:"bald",  body:"robe",  weapon:"staff", halo:true, skin:"#e8c9a0" }),
-  U("Vampire",    1250, 24,  460,  4, "light",    62,  58, 150,  28, 0.68, 18, "#a05ac0", "melee",
+  U("Vampire",    1250, 24,  460,  4, "light",     89,   58, 150,    40, 0.68, 22, "#a05ac0", "melee",
     { head:"bare",  body:"robe",  weapon:"claws", cape:"#5a1030", wings:true, skin:"#e8dcea" }, { drain:0.75 }),
-  U("Cavalry",    1450, 28,  620,  6, "armored", 104,  76,  38,  30, 0.75, 23, "#e0c25a", "mount",
-    { head:"plume", body:"plate", weapon:"lance", mount:true }, { splash:38 }),
-  U("Immortal",   1500, 33, 1150, 12, "armored",  32,  51,  51,  30, 0.90, 23, "#c0a0d0", "melee",
+  U("Cavalry",    1450, 28,  620,  6, "armored",    149,   76,  38,    43, 0.75, 28, "#e0c25a", "mount",
+    { head:"plume", body:"plate", weapon:"lance", mount:true }, { splash:46 }),
+  U("Immortal",   1500, 33, 1150, 12, "armored",     46,   51,  51,    43, 0.90, 28, "#c0a0d0", "melee",
     { head:"visor", body:"plate", weapon:"spear", tower:true }),
-  U("Mage",       1900, 38,  300,  2, "light",    34,  78,  78, 170, 1.40, 18, "#c78fe0", "ranged",
-    { head:"wizhat", body:"robe", weapon:"staff", orb:"#d27bff" }, { splash:72 }),
-  U("Iron Knight",3200, 44, 1700, 14, "armored",  30,  78,  58,  34, 1.00, 29, "#8fa0b8", "melee",
+  U("Mage",       1900, 38,  300,  2, "light",     49,   78,  78,   243, 1.40, 22, "#c78fe0", "ranged",
+    { head:"wizhat", body:"robe", weapon:"staff", orb:"#d27bff" }, { splash:86 }),
+  U("Iron Knight",3200, 44, 1700, 14, "armored",     43,   78,  58,    49, 1.00, 35, "#8fa0b8", "melee",
     { head:"visor", body:"plate", weapon:"greatsword", pauldrons:true, tower:true, glow:"#ffd070" }, { splash:0 }),
-  U("Dread Lord", 4600, 52, 1500,  4, "light",    64, 128, 110,  36, 0.80, 26, "#8a3a3a", "melee",
-    { head:"horns", body:"plate", weapon:"axe", cape:"#2a0a10", aura:"#ff3a3a" }, { splash:30 }),
-  U("High Lord",  8200, 62, 2200, 12, "armored",  40, 130, 108,  40, 0.85, 34, "#e0d070", "melee",
-    { head:"crown", body:"plate", weapon:"greatsword", cape:"#6a5a10", aura:"#ffe66a", pauldrons:true }, { splash:34 }),
+  U("Dread Lord", 4600, 52, 1500,  4, "light",     91,  128, 110,    51, 0.80, 31, "#8a3a3a", "melee",
+    { head:"horns", body:"plate", weapon:"axe", cape:"#2a0a10", aura:"#ff3a3a" }, { splash:36 }),
+  U("High Lord",  8200, 62, 2200, 12, "armored",     57,  130, 108,    57, 0.85, 41, "#e0d070", "melee",
+    { head:"crown", body:"plate", weapon:"greatsword", cape:"#6a5a10", aura:"#ffe66a", pauldrons:true }, { splash:41 }),
 ].map((u, i) => (u.idx = i, u));
 
 const P1_KEYS = ["Digit1","Digit2","Digit3","Digit4","KeyQ","KeyW","KeyE","KeyR",
@@ -284,7 +284,7 @@ let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
 const REPAIR_COST = 450, REPAIR_HEAL = 700;
-const SHRINE_R = 135, SHRINE_GOLD = 240, SUDDEN_ROUND = 28;
+const SHRINE_R = 193, SHRINE_GOLD = 240, SUDDEN_ROUND = 28;
 const shrineX = () => G.W/2, shrineY = () => crystalY();
 function mkPlayer(team) {
   return { team, gold: START_GOLD, hp: CRYSTAL_HP, cool: 0, kills: 0, lane: 0, spent: 0,
@@ -308,7 +308,7 @@ function repair(team) {
 const cv = document.getElementById("cv");
 let ctx = cv.getContext("2d");
 let DPR = 1;
-const WORLD_W = 1400;       // everything is authored in these units
+const WORLD_W = 2000;       // everything is authored in these units
 let VIEW = 1;               // world -> css pixels
 // static layers, painted once instead of every frame
 const bgCv = document.createElement("canvas"), bgCtx = bgCv.getContext("2d");
@@ -320,7 +320,7 @@ function resize() {
   const cssW = Math.max(300, r.width), cssH = Math.max(150, r.height);
   VIEW = cssW / WORLD_W;
   G.W = WORLD_W;
-  G.H = Math.max(300, cssH / VIEW);          // world height follows the aspect
+  G.H = Math.max(430, cssH / VIEW);          // world height follows the aspect
   cv.width = Math.round(cssW*DPR); cv.height = Math.round(cssH*DPR);
   const q = VIEW*DPR;
   ctx.setTransform(q, 0, 0, q, 0, 0);
@@ -335,9 +335,9 @@ window.addEventListener("resize", resize);
 let terrain = [];
 function buildTerrain() {
   terrain = [];
-  const n = Math.round(G.W*G.H/2200);
+  const n = Math.round(G.W*G.H/4500);
   for (let i = 0; i < n; i++)
-    terrain.push({ x: Math.random()*G.W, y: Math.random()*G.H, s: 2+Math.random()*4,
+    terrain.push({ x: Math.random()*G.W, y: Math.random()*G.H, s: 3+Math.random()*6,
                    k: Math.random() < .07 ? "rock" : (Math.random() < .06 ? "flower" : "grass"),
                    c: Math.random() });
 }
@@ -372,9 +372,9 @@ function paintBackground() {
   c.fillStyle=vg; c.fillRect(0,0,W,H);
 }
 
-const TOP = () => 78;
-const BOT = () => G.H - 46;                  // leaves room for the radar strip
-const crystalX = t => (t === 0 ? 62 : G.W - 62);
+const TOP = () => 111;
+const BOT = () => G.H - 66;                  // leaves room for the radar strip
+const crystalX = t => (t === 0 ? 89 : G.W - 89);
 const crystalY = () => (TOP()+BOT())/2;
 // fake depth: things lower on the field are nearer the camera
 const persp = y => 0.80 + 0.40 * ((y - TOP()) / Math.max(1, BOT() - TOP()));
@@ -432,7 +432,7 @@ function laneY(team) {
 function spawn(idx, team) {
   const u = UNITS[idx];
   return { uid:++UID, team, u,
-    x: crystalX(team) + (team===0?38:-38) + (Math.random()*10-5),
+    x: crystalX(team) + (team===0?54:-54) + (Math.random()*14-7),
     y: laneY(team),
     hp:u.hp, maxhp:u.hp, cool:Math.random()*u.ws, tgt:null, retarget:Math.random()*.3,
     swing:0, hurt:0, step:Math.random()*6.28, dust:0, vet:0, dead:false };
@@ -451,7 +451,7 @@ function buy(team, idx) {
 }
 
 /* ---------- spatial hash ---------- */
-const CELL = 70;
+const CELL = 100;
 let grid = new Map();
 const gkey = (cx, cy) => cx*100000 + cy;
 function rebuildGrid() {
@@ -470,7 +470,7 @@ function nearby(x, y, r, fn) {
   }
 }
 
-const SIGHT = 300;
+const SIGHT = 430;
 function findTarget(a) {
   let best=null, bd=SIGHT*SIGHT;
   nearby(a.x, a.y, SIGHT, b => {
@@ -524,7 +524,7 @@ const CPU_LEVELS = {
   // What really separates them is awareness, not reaction speed: easy never looks
   // at what it is fighting, normal sees it through noise, hard sees it exactly.
   easy:   { think: 2.0,  smart: 0.35, costPow: 0.00, maxPrice: 820,  blind: true,  mend: false },
-  normal: { think: 1.2,  smart: 0.70, costPow: 0.60, maxPrice: 1400, noise: 0.35,  mend: true  },
+  normal: { think: 1.6,  smart: 0.60, costPow: 0.60, maxPrice: 1250, noise: 0.55,  mend: true  },
   hard:   { think: 0.25, smart: 1.00, costPow: 1.00, maxPrice: 9999, noise: 0,     mend: true  },
 };
 function cpuThink(dt) {
@@ -651,7 +651,7 @@ function step(dt) {
     } else if (P[a.team].stance === 1) {                 // HOLD: fall back to your own half
       tx = holdX(a.team); ty = a.y; reach = 6; idle = true;
     } else {
-      tx = crystalX(1-a.team); ty = crystalY(); reach = a.u.rng + a.u.size + 32; isCrystal = true;
+      tx = crystalX(1-a.team); ty = crystalY(); reach = a.u.rng + a.u.size + 46; isCrystal = true;
     }
 
     const dx=tx-a.x, dy=ty-a.y, dist=Math.hypot(dx,dy)||1;
@@ -675,7 +675,7 @@ function step(dt) {
       } else if (a.u.kind === "ranged") {
         sfxBow();
         G.shots.push({ x:a.x, y:a.y-7, tx:a.tgt.x, ty:a.tgt.y-7, src:a, tgt:a.tgt,
-                       sp:a.u.splash?330:500, splash:a.u.splash||0, team:a.team, t:0,
+                       sp:a.u.splash?470:715, splash:a.u.splash||0, team:a.team, t:0,
                        col:a.u.splash ? "#e08fff" : "#f5e6b0" });
       } else {
         arc(a, a.tgt);
@@ -695,8 +695,8 @@ function step(dt) {
     if (p.hp <= 0) continue;
     p.cool -= dt;
     if (p.cool > 0) continue;
-    let best=null, bd=205*205;
-    nearby(crystalX(p.team), crystalY(), 205, b => {
+    let best=null, bd=293*293;
+    nearby(crystalX(p.team), crystalY(), 293, b => {
       if (b.dead || b.team === p.team) return;
       const d=(b.x-crystalX(p.team))**2 + (b.y-crystalY())**2;
       if (d < bd) { bd=d; best=b; }
@@ -704,7 +704,7 @@ function step(dt) {
     if (best) {
       p.cool = .75;
       G.shots.push({ x:crystalX(p.team), y:crystalY()-22, tx:best.x, ty:best.y, tgt:best,
-                     src:null, crystal:true, sp:470, splash:0, team:p.team, t:0, col:"#cff4ff" });
+                     src:null, crystal:true, sp:670, splash:0, team:p.team, t:0, col:"#cff4ff" });
     }
   }
 
@@ -804,7 +804,11 @@ function banner(text, ms) {
 function draw() {
   const W=G.W, H=G.H;
   ctx.save();
-  if (G.shake > .2) ctx.translate((Math.random()-.5)*G.shake, (Math.random()-.5)*G.shake);
+  let shx = 0, shy = 0;
+  if (G.shake > .2) {
+    shx = (Math.random()-.5)*G.shake; shy = (Math.random()-.5)*G.shake;
+    ctx.translate(shx, shy);
+  }
 
   ctx.drawImage(bgCv, 0, 0, W, H);
   ctx.drawImage(decCv, 0, 0, W, H);
@@ -814,8 +818,14 @@ function draw() {
   drawLaneMarker(0); drawLaneMarker(1);
   drawCrystal(0); drawCrystal(1);
 
+  // Troops are drawn in device space so each cached sprite blits 1:1 instead of
+  // being rescaled - measured 9.3ms vs 22.8ms for 680 units.
   const list = G.units.slice().sort((a,b) => a.y - b.y);
-  for (const a of list) drawUnit(a);
+  const q = VIEW*DPR;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, shx*q, shy*q);
+  for (const a of list) drawUnit(a, q);
+  ctx.restore();
 
   for (const s of G.shots) {
     ctx.strokeStyle=s.col; ctx.lineWidth=s.splash?4:2; ctx.lineCap="round";
@@ -831,8 +841,8 @@ function draw() {
       ctx.globalAlpha = k*.85; ctx.strokeStyle="#fff"; ctx.lineWidth=3.2; ctx.lineCap="round";
       ctx.beginPath(); ctx.arc(f.x, f.y, f.r*(1.4-k*.4), f.ang-1.15, f.ang+1.15); ctx.stroke();
     } else if (f.t === "txt") {
-      ctx.globalAlpha = k; ctx.font = "bold 13px 'Trebuchet MS', sans-serif";
-      ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,.75)";
+      ctx.globalAlpha = k; ctx.font = "bold 18px 'Trebuchet MS', sans-serif";
+      ctx.textAlign = "center"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.75)";
       ctx.strokeText(f.s, f.x, f.y); ctx.fillStyle = f.c; ctx.fillText(f.s, f.x, f.y);
       ctx.textAlign = "left";
     } else {
@@ -863,7 +873,7 @@ function drawHelp() {
     ["5 / 6  mend crystal      L-SHIFT / R-SHIFT  lane      T / '  advance or hold", "#9fffd8"],
     ["SPACE pause     - / =  speed     `  mute     H  close", "#cfc6ae"],
   ];
-  const w = 560, h = lines.length*22 + 28;
+  const w = 780, h = lines.length*30 + 38;
   const x = (G.W-w)/2, y = (G.H-h)/2 - 20;
   ctx.fillStyle = "rgba(10,14,10,.92)";
   ctx.fillRect(x, y, w, h);
@@ -871,9 +881,9 @@ function drawHelp() {
   ctx.textAlign = "left";
   lines.forEach((l, i) => {
     if (!l[0]) return;
-    ctx.font = (i === 0 ? "bold 15px " : "13px ") + "'Trebuchet MS', sans-serif";
+    ctx.font = (i === 0 ? "bold 21px " : "18px ") + "'Trebuchet MS', sans-serif";
     ctx.fillStyle = l[1];
-    ctx.fillText(l[0], x+20, y+30+i*22);
+    ctx.fillText(l[0], x+28, y+42+i*30);
   });
 }
 
@@ -885,25 +895,25 @@ function drawShrine() {
   ctx.beginPath(); ctx.ellipse(x, y, SHRINE_R, SHRINE_R*.5, 0, 0, 6.29); ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = "rgba(0,0,0,.2)";
-  ctx.beginPath(); ctx.ellipse(x, y+34, 26, 9, 0, 0, 6.29); ctx.fill();
-  ctx.fillStyle = "#6b6255"; ctx.fillRect(x-22, y+22, 44, 12);
+  ctx.beginPath(); ctx.ellipse(x, y+48, 37, 13, 0, 0, 6.29); ctx.fill();
+  ctx.fillStyle = "#6b6255"; ctx.fillRect(x-31, y+31, 62, 17);
   ctx.fillStyle = "#514a3f";
   ctx.beginPath();
-  ctx.moveTo(x-11, y+24); ctx.lineTo(x+11, y+24);
-  ctx.lineTo(x+7, y-40); ctx.lineTo(x-7, y-40); ctx.closePath(); ctx.fill();
+  ctx.moveTo(x-16, y+34); ctx.lineTo(x+16, y+34);
+  ctx.lineTo(x+10, y-57); ctx.lineTo(x-10, y-57); ctx.closePath(); ctx.fill();
   ctx.fillStyle = col;
   ctx.globalAlpha = .85;
   ctx.beginPath();
-  ctx.moveTo(x, y-56); ctx.lineTo(x+8, y-42); ctx.lineTo(x, y-30); ctx.lineTo(x-8, y-42);
+  ctx.moveTo(x, y-80); ctx.lineTo(x+11, y-60); ctx.lineTo(x, y-43); ctx.lineTo(x-11, y-60);
   ctx.closePath(); ctx.fill();
-  ctx.globalAlpha = .13; ctx.beginPath(); ctx.arc(x, y-42, 30, 0, 6.29); ctx.fill();
+  ctx.globalAlpha = .13; ctx.beginPath(); ctx.arc(x, y-60, 43, 0, 6.29); ctx.fill();
   ctx.globalAlpha = 1;
   // capture ring
   const p = Math.abs(sh.prog)/100;
   if (p > .01) {
     ctx.strokeStyle = sh.prog > 0 ? "#7fc4ff" : "#ff8a6a";
     ctx.lineWidth = 4; ctx.lineCap = "butt";
-    ctx.beginPath(); ctx.arc(x, y-42, 20, -Math.PI/2, -Math.PI/2 + p*6.283); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y-60, 29, -Math.PI/2, -Math.PI/2 + p*6.283); ctx.stroke();
   }
 }
 
@@ -923,7 +933,7 @@ function drawLaneMarker(team) {
   const y = p.lane===1 ? top+span*.16 : p.lane===2 ? (top+bot)/2 : bot-span*.16;
   ctx.strokeStyle = team===0 ? "rgba(190,230,255,.35)" : "rgba(255,208,176,.35)";
   ctx.lineWidth = 2; ctx.setLineDash([5,6]);
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (team===0?150:-150), y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (team===0?214:-214), y); ctx.stroke();
   ctx.setLineDash([]);
 }
 
@@ -931,7 +941,7 @@ function drawCrystal(team) {
   const x=crystalX(team), y=crystalY();
   const p = P[team] || { hp:CRYSTAL_HP };
   const f = Math.max(0, p.hp/CRYSTAL_HP);
-  const h=112, w=46;
+  const h=160, w=66;
   const lite = team===0 ? "#7fc4ff" : "#ff8a6a";
   const dark = team===0 ? "#1d4278" : "#72281c";
   const t = performance.now()/600;
@@ -1332,18 +1342,19 @@ function sprite(u, team, walk, sw, ps) {
   return c;
 }
 
-function drawUnit(a) {
-  if (a.ghost) { drawUnitVector(a); return; }
+function drawUnit(a, q) {
+  if (a.ghost) { drawUnitVector(a); return; }     // shop icons still draw as paths
   const psi = a.y < TOP() + (BOT()-TOP())*0.34 ? 0 : a.y < TOP() + (BOT()-TOP())*0.7 ? 1 : 2;
-  const s = a.u.size * PS_STEPS[psi];
+  const s = a.u.size * PS_STEPS[psi] * q;         // everything here is device pixels
+  const X = a.x*q, Y = a.y*q;
 
   if (a.dead) {
     const al = ctx.globalAlpha;
     ctx.globalAlpha = al * Math.max(0,(a.fade??0)/.5) * .75;
     ctx.fillStyle = "rgba(0,0,0,.24)";
-    ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.95, s*.88, s*.34, 0, 0, 6.29); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(X, Y+s*.95, s*.88, s*.34, 0, 0, 6.29); ctx.fill();
     ctx.fillStyle = a.team===0 ? "#3f7fd6" : "#d64b2b";
-    ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.62, s*.95, s*.42, 0, 0, 6.29); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(X, Y+s*.62, s*.95, s*.42, 0, 0, 6.29); ctx.fill();
     ctx.globalAlpha = al;
     return;
   }
@@ -1351,40 +1362,40 @@ function drawUnit(a) {
   const walk = ((a.step / (Math.PI/2)) | 0) & 3;
   const sw = a.swing > .45 ? 1 : 0;
   const c = sprite(a.u, a.team, walk, sw, psi);
-  const dx = (a.x - c._w/2) | 0, dy = (a.y - c._h*0.6) | 0;
-  ctx.drawImage(c, dx, dy, c._w, c._h);           // world units; the view transform does the rest
+  const dx = (X - c.width/2) | 0, dy = (Y - c.height*0.6) | 0;
+  ctx.drawImage(c, dx, dy);                       // 1:1, no resampling
   if (a.hurt > 0) {
     const op = ctx.globalCompositeOperation, al = ctx.globalAlpha;
     ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = al * .6;
-    ctx.drawImage(c, dx, dy, c._w, c._h);
+    ctx.drawImage(c, dx, dy);
     ctx.globalCompositeOperation = op; ctx.globalAlpha = al;
   }
   if (G.hi && G.hi.team === a.team && G.hi.idx === a.u.idx) {
-    ctx.strokeStyle = "#fff8c0"; ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.95, s*1.0, s*.4, 0, 0, 6.29); ctx.stroke();
+    ctx.strokeStyle = "#fff8c0"; ctx.lineWidth = 2.4*q;
+    ctx.beginPath(); ctx.ellipse(X, Y+s*.95, s*1.0, s*.4, 0, 0, 6.29); ctx.stroke();
   }
   const rank = Math.min(3, Math.floor((a.vet||0)/3));
   if (rank > 0) {
-    ctx.strokeStyle = "#ffe066"; ctx.lineWidth = 1.6;
+    ctx.strokeStyle = "#ffe066"; ctx.lineWidth = 1.6*q;
     for (let i=0;i<rank;i++) {
-      const cy = a.y - s*1.9 - i*3.4;
+      const cy = Y - s*1.9 - i*4.4*q;
       ctx.beginPath();
-      ctx.moveTo(a.x - s*.26, cy + 2.4); ctx.lineTo(a.x, cy);
-      ctx.lineTo(a.x + s*.26, cy + 2.4); ctx.stroke();
+      ctx.moveTo(X - s*.26, cy + 3*q); ctx.lineTo(X, cy);
+      ctx.lineTo(X + s*.26, cy + 3*q); ctx.stroke();
     }
   }
   if (a.hp < a.maxhp) {
     const bw = s*1.9, f = Math.max(0, a.hp/a.maxhp);
-    ctx.fillStyle = "rgba(0,0,0,.6)"; ctx.fillRect(a.x-bw/2, a.y-s*1.65, bw, 3.4);
+    ctx.fillStyle = "rgba(0,0,0,.6)"; ctx.fillRect(X-bw/2, Y-s*1.65, bw, 4*q);
     ctx.fillStyle = f>.5 ? "#6de06d" : f>.25 ? "#ffd75e" : "#ff5e5e";
-    ctx.fillRect(a.x-bw/2, a.y-s*1.65, bw*f, 3.4);
+    ctx.fillRect(X-bw/2, Y-s*1.65, bw*f, 4*q);
   }
 }
 
 /* ---------- radar strip, like the original's ---------- */
 function drawRadar() {
-  const w = Math.min(340, G.W*.32), h = 26;
-  const x = (G.W-w)/2, y = G.H - h - 8;
+  const w = Math.min(430, G.W*.32), h = 30;
+  const x = (G.W-w)/2, y = G.H - h - 11;
   ctx.fillStyle = "rgba(10,8,6,.8)";
   ctx.fillRect(x-2, y-2, w+4, h+4);
   ctx.strokeStyle = "#4a3c22"; ctx.lineWidth = 2;
@@ -1395,7 +1406,7 @@ function drawRadar() {
   for (const a of G.units) {
     if (a.dead) continue;
     ctx.fillStyle = a.team===0 ? "#7fc4ff" : "#ff8a6a";
-    const r = a.u.size >= 18 ? 2.6 : 1.6;
+    const r = a.u.size >= 22 ? 3.4 : 2.2;
     ctx.fillRect(x + a.x*sx - r/2, y + (a.y-TOP())*sy - r/2, r, r);
   }
   for (const t of [0,1]) {
@@ -1405,7 +1416,7 @@ function drawRadar() {
   ctx.fillStyle = G.shrine.owner === 0 ? "#7fc4ff" : G.shrine.owner === 1 ? "#ff8a6a" : "#e8dcb0";
   ctx.fillRect(x + shrineX()*sx - 1.5, y + h/2 - 3, 3, 6);
   if (G.speed !== 1) {
-    ctx.fillStyle = "#ffd75e"; ctx.font = "bold 12px 'Trebuchet MS', sans-serif";
+    ctx.fillStyle = "#ffd75e"; ctx.font = "bold 17px 'Trebuchet MS', sans-serif";
     ctx.fillText(G.speed + "×", x + w + 10, y + 17);
   }
 }
