@@ -420,17 +420,36 @@ const CLASS_NAME = ["Light", "Ranged", "Heavy"];
 // cut across it: Light closes ground fast on Ranged, Heavy shoves Light around.
 const CHARGE_MUL = 1.45;      // Light speed while still crossing open ground
 const TRAMPLE_PUSH = 9;       // how far a Heavy hit shoves its target
+const SKIRMISH_AT  = 0.5;     // Ranged backs off inside this fraction of its reach
 
 // Each commander picks one standing bonus before the match, so two players who
 // pick differently are playing genuinely different economies.
 const PERKS = [
   { id: "warchest",    n: "Warchest",    d: "+18% gold income" },
-  { id: "drillmaster", n: "Drillmaster", d: "Orders deploy 30% faster" },
-  { id: "engineer",    n: "Engineer",    d: "Turrets 40% cheaper, +1 mount" },
+  { id: "drillmaster", n: "Drillmaster", d: "Orders deploy 25% faster" },
+  { id: "engineer",    n: "Siege Corps", d: "+30% damage to enemy bases, +1 turret mount" },
 ];
 let perkPick = { p: "warchest", e: "warchest" };
+
+// The computer draws a temperament each match, so single player is not the
+// same opponent every time.
+const AI_STYLES = [
+  { id: "adaptive", n: "Adaptive", d: "reads your army and counters it" },
+  { id: "rusher",   n: "Rusher",   d: "floods cheap troops and skips defences" },
+  { id: "turtle",   n: "Turtle",   d: "fortifies first, then pushes with Heavies" },
+];
+let aiStyle = "adaptive";
+
+// Weather is rolled per match. Purely atmospheric - it never touches the fight.
+const WEATHERS = ["clear", "clear", "rain", "fog", "dusk"];
+let weather = "clear";
+const RAIN = [];
+for (let i = 0; i < 90; i++) {
+  const a = (i * 7541 + 31) % 977 / 977, b2 = (i * 3169 + 17) % 983 / 983;
+  RAIN.push({ x: a * (FIELD_W + 200) - 100, y: b2 * 620 - 260, sp: 620 + b2 * 340, len: 9 + a * 12 });
+}
 const hasPerk = (side, id) => side.perk === id;
-const turretCost  = side => Math.round(AGES[side.age].turret.cost * (hasPerk(side, "engineer") ? 0.6 : 1));
+const turretCost  = side => AGES[side.age].turret.cost;
 const turretSlots = side => TURRET_SLOTS[side.age] + (hasPerk(side, "engineer") ? 1 : 0);
 const COUNTER = [[1, 1.5, 0.7],
                  [0.7, 1, 1.5],
@@ -508,7 +527,7 @@ function spawn(side, slot) {
 
 function emit(side, slot) {
   const d = spec(side, slot);
-  side.cds[slot] = SPAWN_CD[slot] * (hasPerk(side, "drillmaster") ? 0.7 : 1);
+  side.cds[slot] = SPAWN_CD[slot] * (hasPerk(side, "drillmaster") ? 0.75 : 1);
   const dir = side.isPlayer ? 1 : -1;
   const pow = side.isPlayer ? 1 : aiPower;
   side.units.push({
@@ -694,7 +713,7 @@ function fire(from, tgt, def, isTurret) {
 // pays out gold and xp, so a side that wins the field converts that lead into
 // a finish instead of grinding a permanent midfield stalemate.
 function hitBase(side, amt, from) {
-  const dealt = amt * BASE_DMG_MULT;
+  const dealt = amt * BASE_DMG_MULT * (from && hasPerk(from, "engineer") ? 1.3 : 1);
   side.hp -= dealt;
   if (from) { from.gold += dealt * 0.05; from.xp += dealt * 0.11; }
   G.shake = Math.max(G.shake, 6);
@@ -804,7 +823,17 @@ function update(dt) {
                         r: rnd(1.6, 3.2), life: 0.3, max: 0.3, c: "#b9a888" });
           }
         }
-      } else if (u.cd <= 0) {
+      } else {
+        // Skirmish: Ranged gives ground when something closes on it. Slow Heavy
+        // never catches up; fast Light still runs it down, so the triangle holds.
+        if (u.slot === 1 && tgt.dist < u.d.rng * SKIRMISH_AT) {
+          const home = u.side.isPlayer ? BASE_X.p : BASE_X.e;
+          if (Math.abs(u.x - home) > 95) {
+            u.x -= u.d.spd * 0.5 * u.dir * dt;
+            u.step += dt * u.d.spd * 0.18;
+          }
+        }
+        if (u.cd <= 0) {
         u.cd = u.d.cd;
         if (u.d.kind === "shot") {
           fire(u, tgt, u.d, false);
@@ -818,6 +847,7 @@ function update(dt) {
                       dir: u.dir, r: 15 + u.d.rng * 0.12, life: 0.17, max: 0.17,
                       c: u.age >= 4 ? "#bfefff" : "#ffffff" });
           sfx("melee");
+        }
         }
       }
       u.x = clamp(u.x, 40, FIELD_W - 40);
@@ -907,28 +937,38 @@ function ai(dt) {
   if (e.specialCd <= 0 && G.p.units.length >= 5) { useSpecial(e); return; }
 
   // turret when comfortably rich
-  const t = AGES[e.age].turret;
-  if (e.turrets.length < turretSlots(e) && e.gold > turretCost(e) * (1.8 - 0.4 * difficulty)) {
+  // how readily it spends on defence is the clearest tell between temperaments
+  const eager = aiStyle === "turtle" ? 1.0
+              : aiStyle === "rusher" ? 3.4
+              : 1.8 - 0.4 * difficulty;
+  if (e.turrets.length < turretSlots(e) && e.gold > turretCost(e) * eager) {
     buyTurret(e); return;
   }
 
   if (e.units.length >= MAX_UNITS) return;
   // prefer the strongest affordable unit, with a bias to cheap chaff when outnumbered
   const outnumbered = G.p.units.length > e.units.length + 2;
-  // read what the other side is fielding and lead with the class that counters
-  // it; falling back to strongest-affordable when the field is empty
-  const counts = [0, 0, 0];
-  for (const u of G.p.units) if (u.slot != null) counts[u.slot]++;
-  let dom = -1, most = 0;
-  for (let i = 0; i < 3; i++) if (counts[i] > most) { most = counts[i]; dom = i; }
-  const want = dom < 0 ? -1 : [0, 1, 2].find(x => COUNTER[x][dom] > 1);
-  const base = outnumbered ? [0, 1, 2] : [2, 1, 0];
-  const order = want >= 0 ? [want, ...base.filter(x => x !== want)] : base;
+  let order, buffer;
+  if (aiStyle === "rusher") {
+    order = [0, 1, 2]; buffer = 1;             // spend everything, cheapest first
+  } else if (aiStyle === "turtle") {
+    order = [2, 1, 0]; buffer = 1.3;           // bank up for the expensive end
+  } else {
+    // read what the other side is fielding and lead with the class that counters
+    // it, falling back to strongest-affordable when the field is empty
+    const counts = [0, 0, 0];
+    for (const u of G.p.units) if (u.slot != null) counts[u.slot]++;
+    let dom = -1, most = 0;
+    for (let i = 0; i < 3; i++) if (counts[i] > most) { most = counts[i]; dom = i; }
+    const want = dom < 0 ? -1 : [0, 1, 2].find(x => COUNTER[x][dom] > 1);
+    const base = outnumbered ? [0, 1, 2] : [2, 1, 0];
+    order = want >= 0 ? [want, ...base.filter(x => x !== want)] : base;
+    buffer = outnumbered ? 1 : 1.15;
+  }
   for (const slot of order) {
     if (e.qs[slot] >= 2) continue;
     const d = spec(e, slot);
-    const buffer = outnumbered ? 1 : 1.15;
-    if (e.gold >= d.cost * buffer) { spawn(e, slot); return; }
+    if (e.gold >= d.cost * (outnumbered ? 1 : buffer)) { spawn(e, slot); return; }
   }
 }
 
@@ -1074,6 +1114,8 @@ function draw() {
 
   const all = G.p.units.concat(G.e.units).sort((u, v) => u.lane - v.lane);
   for (const u of all) drawUnit(u);
+
+  drawWeather();
 
   for (const s of G.shots) drawShot(s);
   for (const f of G.fx) if (!f.incoming && !f.plane) drawFx(f);
@@ -1583,6 +1625,42 @@ function drawUnit(u, fade) {
   }
 }
 
+function drawWeather() {
+  if (weather === "clear") return;
+  const top = view.top, bot = view.bot;
+  if (weather === "rain") {
+    ctx.strokeStyle = "rgba(174,206,238,.34)";
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    for (const d of RAIN) {
+      const y = top + ((d.y + G.t * d.sp) % (bot - top + 320));
+      const x = d.x + (y - top) * 0.16;
+      ctx.moveTo(x, y); ctx.lineTo(x - d.len * 0.16, y + d.len);
+    }
+    ctx.stroke();
+    ctx.fillStyle = "rgba(60,86,120,.13)";
+    ctx.fillRect(0, top, FIELD_W, bot - top);
+  } else if (weather === "fog") {
+    for (let i = 0; i < 3; i++) {
+      const y = GROUND_Y - 96 + i * 42;
+      const off = ((G.t * (7 + i * 4)) % (FIELD_W + 400)) - 200;
+      const g = ctx.createLinearGradient(0, y - 26, 0, y + 26);
+      g.addColorStop(0, "rgba(196,206,222,0)");
+      g.addColorStop(0.5, "rgba(196,206,222,.115)");
+      g.addColorStop(1, "rgba(196,206,222,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(off - FIELD_W, y - 26, FIELD_W * 3, 52);
+    }
+  } else if (weather === "dusk") {
+    const g = ctx.createLinearGradient(0, top, 0, GROUND_Y);
+    g.addColorStop(0, "rgba(24,16,40,.34)");
+    g.addColorStop(0.72, "rgba(224,116,66,.20)");
+    g.addColorStop(1, "rgba(255,166,92,.12)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, top, FIELD_W, GROUND_Y - top);
+  }
+}
+
 function drawShot(s) {
   const p = s.side.isPlayer;
   const c = p ? "#bfe0ff" : "#ffc0b8";
@@ -2076,8 +2154,10 @@ el("statsPanel").onclick = () => toggleStats(false);
 function statTable(side, label) {
   const a = side.age;
   const pk = PERKS.find(k => k.id === side.perk);
+  const st = (!side.isPlayer && mode === "ai") ? AI_STYLES.find(a => a.id === aiStyle) : null;
   let h = `<h3 style="color:${side.isPlayer ? "#7fb2e0" : "#e08a7f"}">${label} \u2014 ${AGES[a].name}` +
-          (pk ? ` <span style="color:#8d99ad;font-weight:600">\u00b7 ${pk.n}: ${pk.d}</span>` : "") + `</h3>`;
+          (pk ? ` <span style="color:#8d99ad;font-weight:600">\u00b7 ${pk.n}: ${pk.d}</span>` : "") +
+          (st ? ` <span style="color:#8d99ad;font-weight:600">\u00b7 ${st.n}: ${st.d}</span>` : "") + `</h3>`;
   h += '<table><tr><th>Troop</th><th>Class</th><th class="num">Cost</th><th class="num">HP</th>' +
        '<th class="num">Damage</th><th class="num">Reach</th><th class="num">Speed</th><th class="num">Bounty</th></tr>';
   for (let i = 0; i < 3; i++) {
@@ -2156,7 +2236,8 @@ function endGame(result) {              // result "win" = P1 (blue) took the rig
   el("ovText").innerHTML +=
     `<br><br><span style="color:#8d99ad">Kills ${w.kills} to ${l.kills}` +
     ` \u00b7 gold from kills ${Math.round(w.earned).toLocaleString()} to ${Math.round(l.earned).toLocaleString()}` +
-    ` \u00b7 ${AGES[G.p.age].name} vs ${AGES[G.e.age].name}</span>` +
+    ` \u00b7 ${AGES[G.p.age].name} vs ${AGES[G.e.age].name}` +
+    (mode === "ai" ? ` \u00b7 faced the ${AI_STYLES.find(a => a.id === aiStyle).n}` : "") + `</span>` +
     `<br><b style="color:#7fb2e0">Blue ${series.p}</b>` +
     ` <span style="color:#8d99ad">\u2014</span> ` +
     `<b style="color:#e08a7f">${series.e} Red</b>`;
@@ -2175,10 +2256,14 @@ function endGame(result) {              // result "win" = P1 (blue) took the rig
 }
 
 function start() {
+  weather = WEATHERS[Math.floor(Math.random() * WEATHERS.length)];
   el("timelineSec").style.display = "none";
   el("startOnly").style.display = "";
   el("ovsecs").style.display = "";
-  if (mode === "ai") perkPick.e = PERKS[Math.floor(Math.random() * PERKS.length)].id;
+  if (mode === "ai") {
+    perkPick.e = PERKS[Math.floor(Math.random() * PERKS.length)].id;
+    aiStyle = AI_STYLES[Math.floor(Math.random() * AI_STYLES.length)].id;
+  }
   aiPower = mode === "2p" ? 1
             : difficulty < 0.9 ? 0.55 : difficulty > 1.15 ? 1.75 : 0.78;
   reset();
