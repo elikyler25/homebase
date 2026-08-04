@@ -89,6 +89,16 @@
   }
   #ovActions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; }
   .ovsec.compact { width: auto; padding: 8px 12px 9px; }
+  .perkrow { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+  .perkrow:first-of-type { margin-top: 0; }
+  .pk { font-size: 10.5px; font-weight: 700; width: 32px; text-align: left; flex: 0 0 auto; }
+  .perkbtns { display: flex; gap: 5px; }
+  .perkbtn {
+    background: var(--panel-hi); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 7px; padding: 4px 9px; font: 700 10.5px inherit; cursor: pointer;
+    touch-action: manipulation; white-space: nowrap;
+  }
+  .perkbtn.on { border-color: var(--gold); color: var(--gold); }
   #howBtn {
     background: none; border: 0; color: var(--muted); font: 600 11.5px inherit;
     cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
@@ -267,6 +277,12 @@
         the right as <b class="c2">Red</b>. Order troops, bank XP to evolve through five ages,
         and knock the other base down.</p>
 
+      <div class="ovsec" id="timelineSec" style="display:none">
+        <div class="ovlabel">How it went</div>
+        <div id="timeline"></div>
+        <div class="ovnote" id="timelineNote"></div>
+      </div>
+
       <div id="ovsecs">
       <div class="ovsec" id="startOnly">
         <div class="ovlabel">Counters</div>
@@ -293,6 +309,12 @@
       </div>
 
       <div id="ovActions">
+      <div class="ovsec compact" id="perkSec">
+        <div class="ovlabel">Commander</div>
+        <div class="perkrow"><span class="pk c1">Blue</span><span class="perkbtns" id="perkP1"></span></div>
+        <div class="perkrow" id="perkRowE"><span class="pk c2">Red</span><span class="perkbtns" id="perkP2"></span></div>
+      </div>
+
       <div class="ovsec compact">
         <div class="ovlabel">Players</div>
         <div class="diffrow" id="modeRow">
@@ -394,6 +416,22 @@ const QUEUE_MAX    = 4;                    // taps you can bank per slot
 // Ranged beats Heavy, Heavy beats Light — so reading what the other side is
 // fielding matters more than always buying the most expensive unit.
 const CLASS_NAME = ["Light", "Ranged", "Heavy"];
+// Signature abilities, chosen to reinforce the counter triangle rather than
+// cut across it: Light closes ground fast on Ranged, Heavy shoves Light around.
+const CHARGE_MUL = 1.45;      // Light speed while still crossing open ground
+const TRAMPLE_PUSH = 9;       // how far a Heavy hit shoves its target
+
+// Each commander picks one standing bonus before the match, so two players who
+// pick differently are playing genuinely different economies.
+const PERKS = [
+  { id: "warchest",    n: "Warchest",    d: "+18% gold income" },
+  { id: "drillmaster", n: "Drillmaster", d: "Orders deploy 30% faster" },
+  { id: "engineer",    n: "Engineer",    d: "Turrets 40% cheaper, +1 mount" },
+];
+let perkPick = { p: "warchest", e: "warchest" };
+const hasPerk = (side, id) => side.perk === id;
+const turretCost  = side => Math.round(AGES[side.age].turret.cost * (hasPerk(side, "engineer") ? 0.6 : 1));
+const turretSlots = side => TURRET_SLOTS[side.age] + (hasPerk(side, "engineer") ? 1 : 0);
 const COUNTER = [[1, 1.5, 0.7],
                  [0.7, 1, 1.5],
                  [1.5, 0.7, 1]];
@@ -426,6 +464,7 @@ function newSide(isPlayer) {
     specialCd: 0,
     aiTimer: 0,
     income: 0,
+    perk: isPlayer ? perkPick.p : perkPick.e,
     kills: 0,
     earned: 0,
   };
@@ -440,6 +479,7 @@ function reset() {
     strikes: [],
     t: 0,
     over: null,
+    history: [], lastSample: 0,
     finishing: null,
     shake: 0,
   };
@@ -468,7 +508,7 @@ function spawn(side, slot) {
 
 function emit(side, slot) {
   const d = spec(side, slot);
-  side.cds[slot] = SPAWN_CD[slot];
+  side.cds[slot] = SPAWN_CD[slot] * (hasPerk(side, "drillmaster") ? 0.7 : 1);
   const dir = side.isPlayer ? 1 : -1;
   const pow = side.isPlayer ? 1 : aiPower;
   side.units.push({
@@ -491,16 +531,16 @@ function emit(side, slot) {
 function sellTurret(side) {
   if (!side.turrets.length) return false;
   side.turrets.pop();
-  side.gold += AGES[side.age].turret.cost * 0.5;
+  side.gold += turretCost(side) * 0.5;
   sfx("build");
   return true;
 }
 
 function buyTurret(side) {
   const t = AGES[side.age].turret;
-  if (side.turrets.length >= TURRET_SLOTS[side.age]) return sellTurret(side);
-  if (side.gold < t.cost) return false;
-  side.gold -= t.cost;
+  if (side.turrets.length >= turretSlots(side)) return sellTurret(side);
+  if (side.gold < turretCost(side)) return false;
+  side.gold -= turretCost(side);
   side.turrets.push({ side, def: t, cd: 0, slot: side.turrets.length, age: side.age });
   sfx("build");
   return true;
@@ -580,6 +620,11 @@ function updateStrikes(dt) {
     }
   }
   G.strikes = G.strikes.filter(st => st.t < 2.2);
+}
+
+function shove(target, byDir) {
+  target.x = clamp(target.x + byDir * TRAMPLE_PUSH, 40, FIELD_W - 40);
+  target.flash = Math.max(target.flash, 0.1);
 }
 
 function damage(u, amt, from, raw) {
@@ -696,6 +741,7 @@ function update(dt) {
     // and the late game can field the expensive units without a long wait.
     const ramp = 0.42 + Math.min(G.t / 190, 2.4);
     const inc = (13 + side.age * 9) * ramp
+              * (hasPerk(side, "warchest") ? 1.18 : 1)
               * (side.isPlayer || mode === "2p" ? 1 : 1 + (difficulty - 1) * 0.5);
     side.gold += inc * dt;
     for (let i = 0; i < 3; i++) {
@@ -748,15 +794,25 @@ function update(dt) {
           u.lane = clamp(u.lane + away * 34 * dt, -30, 30);
         }
         if (!blocker) {
-          u.x += u.d.spd * u.dir * dt;
-          u.step += dt * u.d.spd * 0.28;
+          const charging = u.slot === 0 && tgt.dist > u.d.rng * 4;
+          const spd = u.d.spd * (charging ? CHARGE_MUL : 1);
+          u.x += spd * u.dir * dt;
+          u.step += dt * spd * 0.28;
+          if (charging && Math.random() < dt * 9) {                  // dust at the heels
+            G.fx.push({ x: u.x - u.dir * 9, y: GROUND_Y - 2 + u.lane * 0.35,
+                        vx: -u.dir * rnd(10, 40), vy: rnd(-30, -8),
+                        r: rnd(1.6, 3.2), life: 0.3, max: 0.3, c: "#b9a888" });
+          }
         }
       } else if (u.cd <= 0) {
         u.cd = u.d.cd;
         if (u.d.kind === "shot") {
           fire(u, tgt, u.d, false);
         } else {
-          if (tgt.unit) damage(tgt.unit, u.d.dmg * u.pow * counterMul(u.slot, tgt.unit), side);
+          if (tgt.unit) {
+            damage(tgt.unit, u.d.dmg * u.pow * counterMul(u.slot, tgt.unit), side);
+            if (u.slot === 2 && !tgt.unit.dead) shove(tgt.unit, u.dir);
+          }
           else hitBase(foe(side), u.d.dmg * u.pow, side);
           G.fx.push({ slash: true, x: u.x + u.dir * 11, y: GROUND_Y - 22 + u.lane * 0.35,
                       dir: u.dir, r: 15 + u.d.rng * 0.12, life: 0.17, max: 0.17,
@@ -781,13 +837,17 @@ function update(dt) {
       const shooter = s.side, other = foe(shooter);
       if (s.splash) {
         for (const u of other.units) {
-          if (!u.dead && Math.abs(u.x - s.x) < s.splash) damage(u, s.dmg * counterMul(s.slot, u), shooter);
+          if (!u.dead && Math.abs(u.x - s.x) < s.splash) {
+            damage(u, s.dmg * counterMul(s.slot, u), shooter);
+            if (s.slot === 2 && !u.dead) shove(u, shooter.isPlayer ? 1 : -1);
+          }
         }
         const bx = shooter.isPlayer ? BASE_X.e : BASE_X.p;
         if (Math.abs(bx - s.x) < s.splash + 20) hitBase(other, s.dmg, shooter);
         G.fx.push({ x: s.x, y: s.y, r: s.splash, life: 0.3, max: 0.3, c: "#ffb35c", ring: true });
       } else if (s.target && !s.target.dead) {
         damage(s.target, s.dmg * counterMul(s.slot, s.target), shooter);
+        if (s.slot === 2 && !s.target.dead) shove(s.target, shooter.isPlayer ? 1 : -1);
       } else if (s.base || !s.target) {
         const bx = shooter.isPlayer ? BASE_X.e : BASE_X.p;
         if (Math.abs(bx - s.x) < 60) hitBase(other, s.dmg, shooter);
@@ -806,6 +866,13 @@ function update(dt) {
     }
   }
   G.shots = G.shots.filter(s => !s.done);
+
+  // one sample a second, for the post-match timeline
+  if (G.t - G.lastSample >= 1) {
+    G.lastSample = G.t;
+    G.history.push({ p: G.p.hp / G.p.maxHp, e: G.e.hp / G.e.maxHp,
+                     pa: G.p.age, ea: G.e.age });
+  }
 
   updateStrikes(dt);
 
@@ -841,7 +908,7 @@ function ai(dt) {
 
   // turret when comfortably rich
   const t = AGES[e.age].turret;
-  if (e.turrets.length < TURRET_SLOTS[e.age] && e.gold > t.cost * (1.8 - 0.4 * difficulty)) {
+  if (e.turrets.length < turretSlots(e) && e.gold > turretCost(e) * (1.8 - 0.4 * difficulty)) {
     buyTurret(e); return;
   }
 
@@ -1189,7 +1256,7 @@ function drawBase(side) {
 
   // turrets on the roof
   side.turrets.forEach((t, i) => {
-    const tx = -w / 2 + 14 + i * ((w - 24) / Math.max(1, TURRET_SLOTS[age] - 1 || 1));
+    const tx = -w / 2 + 14 + i * ((w - 24) / Math.max(1, turretSlots(side) - 1 || 1));
     const ty = -h - 8;
     const recoil = clamp(1 - t.cd / (t.def.cd || 1), 0, 1);   // kicks back when it fires
     ctx.fillStyle = dark;
@@ -1813,11 +1880,13 @@ function loadPrefs() {
     if (typeof p.music === "boolean") musicOn = p.music;
     if (typeof p.difficulty === "number") difficulty = p.difficulty;
     if (p.mode === "2p" || p.mode === "ai") mode = p.mode;
+    if (p.perks && PERKS.some(k => k.id === p.perks.p)) perkPick.p = p.perks.p;
+    if (p.perks && PERKS.some(k => k.id === p.perks.e)) perkPick.e = p.perks.e;
   } catch (e) { /* private mode or no storage: defaults are fine */ }
 }
 function savePrefs() {
   try {
-    localStorage.setItem("aow", JSON.stringify({ muted, music: musicOn, difficulty, mode }));
+    localStorage.setItem("aow", JSON.stringify({ muted, music: musicOn, difficulty, mode, perks: perkPick }));
   } catch (e) { /* ignore */ }
 }
 
@@ -1894,13 +1963,14 @@ function syncDeck(side, d, other) {
     b.classList.toggle("rec", i === rec);
     b.querySelector(".cd").style.width = (side.cds[i] / SPAWN_CD[i] * 100) + "%";
   }
-  const t = AGES[side.age].turret, left = TURRET_SLOTS[side.age] - side.turrets.length;
+  const t = AGES[side.age].turret, cost = turretCost(side);
+  const left = turretSlots(side) - side.turrets.length;
   const selling = left <= 0;
   d.turret.querySelector(".n").textContent = selling ? "Sell " + t.name : t.name;
   d.turret.querySelector(".c").textContent = selling
-    ? "+" + Math.round(t.cost * 0.5) + "g"
-    : t.cost + "g \u00b7 " + left;
-  d.turret.disabled = selling ? false : side.gold < t.cost;
+    ? "+" + Math.round(cost * 0.5) + "g"
+    : cost + "g \u00b7 " + left;
+  d.turret.disabled = selling ? false : side.gold < cost;
 
   const maxed = side.age >= AGES.length - 1, need = AGES[side.age].xpNext;
   d.evo.querySelector(".n").textContent = maxed ? "Max Age" : "\u2192 " + AGES[side.age + 1].name;
@@ -1962,6 +2032,7 @@ document.querySelectorAll(".modebtn").forEach(b => {
     document.querySelectorAll(".modebtn").forEach(x => x.classList.remove("on"));
     b.classList.add("on");
     mode = b.dataset.m; savePrefs();
+    el("perkRowE").style.display = mode === "2p" ? "flex" : "none";
     el("diffSec").style.display = mode === "2p" ? "none" : "block";
   };
 });
@@ -1972,6 +2043,26 @@ document.querySelectorAll(".diffbtn").forEach(b => {
     difficulty = parseFloat(b.dataset.d); savePrefs();
   };
 });
+// perk pickers, one row per commander
+function buildPerks(hostId, key) {
+  const host = el(hostId);
+  host.innerHTML = "";
+  PERKS.forEach(pk => {
+    const b = document.createElement("button");
+    b.className = "perkbtn" + (perkPick[key] === pk.id ? " on" : "");
+    b.textContent = pk.n;
+    b.title = pk.d;
+    b.onclick = () => {
+      perkPick[key] = pk.id;
+      [...host.children].forEach(c => c.classList.toggle("on", c.textContent === pk.n));
+      savePrefs();
+    };
+    host.appendChild(b);
+  });
+}
+buildPerks("perkP1", "p");
+buildPerks("perkP2", "e");
+
 el("ovBtn").onclick = start;
 el("howBtn").onclick = () => {
   const secs = el("ovsecs");
@@ -1984,7 +2075,9 @@ el("statsPanel").onclick = () => toggleStats(false);
 
 function statTable(side, label) {
   const a = side.age;
-  let h = `<h3 style="color:${side.isPlayer ? "#7fb2e0" : "#e08a7f"}">${label} \u2014 ${AGES[a].name}</h3>`;
+  const pk = PERKS.find(k => k.id === side.perk);
+  let h = `<h3 style="color:${side.isPlayer ? "#7fb2e0" : "#e08a7f"}">${label} \u2014 ${AGES[a].name}` +
+          (pk ? ` <span style="color:#8d99ad;font-weight:600">\u00b7 ${pk.n}: ${pk.d}</span>` : "") + `</h3>`;
   h += '<table><tr><th>Troop</th><th>Class</th><th class="num">Cost</th><th class="num">HP</th>' +
        '<th class="num">Damage</th><th class="num">Reach</th><th class="num">Speed</th><th class="num">Bounty</th></tr>';
   for (let i = 0; i < 3; i++) {
@@ -2020,6 +2113,32 @@ function toggleStats(force) {
   el("helpBtn").classList.toggle("on", open);
 }
 
+// Two base-health traces over the length of the match, with a tick wherever
+// either side evolved, so a result screen shows the shape of the fight.
+function timelineHTML() {
+  const h = G.history;
+  if (h.length < 3) return "";
+  const W = 440, H = 62, n = h.length - 1;
+  const path = k => h.map((s, i) =>
+    (i ? "L" : "M") + (i / n * W).toFixed(1) + "," + (3 + (1 - s[k]) * (H - 6)).toFixed(1)).join(" ");
+  let ticks = "";
+  for (let i = 1; i < h.length; i++) {
+    const x = (i / n * W).toFixed(1);
+    if (h[i].pa > h[i - 1].pa)
+      ticks += `<line x1="${x}" y1="${H}" x2="${x}" y2="${H - 9}" stroke="#7fb2e0" stroke-width="1.5" opacity=".8"/>`;
+    if (h[i].ea > h[i - 1].ea)
+      ticks += `<line x1="${x}" y1="0" x2="${x}" y2="9" stroke="#e08a7f" stroke-width="1.5" opacity=".8"/>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none"
+            style="display:block;background:rgba(12,15,21,.6);border-radius:6px">
+      ${ticks}
+      <path d="${path("p")}" fill="none" stroke="#7fb2e0" stroke-width="2"
+            vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+      <path d="${path("e")}" fill="none" stroke="#e08a7f" stroke-width="2"
+            vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+    </svg>`;
+}
+
 function endGame(result) {              // result "win" = P1 (blue) took the right base
   running = false;
   const p1 = result === "win";
@@ -2042,11 +2161,24 @@ function endGame(result) {              // result "win" = P1 (blue) took the rig
     ` <span style="color:#8d99ad">\u2014</span> ` +
     `<b style="color:#e08a7f">${series.e} Red</b>`;
   el("startOnly").style.display = "none";
+  el("ovsecs").style.display = "none";
+  const tl = timelineHTML();
+  el("timelineSec").style.display = tl ? "block" : "none";
+  if (tl) {
+    el("timeline").innerHTML = tl;
+    el("timelineNote").innerHTML =
+      '<span class="c1">Blue</span> and <span class="c2">Red</span> base health over ' +
+      Math.floor(G.t) + 's. Ticks mark an age gained.';
+  }
   el("ovBtn").textContent = "Play Again";
   sfx(p1 ? "win" : "lose");
 }
 
 function start() {
+  el("timelineSec").style.display = "none";
+  el("startOnly").style.display = "";
+  el("ovsecs").style.display = "";
+  if (mode === "ai") perkPick.e = PERKS[Math.floor(Math.random() * PERKS.length)].id;
   aiPower = mode === "2p" ? 1
             : difficulty < 0.9 ? 0.55 : difficulty > 1.15 ? 1.75 : 0.78;
   reset();
@@ -2080,6 +2212,7 @@ setMuted(muted); setMusic(musicOn);
 document.querySelectorAll(".modebtn").forEach(b => b.classList.toggle("on", b.dataset.m === mode));
 document.querySelectorAll(".diffbtn").forEach(b => b.classList.toggle("on", +b.dataset.d === difficulty));
 el("diffSec").style.display = mode === "2p" ? "none" : "block";
+el("perkRowE").style.display = mode === "2p" ? "flex" : "none";
 reset();
 resize();
 el("overlay").style.display = "flex";
