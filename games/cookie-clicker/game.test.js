@@ -270,6 +270,144 @@ test('the first building is reachable by clicking alone', function () {
   ok(G.BUILDINGS[0].cost <= 20, 'the opening purchase is too far away');
 });
 
+/* ── Legacy upgrades ───────────────────────────────────────────── */
+
+console.log('\nlegacy upgrades');
+
+test('legacy upgrades get steadily more expensive', function () {
+  for (var i = 1; i < G.HEAVENLY.length; i++) {
+    ok(G.HEAVENLY[i].cost > G.HEAVENLY[i - 1].cost,
+      G.HEAVENLY[i].id + ' does not cost more than the one before it');
+  }
+});
+
+test('every legacy upgrade has the fields the UI renders', function () {
+  G.HEAVENLY.forEach(function (h) {
+    ok(h.id && h.name && h.desc && h.icon && h.flavor, 'incomplete: ' + h.id);
+    ok(Number.isInteger(h.cost) && h.cost > 0, 'bad chip cost on ' + h.id);
+  });
+});
+
+test('a fresh bakery owns no legacy upgrades and has nothing to spend', function () {
+  var s = G.freshState();
+  eq(Object.keys(s.heavenly).length, 0);
+  eq(s.chipsSpent, 0);
+  eq(s.chips, 0);
+});
+
+test('the whole tree is affordable within a plausible run', function () {
+  var total = G.HEAVENLY.reduce(function (a, h) { return a + h.cost; }, 0);
+  var needed = Math.pow(total, 3) * 1e9;
+  ok(isFinite(needed), 'total cost overflows');
+  // Everything should be reachable well before the number formatter runs out
+  // of suffixes, or the tree is unfinishable.
+  ok(G.fmt(needed).indexOf('e') === -1, 'full tree needs ' + G.fmt(needed) + ' cookies');
+});
+
+test('spending is clamped to the upgrades actually owned', function () {
+  var s = G.freshState();
+  s.totalEver = 1e15;          // 100 chips
+  s.chips = 100;
+  s.chipsSpent = 99;           // claims to have spent, but owns nothing
+  var back = G.loadRaw(JSON.stringify(s));
+  eq(back.chipsSpent, 0, 'phantom spending should be discarded');
+
+  s.heavenly = { hv_kit: true, hv_hands: true };   // costs 1 + 2
+  back = G.loadRaw(JSON.stringify(s));
+  eq(back.chipsSpent, 3, 'spending should match the upgrades owned');
+});
+
+test('spent chips never exceed chips earned', function () {
+  var s = G.freshState();
+  s.totalEver = 1e9;                       // exactly 1 chip
+  s.chips = 1;
+  G.HEAVENLY.forEach(function (h) { s.heavenly[h.id] = true; });
+  var back = G.loadRaw(JSON.stringify(s));
+  ok(back.chipsSpent <= back.chips,
+    'spent ' + back.chipsSpent + ' of ' + back.chips + ' chips');
+});
+
+/* ── Golden cookies ────────────────────────────────────────────── */
+
+console.log('\ngolden cookies');
+
+test('effect weights are positive and the table is coherent', function () {
+  var bad = 0;
+  G.GOLDEN_EFFECTS.forEach(function (e) {
+    ok(e.id && e.name && e.icon && e.text, 'incomplete effect: ' + e.id);
+    ok(e.weight > 0, 'non-positive weight on ' + e.id);
+    ok(e.instant || e.storm || e.dur > 0, e.id + ' has no duration and is not instant');
+    if (e.bad) bad++;
+  });
+  ok(bad >= 1, 'no downside effect at all');
+  ok(bad <= 1, 'more than one downside effect is too punishing');
+});
+
+test('good outcomes heavily outweigh bad ones', function () {
+  var good = 0, bad = 0;
+  G.GOLDEN_EFFECTS.forEach(function (e) { (e.bad ? (bad += e.weight) : (good += e.weight)); });
+  var badShare = bad / (good + bad);
+  ok(badShare < 0.12, 'downside is ' + (badShare * 100).toFixed(0) + '% of spawns');
+});
+
+/* ── Presentation tables ───────────────────────────────────────── */
+
+console.log('\npresentation');
+
+test('every building has a scene', function () {
+  G.BUILDINGS.forEach(function (b) {
+    ok(G.SCENES[b.id] && G.SCENES[b.id].bg, 'no scene for ' + b.id);
+    ok(/^linear-gradient\(/.test(G.SCENES[b.id].bg), 'malformed gradient for ' + b.id);
+  });
+});
+
+test('milk tiers ascend and start at zero', function () {
+  eq(G.MILK_TIERS[0].at, 0);
+  for (var i = 1; i < G.MILK_TIERS.length; i++) {
+    ok(G.MILK_TIERS[i].at > G.MILK_TIERS[i - 1].at, 'milk tier ' + i + ' out of order');
+    ok(G.MILK_TIERS[i].at < 1, 'milk tier ' + i + ' is unreachable');
+  }
+});
+
+test('a brand-new bakery always has something in the news', function () {
+  var s = G.freshState();
+  var usable = G.NEWS.filter(function (n) { return !n.when || n.when(s); });
+  ok(usable.length > 0, 'no headline applies to a fresh save');
+});
+
+test('news conditions never throw on any plausible state', function () {
+  var states = [G.freshState()];
+  var rich = G.freshState();
+  rich.totalEver = 1e18; rich.legacies = 40; rich.goldens = 500; rich.clicks = 1e5;
+  G.BUILDINGS.forEach(function (b) { rich.own[b.id] = 300; });
+  states.push(rich);
+  states.forEach(function (s, i) {
+    G.NEWS.forEach(function (n) {
+      if (!n.when) return;
+      try { n.when(s); }
+      catch (e) { throw new Error('headline threw on state ' + i + ': ' + n.text); }
+    });
+  });
+});
+
+test('synergy upgrades read state without throwing', function () {
+  var s = G.freshState();
+  var mods = { building: {}, cpsMult: 1, clickMult: 1, clickFlat: 1, clickCps: 0,
+               critChance: 0, critMult: 1, comboMax: 1, comboWindow: 1,
+               goldenRate: 1, goldenDur: 1, offlineRate: 0, offlineCap: 0,
+               chipRate: 0, comboFloor: 0, startCookies: 0 };
+  G.BUILDINGS.forEach(function (b) { mods.building[b.id] = 1; });
+  G.SPECIALS.forEach(function (u) {
+    try { u.apply(mods, s); }
+    catch (e) { throw new Error(u.id + ' threw on an empty bakery: ' + e.message); }
+  });
+  G.BUILDINGS.forEach(function (b) {
+    ok(isFinite(mods.building[b.id]) && mods.building[b.id] > 0,
+      u_bad(b.id, mods.building[b.id]));
+  });
+  function u_bad(id, v) { return 'multiplier for ' + id + ' became ' + v; }
+});
+
 /* ── Result ────────────────────────────────────────────────────── */
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed\n');

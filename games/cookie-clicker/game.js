@@ -89,6 +89,48 @@ var BUILDINGS = [
     flavor:'You do not bake it. You simply agree that it exists.' }
 ];
 
+/* Legacy upgrades, bought with chips and kept forever. Chips you spend still
+ * count toward the passive chip bonus, so spending is never a penalty — it is
+ * the whole point of prestiging. */
+var HEAVENLY = [
+  { id:'hv_kit', icon:'🧺', name:'Starter Kit', cost:1,
+    desc:'Begin every legacy with 1,000 cookies.',
+    flavor:'A little something to get the oven warm.' },
+  { id:'hv_hands', icon:'✋', name:'Blessed Hands', cost:2,
+    desc:'Clicking is 50% more effective, forever.',
+    flavor:'They were always good hands. Now they are certified.' },
+  { id:'hv_yeast', icon:'🌾', name:'Divine Yeast', cost:4,
+    desc:'+15% cookies per second, forever.',
+    flavor:'It rises whether or not you are watching.' },
+  { id:'hv_luck', icon:'🍀', name:'Heavenly Luck', cost:7,
+    desc:'Golden cookies appear 25% more often and last 25% longer.',
+    flavor:'Fortune, it turns out, can be bought.' },
+  { id:'hv_aim', icon:'🎯', name:'Fated Fingers', cost:10,
+    desc:'+10% critical click chance, forever.',
+    flavor:'Every so often the dough simply gives up.' },
+  { id:'hv_night', icon:'🌙', name:'Eternal Ovens', cost:16,
+    desc:'Offline baking runs at 100%, capped at 24 hours.',
+    flavor:'The ovens have never once been switched off.' },
+  { id:'hv_purse', icon:'💰', name:'Inheritance', cost:25,
+    desc:'Begin every legacy with 10 million cookies.',
+    flavor:'Someone, somewhere, left it all to you.' },
+  { id:'hv_tempo', icon:'🥁', name:'Perfect Recall', cost:35,
+    desc:'Combos start at ×2 and build to ×4.',
+    flavor:'Your hands remember the rhythm of every bakery you ever ran.' },
+  { id:'hv_ambrosia', icon:'✨', name:'Ambrosia', cost:50,
+    desc:'+40% cookies per second, forever.',
+    flavor:'Strictly speaking, not a baking ingredient.' },
+  { id:'hv_interest', icon:'🎖️', name:'Compound Interest', cost:80,
+    desc:'Every chip gives +2.5% CpS instead of +1.5%.',
+    flavor:'Your legacy earns a legacy of its own.' },
+  { id:'hv_ward', icon:'🛡️', name:'Sugar Ward', cost:120,
+    desc:'Golden cookies can no longer curdle.',
+    flavor:'Nothing sours in here. Nothing would dare.' },
+  { id:'hv_apotheosis', icon:'👑', name:'Apotheosis', cost:200,
+    desc:'Double everything: CpS and clicking.',
+    flavor:'You are no longer a baker. You are the reason for baking.' }
+];
+
 /* Each building gets a scene in the middle column: a strip of sky over ground,
  * populated with one sprite per unit you own. Watching the bakery physically
  * fill up is most of the fun, so these are content, not decoration.
@@ -192,6 +234,44 @@ var SPECIALS = [
     desc:'+50% cookies per second.', flavor:'Every nation agreed. Immediately. Unanimously.',
     req:function(s){ return totalBuildings(s) >= 500; }, apply:function(m){ m.cpsMult *= 1.50; } },
 
+  /* Synergies: one building's output scales with how many of another you own.
+   * These are what turn "buy the newest thing" into an actual decision.
+   * `apply` gets the live state so the bonus tracks your counts. */
+  { id:'syn_granny', icon:'🍞', name:'Family Recipe', cost:5e6,
+    desc:'Grandmothers gain +2% for every Corner Bakery you own.',
+    flavor:'She will show you. She will not tell you.',
+    req:function(s){ return s.own.granny >= 15 && s.own.bakery >= 15; },
+    apply:function(m, s){ m.building.granny *= 1 + 0.02 * s.own.bakery; } },
+  { id:'syn_cursor', icon:'🫱', name:'Guided Hands', cost:2e7,
+    desc:'Nimble Cursors gain +3% for every Grandmother you own.',
+    flavor:'Someone finally taught them where the dough is.',
+    req:function(s){ return s.own.cursor >= 25 && s.own.granny >= 25; },
+    apply:function(m, s){ m.building.cursor *= 1 + 0.03 * s.own.granny; } },
+  { id:'syn_farm', icon:'🚜', name:'Mechanised Harvest', cost:5e8,
+    desc:'Dough Farms gain +3% for every Cookie Factory you own.',
+    flavor:'The fields are now a supply chain.',
+    req:function(s){ return s.own.farm >= 20 && s.own.factory >= 10; },
+    apply:function(m, s){ m.building.farm *= 1 + 0.03 * s.own.factory; } },
+  { id:'syn_factory', icon:'⚓', name:'Just In Time', cost:2e10,
+    desc:'Cookie Factories gain +4% for every Crumb Port you own.',
+    flavor:'Nothing waits. Nothing is ever stored.',
+    req:function(s){ return s.own.factory >= 25 && s.own.port >= 10; },
+    apply:function(m, s){ m.building.factory *= 1 + 0.04 * s.own.port; } },
+  { id:'syn_lab', icon:'🔬', name:'Peer Review', cost:5e11,
+    desc:'Flavour Labs gain +5% for every Pastry Portal you own.',
+    flavor:'The findings are consistent, reproducible and delicious.',
+    req:function(s){ return s.own.lab >= 15 && s.own.portal >= 5; },
+    apply:function(m, s){ m.building.lab *= 1 + 0.05 * s.own.portal; } },
+  { id:'syn_all', icon:'🕸️', name:'The Whole Operation', cost:1e14,
+    desc:'Every building gains +0.5% for each different type you own at least 10 of.',
+    flavor:'It stopped being a bakery some time ago. Nobody noticed.',
+    req:function(s){ return totalBuildings(s) >= 400; },
+    apply:function(m, s){
+      var kinds = 0;
+      BUILDINGS.forEach(function (b) { if (s.own[b.id] >= 10) kinds++; });
+      BUILDINGS.forEach(function (b) { m.building[b.id] *= 1 + 0.005 * kinds; });
+    } },
+
   { id:'off1', icon:'🌙', name:'Night Shift', cost:1e8,
     desc:'Offline baking runs at 80% instead of 50%.',
     flavor:'Somebody has to watch the ovens.',
@@ -271,15 +351,23 @@ var MILK_TIERS = [
 
 /* Golden cookie effects. `weight` is relative spawn odds. */
 var GOLDEN_EFFECTS = [
-  { id:'frenzy', weight:42, icon:'🔥', name:'Frenzy',
+  { id:'frenzy', weight:36, icon:'🔥', name:'Frenzy',
     text:'Cookies per second ×7', dur:77, cpsMult:7 },
-  { id:'clickfrenzy', weight:22, icon:'⚡', name:'Click Frenzy',
+  { id:'clickfrenzy', weight:19, icon:'⚡', name:'Click Frenzy',
     text:'Clicking ×777', dur:13, clickMult:777 },
-  { id:'lucky', weight:26, icon:'🍀', name:'Lucky',
+  { id:'lucky', weight:22, icon:'🍀', name:'Lucky',
     text:'A windfall of cookies', instant:true },
-  { id:'bonanza', weight:10, icon:'💥', name:'Bonanza',
-    text:'Cookies per second ×20', dur:22, cpsMult:20 }
+  { id:'bonanza', weight:8, icon:'💥', name:'Bonanza',
+    text:'Cookies per second ×20', dur:22, cpsMult:20 },
+  { id:'storm', weight:9, icon:'🌩️', name:'Cookie Storm',
+    text:'Cookies everywhere — click them!', storm:true },
+  /* The one bad outcome. Sugar Ward removes it from the pool entirely. */
+  { id:'clot', weight:6, icon:'🩸', name:'Curdle', bad:true,
+    text:'Cookies per second halved', dur:44, cpsMult:0.5 }
 ];
+
+var STORM_COUNT   = 34;      // mini cookies flung across the screen
+var STORM_LIFE_MS = 12000;
 
 /* Achievements. Most are generated below; these are the hand-written ones. */
 var ACHIEVEMENTS = [];
@@ -333,6 +421,26 @@ var ACHIEVEMENTS = [];
       function (s) { return s.legacies >= m[0]; });
   });
 
+  [[1,'Touched by Sugar'], [4,'Well Invested'], [8,'Canonised']].forEach(function (m, i) {
+    add('hv' + i, '🕊️', m[1], 'Own ' + m[0] + ' legacy upgrade' + (m[0] > 1 ? 's' : '') + '.',
+      function (s) {
+        var n = 0;
+        for (var k in s.heavenly) if (s.heavenly[k]) n++;
+        return n >= m[0];
+      });
+  });
+
+  [[25,'Storm Chaser'], [200,'Weathered']].forEach(function (m, i) {
+    add('storm' + i, '🌩️', m[1], 'Click ' + m[0] + ' cookies during storms.',
+      function (s) { return s.storms >= m[0]; });
+  });
+
+  add('syn', '🕸️', 'Vertically Integrated', 'Own every synergy upgrade.',
+    function (s) {
+      return ['syn_granny','syn_cursor','syn_farm','syn_factory','syn_lab','syn_all']
+        .every(function (id) { return s.upgrades[id]; });
+    });
+
   add('rate1', '📈', 'Idle Hands', 'Reach 1,000 cookies per second.',
     function (s) { return derived.cps >= 1e3; });
   add('rate2', '🚀', 'Escape Velocity', 'Reach 1,000,000 cookies per second.',
@@ -363,13 +471,16 @@ function freshState() {
     goldens: 0,
     bestCombo: 0,
     legacies: 0,
-    chips: 0,            // prestige currency, spent implicitly (never decreases)
+    chips: 0,            // prestige chips earned all time (never decreases)
+    chipsSpent: 0,       // of those, how many are committed to legacy upgrades
+    heavenly: {},        // id -> true, permanent across legacies
+    storms: 0,           // storm cookies clicked, all time
     handClicked: 0,      // cookies earned by hand this legacy
     bakery: 'Your',
     started: now(),
     playTime: 0,
     lastSave: now(),
-    opts: { fx: true, shorthand: true, confirmPrestige: true, theme: 'dark' }
+    opts: { fx: true, sound: false, shorthand: true, confirmPrestige: true, theme: 'dark' }
   };
 }
 
@@ -399,6 +510,8 @@ function baseMods() {
     comboMax: 1, comboWindow: 1.6,
     goldenRate: 1, goldenDur: 1,
     cpsMult: 1, offlineRate: 0.5, offlineCap: 3 * 3600,
+    chipRate: 0.015, comboFloor: 0, noClot: false,
+    startCookies: 0,
     building: {}
   };
   BUILDINGS.forEach(function (b) { m.building[b.id] = 1; });
@@ -415,17 +528,20 @@ function recalc() {
     });
   });
 
-  // Special upgrades.
+  // Legacy upgrades first: some of them change how later maths behaves.
+  applyHeavenly(m);
+
+  // Special upgrades. Synergies read the live state, hence the second argument.
   SPECIALS.forEach(function (u) {
-    if (state.upgrades[u.id]) u.apply(m);
+    if (state.upgrades[u.id]) u.apply(m, state);
   });
 
   // Badges: +0.5% CpS each.
   var badges = countAchievements();
   m.cpsMult *= 1 + badges * 0.005;
 
-  // Legacy chips: +1.5% CpS and +1% click each.
-  m.cpsMult *= 1 + state.chips * 0.015;
+  // Legacy chips: a flat passive bonus per chip earned, spent or not.
+  m.cpsMult *= 1 + state.chips * m.chipRate;
   m.clickMult *= 1 + state.chips * 0.01;
 
   var raw = 0;
@@ -449,10 +565,101 @@ function recalc() {
   derived.click    = derived.clickRaw * clickBuff * comboMult();
 }
 
+/* ── Sound ────────────────────────────────────────────────────────
+ * Every sound is synthesised at play time, so the game still ships as three
+ * text files. Off by default — nobody wants a browser tab that starts beeping.
+ * The context is created lazily on the first sound, which is always inside a
+ * user gesture, so autoplay policy is satisfied. */
+
+var Snd = { ctx: null, bus: null, dead: false };
+
+function audioReady() {
+  if (Snd.dead) return null;
+  if (!Snd.ctx) {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { Snd.dead = true; return null; }
+    try {
+      Snd.ctx = new AC();
+      Snd.bus = Snd.ctx.createGain();
+      Snd.bus.gain.value = 0.32;
+      Snd.bus.connect(Snd.ctx.destination);
+    } catch (e) { Snd.dead = true; return null; }
+  }
+  if (Snd.ctx.state === 'suspended') Snd.ctx.resume();
+  return Snd.ctx;
+}
+
+/* One note. `slide` bends the pitch over the note's life. */
+function tone(freq, dur, type, vol, delay, slide) {
+  var ctx = Snd.ctx;
+  var t0 = ctx.currentTime + (delay || 0);
+  var osc = ctx.createOscillator();
+  var g = ctx.createGain();
+  osc.type = type || 'triangle';
+  osc.frequency.setValueAtTime(freq, t0);
+  if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, slide), t0 + dur);
+  // A quick attack and an exponential tail keeps it from clicking.
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol == null ? 0.5 : vol, t0 + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g); g.connect(Snd.bus);
+  osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+
+var SFX = {
+  click:    function (n) { tone(300 + Math.min(n, 40) * 9, 0.06, 'triangle', 0.35); },
+  crit:     function () { tone(520, 0.09, 'square', 0.32); tone(880, 0.13, 'square', 0.28, 0.06); },
+  buy:      function () { tone(220, 0.10, 'sine', 0.5, 0, 150); tone(330, 0.09, 'triangle', 0.25, 0.03); },
+  upgrade:  function () { tone(660, 0.10, 'triangle', 0.4); tone(990, 0.16, 'triangle', 0.34, 0.08); },
+  golden:   function () { [784, 988, 1319].forEach(function (f, i) { tone(f, 0.16, 'triangle', 0.36, i * 0.07); }); },
+  bad:      function () { tone(180, 0.32, 'sawtooth', 0.3, 0, 70); },
+  storm:    function () { tone(1100 + Math.random() * 500, 0.05, 'sine', 0.22); },
+  badge:    function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.18, 'triangle', 0.32, i * 0.08); }); },
+  prestige: function () { [262, 330, 392, 523].forEach(function (f, i) { tone(f, 0.5, 'sine', 0.34, i * 0.13); }); }
+};
+
+function sfx(name, arg) {
+  if (!state || !state.opts || !state.opts.sound) return;
+  if (!audioReady()) return;
+  var fn = SFX[name];
+  if (fn) { try { fn(arg); } catch (e) { /* never let audio break the game */ } }
+}
+
+function hasHeavenly(id) { return !!state.heavenly[id]; }
+
+function chipsAvailable() { return Math.max(0, state.chips - state.chipsSpent); }
+
+function applyHeavenly(m) {
+  if (hasHeavenly('hv_kit'))     m.startCookies = Math.max(m.startCookies, 1e3);
+  if (hasHeavenly('hv_hands'))   m.clickMult *= 1.5;
+  if (hasHeavenly('hv_yeast'))   m.cpsMult *= 1.15;
+  if (hasHeavenly('hv_luck'))  { m.goldenRate *= 0.75; m.goldenDur *= 1.25; }
+  if (hasHeavenly('hv_aim'))     m.critChance += 0.10;
+  if (hasHeavenly('hv_night')) { m.offlineRate = 1; m.offlineCap = 24 * 3600; }
+  if (hasHeavenly('hv_purse'))   m.startCookies = Math.max(m.startCookies, 1e7);
+  if (hasHeavenly('hv_tempo')) { m.comboFloor = 1; m.comboMax = Math.max(m.comboMax, 3); }
+  if (hasHeavenly('hv_ambrosia')) m.cpsMult *= 1.4;
+  if (hasHeavenly('hv_interest')) m.chipRate = 0.025;
+  if (hasHeavenly('hv_ward'))    m.noClot = true;
+  if (hasHeavenly('hv_apotheosis')) { m.cpsMult *= 2; m.clickMult *= 2; }
+}
+
+function buyHeavenly(h) {
+  if (state.heavenly[h.id] || h.cost > chipsAvailable()) return;
+  state.chipsSpent += h.cost;
+  state.heavenly[h.id] = true;
+  recalc();
+  checkAchievements();
+  sfx('upgrade');
+  ui.invalidate();
+  ui.paintAll();
+  ui.toast(h.icon, h.name, h.desc);
+}
+
 function comboMult() {
   var m = derived.mods || baseMods();
   var cap = 50;
-  return 1 + Math.min(combo.count, cap) / cap * m.comboMax;
+  return 1 + m.comboFloor + Math.min(combo.count, cap) / cap * m.comboMax;
 }
 
 function countAchievements() {
@@ -562,6 +769,7 @@ function clickCookie(x, y) {
   state.clicks++;
   state.handClicked += value;
 
+  sfx(crit ? 'crit' : 'click', combo.count);
   ui.pop(x, y, '+' + fmt(value), crit ? 'is-crit' : '');
   ui.cookiePress(crit);
   if (crit) ui.crumbs(x, y, 14);
@@ -587,6 +795,7 @@ function buyBuilding(b) {
   state.own[b.id] += n;
   recalc();
   checkAchievements();
+  sfx('buy');
   ui.paintAll();
 }
 
@@ -596,6 +805,7 @@ function buyUpgrade(u) {
   state.upgrades[u.id] = true;
   recalc();
   checkAchievements();
+  sfx('upgrade');
   ui.paintAll();
 }
 
@@ -619,10 +829,13 @@ function doPrestige() {
     clicks: state.clicks,
     crits: state.crits,
     goldens: state.goldens,
+    storms: state.storms,
     bestCombo: state.bestCombo,
     legacies: state.legacies + 1,
     bakery: state.bakery,
     chips: state.chips + gain,
+    chipsSpent: state.chipsSpent,
+    heavenly: state.heavenly,
     started: state.started,
     playTime: state.playTime,
     opts: state.opts
@@ -634,10 +847,18 @@ function doPrestige() {
   buffs = [];
   combo = { count: 0, last: 0 };
   clearGolden();
+  clearStorm();
   scheduleGolden();
+  recalc();
+  // Starter Kit / Inheritance seed the new bakery. Not counted as baked, so
+  // they cannot bootstrap the next prestige.
+  if (derived.mods.startCookies > 0) {
+    earn(derived.mods.startCookies, false);
+  }
   recalc();
   checkAchievements();
   save();
+  sfx('prestige');
   ui.invalidate();
   ui.paintAll();
   ui.toast('♻️', 'A new legacy begins', '+' + fmt(gain) + ' chip' + (gain > 1 ? 's' : '') +
@@ -680,19 +901,65 @@ function spawnGolden() {
   golden = { node: btn, expires: now() + GOLDEN_LIFE_MS };
 }
 
+/* Cookie Storm: a screenful of small cookies, each worth a slice of your
+ * production. Rare, brief, and the only effect you have to work for. */
+var storm = [];
+
+function startStorm() {
+  clearStorm();
+  var value = Math.max(derived.cps * 8, 15);
+  for (var i = 0; i < STORM_COUNT; i++) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'storm-cookie';
+    b.textContent = '🍪';
+    b.style.left = (2 + Math.random() * 92) + '%';
+    b.style.fontSize = (26 + Math.random() * 20) + 'px';
+    // Slow enough to catch, and the last one arrives well inside the window —
+    // a cookie you cannot reach is just a tease.
+    b.style.animationDuration = (3.8 + Math.random() * 2.6).toFixed(2) + 's';
+    b.style.animationDelay = (Math.random() * 3.4).toFixed(2) + 's';
+    b.setAttribute('aria-label', 'Storm cookie');
+    b.addEventListener('click', (function (node) {
+      return function (e) {
+        e.stopPropagation();
+        if (node.dataset.taken) return;
+        node.dataset.taken = '1';
+        var r = node.getBoundingClientRect();
+        earn(value);
+        state.storms++;
+        sfx('storm');
+        ui.pop(r.left + r.width / 2, r.top, '+' + fmt(value), 'is-gold');
+        if (node.parentNode) node.parentNode.removeChild(node);
+      };
+    })(b));
+    el.goldenLayer.appendChild(b);
+    storm.push(b);
+  }
+  setTimeout(clearStorm, STORM_LIFE_MS);
+}
+
+function clearStorm() {
+  storm.forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
+  storm = [];
+}
+
 function clearGolden() {
   if (golden && golden.node.parentNode) golden.node.parentNode.removeChild(golden.node);
   golden = null;
 }
 
 function pickEffect() {
-  var total = GOLDEN_EFFECTS.reduce(function (a, e) { return a + e.weight; }, 0);
+  var pool = GOLDEN_EFFECTS.filter(function (e) {
+    return !(e.bad && derived.mods && derived.mods.noClot);
+  });
+  var total = pool.reduce(function (a, e) { return a + e.weight; }, 0);
   var roll = Math.random() * total;
-  for (var i = 0; i < GOLDEN_EFFECTS.length; i++) {
-    roll -= GOLDEN_EFFECTS[i].weight;
-    if (roll <= 0) return GOLDEN_EFFECTS[i];
+  for (var i = 0; i < pool.length; i++) {
+    roll -= pool[i].weight;
+    if (roll <= 0) return pool[i];
   }
-  return GOLDEN_EFFECTS[0];
+  return pool[0];
 }
 
 function collectGolden(node) {
@@ -707,11 +974,17 @@ function collectGolden(node) {
   var fx = pickEffect();
   var m = derived.mods;
 
-  if (fx.instant) {
+  if (fx.storm) {
+    startStorm();
+    sfx('golden');
+    ui.pop(x, y, fx.name + '!', 'is-gold');
+    ui.toast(fx.icon, fx.name, 'Click every cookie you can reach.');
+  } else if (fx.instant) {
     // A windfall: 15% of the bank, or 15 minutes of production — whichever is
     // kinder — plus a floor so it is never insulting early on.
     var amount = Math.max(state.cookies * 0.15, derived.cps * 900, 25);
     earn(amount);
+    sfx('golden');
     ui.pop(x, y, '+' + fmt(amount), 'is-gold');
     ui.toast(fx.icon, fx.name, '+' + fmt(amount) + ' cookies.');
   } else {
@@ -719,9 +992,10 @@ function collectGolden(node) {
     addBuff({
       id: fx.id, icon: fx.icon, name: fx.name, text: fx.text,
       dur: dur, until: now() + dur * 1000,
-      cpsMult: fx.cpsMult, clickMult: fx.clickMult
+      cpsMult: fx.cpsMult, clickMult: fx.clickMult, bad: fx.bad
     });
-    ui.pop(x, y, fx.name + '!', 'is-gold');
+    sfx(fx.bad ? 'bad' : 'golden');
+    ui.pop(x, y, fx.name + '!', fx.bad ? 'is-bad' : 'is-gold');
     ui.toast(fx.icon, fx.name, fx.text + ' for ' + Math.round(dur) + 's.');
   }
 
@@ -762,7 +1036,11 @@ function checkAchievements(silent) {
       state.achievements[a.id] = true;
       // Even in play, a burst (say, a Lucky payout crossing three thresholds)
       // gets summarised rather than queued four deep.
-      if (!silent && announced < 3) { ui.toast(a.icon, a.name, a.desc); announced++; }
+      if (!silent && announced < 3) {
+        ui.toast(a.icon, a.name, a.desc);
+        if (!announced) sfx('badge');
+        announced++;
+      }
       recalc();
     }
   }
@@ -788,8 +1066,8 @@ function loadRaw(text) {
   var fresh = freshState();
 
   // Merge defensively: unknown keys are dropped, missing keys keep defaults.
-  ['cookies', 'totalEver', 'runTotal', 'clicks', 'crits', 'goldens',
-   'bestCombo', 'legacies', 'chips', 'handClicked', 'playTime',
+  ['cookies', 'totalEver', 'runTotal', 'clicks', 'crits', 'goldens', 'storms',
+   'bestCombo', 'legacies', 'chips', 'chipsSpent', 'handClicked', 'playTime',
    'started', 'lastSave'].forEach(function (k) {
     if (typeof data[k] === 'number' && isFinite(data[k])) fresh[k] = data[k];
   });
@@ -803,17 +1081,24 @@ function loadRaw(text) {
   if (data.achievements) ACHIEVEMENTS.forEach(function (a) {
     if (data.achievements[a.id]) fresh.achievements[a.id] = true;
   });
+  if (data.heavenly) HEAVENLY.forEach(function (h) {
+    if (data.heavenly[h.id]) fresh.heavenly[h.id] = true;
+  });
   if (typeof data.bakery === 'string' && data.bakery.trim()) {
     fresh.bakery = data.bakery.slice(0, 24);
   }
   if (data.opts) {
-    ['fx', 'shorthand', 'confirmPrestige'].forEach(function (k) {
+    ['fx', 'sound', 'shorthand', 'confirmPrestige'].forEach(function (k) {
       if (typeof data.opts[k] === 'boolean') fresh.opts[k] = data.opts[k];
     });
     if (data.opts.theme === 'light' || data.opts.theme === 'dark') fresh.opts.theme = data.opts.theme;
   }
-  // Chips can never exceed what the all-time total justifies.
+  // Chips can never exceed what the all-time total justifies, and spending can
+  // never exceed the legacy upgrades actually owned.
   fresh.chips = Math.min(fresh.chips, chipsFor(fresh.totalEver));
+  var owed = 0;
+  HEAVENLY.forEach(function (h) { if (fresh.heavenly[h.id]) owed += h.cost; });
+  fresh.chipsSpent = Math.min(owed, fresh.chips);
   return fresh;
 }
 
@@ -862,7 +1147,8 @@ var EL_IDS = [
   'offlineEarned','offlineRate','optFx','optShort','optConfirm','exportBtn','importBtn',
   'wipeBtn','saveBox','saveStatus','themeBtn','tipbox',
   'bakeryName','newsText','milk','milkFill','milkLabel',
-  'sceneList','sceneEmpty','cookieRain'
+  'sceneList','sceneEmpty','cookieRain',
+  'heavenlyList','chipBank','chipSpent','hvCount','soundBtn','optSound','sparkWrap'
 ];
 
 /* Populated in boot(), so this file can also be required headlessly by the
@@ -1010,7 +1296,7 @@ ui.paintBuffs = function () {
   buffs.forEach(function (b) {
     var left = Math.max(0, (b.until - t) / 1000);
     var d = document.createElement('div');
-    d.className = 'buff';
+    d.className = 'buff' + (b.bad ? ' is-bad' : '');
     d.innerHTML = '<span class="buff-icon"></span><span class="buff-name"></span>' +
                   '<span class="buff-time"></span><span class="buff-life"></span>';
     d.querySelector('.buff-icon').textContent = b.icon;
@@ -1076,6 +1362,50 @@ ui.paintScenes = function () {
 
 /* --- News ticker -------------------------------------------------- */
 
+var cpsHistory = [];
+var cpsSampleAt = 0;
+var CPS_SAMPLES = 72;          // ~6 minutes at one sample every 5s
+
+function sampleCps() {
+  var t = now();
+  if (t - cpsSampleAt < 5000) return;
+  cpsSampleAt = t;
+  cpsHistory.push(derived.cps);
+  if (cpsHistory.length > CPS_SAMPLES) cpsHistory.shift();
+}
+
+/* A log-scaled sparkline, because production spans many orders of magnitude
+ * over a session and a linear plot would be a flat line then a cliff. */
+function sparkline(values, w, h) {
+  if (values.length < 2) return null;
+  var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  // Stretch to the panel width instead of letterboxing inside it.
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.setAttribute('class', 'spark');
+  svg.setAttribute('aria-hidden', 'true');
+
+  var logs = values.map(function (v) { return Math.log10(Math.max(v, 1)); });
+  var lo = Math.min.apply(null, logs), hi = Math.max.apply(null, logs);
+  var span = (hi - lo) || 1;
+  var pts = logs.map(function (v, i) {
+    var x = i / (logs.length - 1) * w;
+    var y = h - 2 - (v - lo) / span * (h - 4);
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+
+  var area = document.createElementNS(svg.namespaceURI, 'polygon');
+  area.setAttribute('points', '0,' + h + ' ' + pts + ' ' + w + ',' + h);
+  area.setAttribute('class', 'spark-area');
+  var line = document.createElementNS(svg.namespaceURI, 'polyline');
+  line.setAttribute('points', pts);
+  line.setAttribute('class', 'spark-line');
+  line.setAttribute('vector-effect', 'non-scaling-stroke');
+  svg.appendChild(area);
+  svg.appendChild(line);
+  return svg;
+}
+
 var newsAt = 0;
 var lastNews = '';
 
@@ -1114,10 +1444,53 @@ ui.paintMilk = function () {
     countAchievements() + ' of ' + ACHIEVEMENTS.length + ').';
 };
 
+var heavenlySig = null;
+
+ui.paintHeavenly = function () {
+  var avail = chipsAvailable();
+  var owned = 0;
+  HEAVENLY.forEach(function (h) { if (state.heavenly[h.id]) owned++; });
+  var sig = avail + '/' + owned;
+  if (sig === heavenlySig) return;
+  heavenlySig = sig;
+
+  el.chipBank.textContent = fmt(avail, 0);
+  el.chipSpent.textContent = fmt(state.chipsSpent, 0);
+  el.hvCount.textContent = owned + ' / ' + HEAVENLY.length + ' owned';
+
+  el.heavenlyList.textContent = '';
+  ui.hideTip();
+
+  HEAVENLY.forEach(function (h) {
+    var have = !!state.heavenly[h.id];
+    var li = document.createElement('li');
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'up hv' + (have ? ' owned' : '');
+    btn.disabled = have || h.cost > avail;
+    btn.textContent = h.icon;
+    btn._tip = {
+      name: h.name,
+      desc: h.desc,
+      cost: have ? null : h.cost + ' chip' + (h.cost === 1 ? '' : 's'),
+      cant: h.cost > avail,
+      state: have ? 'Owned — kept through every legacy' : '',
+      flavor: h.flavor
+    };
+    btn.setAttribute('aria-label',
+      (have ? 'Owned: ' : '') + h.name + ' — ' + h.desc +
+      (have ? '' : ' — costs ' + h.cost + ' chips'));
+    btn.addEventListener('click', function () { buyHeavenly(h); });
+    li.appendChild(btn);
+    el.heavenlyList.appendChild(li);
+  });
+};
+
 ui.paintLegacy = function () {
   var pending = pendingChips();
-  el.chipsOwned.textContent = fmt(state.chips) + ' chip' + (state.chips === 1 ? '' : 's');
-  el.chipBonus.textContent = '+' + (state.chips * 1.5).toFixed(1) + '%';
+  el.chipsOwned.textContent = fmt(chipsAvailable(), 0) + ' / ' + fmt(state.chips, 0) + ' chips';
+  var rate = (derived.mods ? derived.mods.chipRate : 0.015) * 100;
+  el.chipBonus.textContent = '+' + (state.chips * rate).toFixed(1) + '%';
   el.prestigeBtn.disabled = pending <= 0;
   el.prestigeBtn.textContent = pending > 0
     ? 'Start a new legacy (+' + fmt(pending) + ' chip' + (pending === 1 ? '' : 's') + ')'
@@ -1210,6 +1583,18 @@ ui.paintBuildings = function () {
         : derived.cps > 0 ? 'in ' + fmtTime((cost - state.cookies) / derived.cps)
         : '—';
     }
+
+    n.btn._tip = {
+      name: b.name,
+      desc: fmt(b.cps * m.building[b.id] * m.cpsMult) + ' cookies per second each' +
+        (owned ? ', ' + fmt(owned * each) + '/s from your ' + fmt(owned, 0) : ''),
+      cost: selling ? null : fmt(bulkCost(b.cost, owned, count)) + ' cookies' +
+        (bulkCost(b.cost, owned, count) > state.cookies && derived.cps > 0
+          ? ' · ' + fmtTime((bulkCost(b.cost, owned, count) - state.cookies) / derived.cps)
+          : ''),
+      cant: !selling && bulkCost(b.cost, owned, count) > state.cookies,
+      flavor: b.flavor
+    };
 
     n.count.textContent = owned ? fmt(owned, 0) : '';
     var share = derived.baseCps > 0 ? (owned * each / derived.baseCps * 100) : 0;
@@ -1315,6 +1700,8 @@ ui.paintStats = function () {
     ['Buildings owned', fmtInt(totalBuildings(state))],
     ['Upgrades bought', fmtInt(Object.keys(state.upgrades).length)],
 
+    ['Storm cookies caught', fmtInt(state.storms)],
+
     ['head', 'All time'],
     ['Cookies baked', fmt(state.totalEver)],
     ['Baked by hand', fmt(state.handClicked)],
@@ -1324,7 +1711,12 @@ ui.paintStats = function () {
     ['Best combo', fmtInt(state.bestCombo) + ' clicks'],
     ['Golden cookies', fmtInt(state.goldens)],
     ['Legacies started', fmtInt(state.legacies)],
-    ['Legacy chips', fmtInt(state.chips) + ' (+' + (state.chips * 1.5).toFixed(1) + '% CpS)'],
+    ['Legacy chips', fmtInt(state.chips) + ' earned, ' + fmtInt(state.chipsSpent) + ' spent'],
+    ['Legacy upgrades', (function () {
+      var n = 0;
+      HEAVENLY.forEach(function (h) { if (state.heavenly[h.id]) n++; });
+      return n + ' / ' + HEAVENLY.length;
+    })()],
     ['Badges', countAchievements() + ' / ' + ACHIEVEMENTS.length],
     ['Time played', fmtTime(state.playTime)],
 
@@ -1336,6 +1728,18 @@ ui.paintStats = function () {
     ['Active buff bonus', '×' + derived.cpsBuff.toFixed(2)],
     ['Offline baking', Math.round(m.offlineRate * 100) + '%, capped at ' + fmtTime(m.offlineCap)]
   ];
+
+  // Production over the last few minutes, log-scaled.
+  el.sparkWrap.textContent = '';
+  var chart = sparkline(cpsHistory, 300, 54);
+  if (chart) {
+    el.sparkWrap.appendChild(chart);
+    var cap = document.createElement('p');
+    cap.className = 'spark-cap';
+    cap.textContent = 'Cookies per second, last ' +
+      fmtTime(cpsHistory.length * 5) + ' — now ' + fmt(derived.cps) + '/s';
+    el.sparkWrap.appendChild(cap);
+  }
 
   el.statList.textContent = '';
   rows.forEach(function (r) {
@@ -1363,6 +1767,7 @@ ui.invalidate = function () {
   upgradeSig = null;
   achievementSig = null;
   sceneSig = null;
+  heavenlySig = null;
   ui.hideTip();
 };
 
@@ -1374,6 +1779,7 @@ ui.paintAll = function () {
   ui.paintUpgrades();
   ui.paintScenes();
   ui.paintMilk();
+  ui.paintHeavenly();
   if (activeTab === 'achievements') ui.paintAchievements();
   if (activeTab === 'stats') ui.paintStats();
 };
@@ -1381,6 +1787,15 @@ ui.paintAll = function () {
 /* ─────────────────────────────────────────────────────────────────
  * 11. Wiring
  * ───────────────────────────────────────────────────────────────── */
+
+/* Cycles ×1 → ×10 → ×100 → Max → Sell and back, keeping the buttons in sync. */
+function cycleBulk() {
+  var order = ['1', '10', '100', 'max', 'sell'];
+  var cur = String(bulk);
+  var next = order[(order.indexOf(cur) + 1) % order.length];
+  var btn = document.querySelector('.bulk-btn[data-bulk="' + next + '"]');
+  if (btn) btn.click();
+}
 
 function cookieClickHandler(e) {
   var x, y;
@@ -1401,32 +1816,50 @@ function wire() {
   // Space / Enter while the cookie is focused already fires click; this adds a
   // global Space shortcut without hijacking typing or other buttons.
   document.addEventListener('keydown', function (e) {
-    if (e.code !== 'Space' || e.repeat) return;
+    if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
     var t = e.target;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' ||
-              t.tagName === 'BUTTON' || t.isContentEditable)) return;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
     if (document.querySelector('dialog[open]')) return;
-    e.preventDefault();
-    cookieClickHandler(null);
+
+    if (e.code === 'Space') {
+      // Space on a focused button already activates it; don't double-fire.
+      if (t && t.tagName === 'BUTTON') return;
+      e.preventDefault();
+      cookieClickHandler(null);
+      return;
+    }
+
+    // 1-9 buy the nth revealed building, 0 the tenth.
+    if (/^(Digit|Numpad)[0-9]$/.test(e.code)) {
+      var n = parseInt(e.code.slice(-1), 10);
+      var idx = n === 0 ? 9 : n - 1;
+      var visible = BUILDINGS.filter(function (b, i) { return i <= revealDepth(); });
+      if (visible[idx]) { e.preventDefault(); buyBuilding(visible[idx]); }
+      return;
+    }
+
+    if (e.code === 'KeyB') { e.preventDefault(); cycleBulk(); return; }
+    if (e.code === 'KeyM') { e.preventDefault(); setSound(!state.opts.sound); return; }
   });
 
-  // Tooltips, delegated so repainting the store doesn't orphan listeners.
-  var store = document.getElementById('store');
-  store.addEventListener('mouseover', function (e) {
-    var t = e.target.closest ? e.target.closest('.up') : null;
+  // Tooltips, delegated on the document so they work for every tile —
+  // upgrades and buildings in the store, badges and legacy upgrades in the
+  // middle column — and survive any panel repaint.
+  document.addEventListener('mouseover', function (e) {
+    var t = e.target.closest ? e.target.closest('.up, .item') : null;
     if (t) ui.showTip(t);
   });
-  store.addEventListener('mouseout', function (e) {
-    var t = e.target.closest ? e.target.closest('.up') : null;
+  document.addEventListener('mouseout', function (e) {
+    var t = e.target.closest ? e.target.closest('.up, .item') : null;
     if (t) ui.hideTip(t);
   });
-  store.addEventListener('focusin', function (e) {
-    var t = e.target.closest ? e.target.closest('.up') : null;
-    if (t) ui.showTip(t);
+  document.addEventListener('focusin', function (e) {
+    var t = e.target.closest ? e.target.closest('.up, .item') : null;
+    if (t) ui.showTip(t); else ui.hideTip();
   });
-  store.addEventListener('focusout', function () { ui.hideTip(); });
-  // A repaint replaces the hovered node, so drop a tip pointing at a dead one.
-  store.addEventListener('scroll', function () { ui.hideTip(); }, true);
+  document.addEventListener('focusout', function () { ui.hideTip(); });
+  // A scroll moves the anchor out from under a tip that is already placed.
+  document.addEventListener('scroll', function () { ui.hideTip(); }, true);
 
   // Tabs
   document.querySelectorAll('.tab').forEach(function (tab) {
@@ -1506,6 +1939,11 @@ function wire() {
     if (e.key === 'Enter') el.bakeryName.blur();
   });
 
+  el.optSound.addEventListener('change', function () {
+    setSound(el.optSound.checked);
+  });
+  el.soundBtn.addEventListener('click', function () { setSound(!state.opts.sound); });
+
   el.themeBtn.addEventListener('click', function () {
     state.opts.theme = state.opts.theme === 'dark' ? 'light' : 'dark';
     applyTheme();
@@ -1535,7 +1973,7 @@ function wire() {
       var loaded = loadRaw(json);
       state = loaded;
       buffs = []; combo = { count: 0, last: 0 };
-      clearGolden(); scheduleGolden();
+      clearGolden(); clearStorm(); scheduleGolden();
       applyOpts(); applyTheme(); recalc(); checkAchievements(true);
       ui.invalidate(); ui.paintAll(); save();
       el.saveStatus.textContent = 'Save imported.';
@@ -1550,7 +1988,7 @@ function wire() {
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
     state = freshState();
     buffs = []; combo = { count: 0, last: 0 };
-    clearGolden(); scheduleGolden();
+    clearGolden(); clearStorm(); scheduleGolden();
     applyOpts(); applyTheme(); recalc(); ui.invalidate(); ui.paintAll();
     el.saveStatus.textContent = 'Save deleted.';
   });
@@ -1580,8 +2018,23 @@ function buildCookieRain() {
   }
 }
 
+function setSound(on) {
+  state.opts.sound = !!on;
+  applySound();
+  if (on) sfx('upgrade');     // confirms it works, and unlocks the context
+  save();
+}
+
+function applySound() {
+  el.optSound.checked = state.opts.sound;
+  el.soundBtn.textContent = state.opts.sound ? '🔊' : '🔇';
+  el.soundBtn.setAttribute('aria-pressed', state.opts.sound ? 'true' : 'false');
+  el.soundBtn.setAttribute('aria-label', state.opts.sound ? 'Turn sound off' : 'Turn sound on');
+}
+
 function applyOpts() {
   el.bakeryName.value = state.bakery;
+  applySound();
   el.optFx.checked = state.opts.fx;
   el.optShort.checked = state.opts.shorthand;
   el.optConfirm.checked = state.opts.confirmPrestige;
@@ -1627,6 +2080,7 @@ function frame() {
     checkAchievements();
     ui.paintHeader();
     ui.paintClickStats();
+    sampleCps();
     ui.paintBuffs();
     ui.paintNews();
     ui.paintLegacy();
@@ -1681,6 +2135,8 @@ if (typeof module !== 'undefined' && module.exports) {
     fmt: fmt, fmtTime: fmtTime, bulkCost: bulkCost, maxAffordable: maxAffordable,
     chipsFor: chipsFor, freshState: freshState, loadRaw: loadRaw,
     BUILDINGS: BUILDINGS, UPGRADES: UPGRADES, ACHIEVEMENTS: ACHIEVEMENTS,
+    HEAVENLY: HEAVENLY, SPECIALS: SPECIALS, GOLDEN_EFFECTS: GOLDEN_EFFECTS,
+    SCENES: SCENES, NEWS: NEWS, MILK_TIERS: MILK_TIERS,
     COST_GROWTH: COST_GROWTH,
     _setState: function (s) { state = s; },
     _getState: function () { return state; }
