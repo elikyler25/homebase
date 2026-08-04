@@ -233,7 +233,7 @@ const UNITS = [
     { n: "Bombard",   cost: 560, hp: 860,  dmg: 118, rng: 62,  spd: 27, cd: 1.55, gold: 320, xp: 215, kind: "shot", splash: 46 },
   ],
   [ // Modern
-    { n: "Shotgunner",cost: 520, hp: 600,  dmg: 98,  rng: 54,  spd: 46, cd: 0.72, gold: 290, xp: 195, kind: "shot" },
+    { n: "Shotgunner",cost: 520, hp: 640,  dmg: 98,  rng: 54,  spd: 58, cd: 0.72, gold: 290, xp: 195, kind: "shot" },
     { n: "Rifleman",  cost: 760, hp: 500,  dmg: 148, rng: 250, spd: 38, cd: 1.1,  gold: 410, xp: 280, kind: "shot" },
     { n: "Tank",      cost: 1300,hp: 2300, dmg: 255, rng: 66,  spd: 29, cd: 1.4,  gold: 700, xp: 470, kind: "shot", splash: 56 },
   ],
@@ -360,11 +360,14 @@ function evolve(side) {
   if (side.age >= AGES.length - 1) return false;
   if (side.xp < AGES[side.age].xpNext) return false;
   side.xp -= AGES[side.age].xpNext;
+  // Refund queued orders at the price actually paid. This has to happen BEFORE
+  // the age advances: refunding at the new age's costs turned "queue cheap
+  // units, then evolve" into a repeatable source of free gold.
+  for (let i = 0; i < 3; i++) { side.gold += spec(side, i).cost * side.qs[i]; side.qs[i] = 0; }
   side.age++;
   const ratio = side.hp / side.maxHp;
   side.maxHp = AGES[side.age].baseHp;
   side.hp = Math.max(side.maxHp * ratio, side.maxHp * 0.5);
-  for (let i = 0; i < 3; i++) { side.gold += spec(side, i).cost * side.qs[i]; side.qs[i] = 0; }
   side.cds = [0, 0, 0];
   // turrets upgrade with the age they sit in
   side.turrets.forEach(t => { t.def = AGES[side.age].turret; t.age = side.age; });
@@ -952,6 +955,22 @@ function drawBase(side) {
     ctx.fillStyle = "#0e2a33"; ctx.fillRect(2, -32, 24, 32);
   }
 
+  // banner
+  const px = -w / 2 + 7, py = -h - 10;
+  ctx.strokeStyle = dark; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - 40); ctx.stroke();
+  ctx.fillStyle = side.isPlayer ? "#5b8fc7" : "#c75b5b";
+  ctx.beginPath();
+  for (let i = 0; i <= 5; i++) {
+    const t = i / 5;
+    ctx.lineTo(px + t * 25, py - 38 + Math.sin(G.t * 4.5 + t * 3.4) * 2.6);
+  }
+  for (let i = 5; i >= 0; i--) {
+    const t = i / 5;
+    ctx.lineTo(px + t * 25, py - 25 + Math.sin(G.t * 4.5 + t * 3.4) * 2.6);
+  }
+  ctx.closePath(); ctx.fill();
+
   // battle damage: cracks first, then fire as it nears collapse
   if (frac < 0.72) {
     ctx.strokeStyle = "rgba(0,0,0,.5)";
@@ -1082,7 +1101,33 @@ function drawUnit(u, fade) {
     ctx.fillStyle = dark;  ctx.fillRect(35 * S, -37 * S, 5 * S, 8 * S);
 
   } else {                                       // humanoid
-    ctx.strokeStyle = kit; ctx.lineWidth = 3.4 * S; ctx.lineCap = "round";
+    const armY0 = -H * 0.66 + bob * .3;
+
+    // cape / coat behind the body, swaying against the stride
+    if (age === 1 && cls === 2) {
+      ctx.fillStyle = dark;
+      ctx.beginPath();
+      ctx.moveTo(-3 * S, -H * 0.84);
+      ctx.lineTo(-11 * S - swing * 0.5, -H * 0.30);
+      ctx.lineTo(-5 * S - swing * 0.3, -H * 0.06);
+      ctx.lineTo(-1 * S, -H * 0.40);
+      ctx.closePath(); ctx.fill();
+    } else if (age === 2) {
+      ctx.fillStyle = dark;
+      ctx.beginPath();
+      ctx.moveTo(-4 * S, -H * 0.55);
+      ctx.lineTo(-8 * S - swing * 0.4, -H * 0.16);
+      ctx.lineTo(-2 * S, -H * 0.22);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // rear arm swings opposite the legs
+    ctx.strokeStyle = dark; ctx.lineWidth = 2.7 * S; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-1 * S, armY0); ctx.lineTo(-5 * S - swing * 0.7, armY0 + 8 * S);
+    ctx.stroke();
+
+    ctx.strokeStyle = kit; ctx.lineWidth = 3.4 * S;
     ctx.beginPath();
     ctx.moveTo(0, -H * 0.42); ctx.lineTo(swing, 0);
     ctx.moveTo(0, -H * 0.42); ctx.lineTo(-swing, 0);
@@ -1091,9 +1136,23 @@ function drawUnit(u, fade) {
     ctx.beginPath(); ctx.roundRect(-5 * S, -H * 0.82 + bob * .3, 10 * S, H * 0.44, 3); ctx.fill();
     if (age >= 3) { ctx.fillStyle = dark; ctx.fillRect(-7 * S, -H * 0.78 + bob * .3, 4 * S, H * 0.3); }
 
+    if (age === 0) {                             // ragged fur hem
+      ctx.fillStyle = dark;
+      for (let k = 0; k < 4; k++) {
+        const fxp = -5 * S + k * 2.7 * S;
+        ctx.beginPath();
+        ctx.moveTo(fxp, -H * 0.38 + bob * .3);
+        ctx.lineTo(fxp + 1.4 * S, -H * 0.30 + bob * .3);
+        ctx.lineTo(fxp + 2.8 * S, -H * 0.38 + bob * .3);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+
     const hy = -H * 0.92 + bob * .3;
     ctx.fillStyle = skin;
     ctx.beginPath(); ctx.arc(1.5 * S, hy, 4.4 * S, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(12,16,22,.72)";        // eye, so the unit reads as facing forward
+    ctx.beginPath(); ctx.arc(3.6 * S, hy - 0.4 * S, 1.15 * S, 0, 7); ctx.fill();
     ctx.fillStyle = trim;
     if (age === 1) {
       ctx.beginPath(); ctx.arc(1.5 * S, hy, 4.9 * S, Math.PI, 0); ctx.fill();
