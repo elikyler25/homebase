@@ -3,115 +3,94 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mirage War — 2 Player Battle</title>
+<title>Mirage War — 2 Player Crystal Battle</title>
 <style>
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0; height: 100%;
-    background: #10160f;
-    color: #eae4d3;
+    background: #0d1310; color: #eae4d3;
     font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
-    overflow: hidden;
-    user-select: none;
-    -webkit-user-select: none;
+    overflow: hidden; user-select: none; -webkit-user-select: none;
   }
   #wrap { display: flex; flex-direction: column; height: 100%; }
   #stage { position: relative; flex: 1 1 auto; min-height: 0; }
   canvas { display: block; width: 100%; height: 100%; }
 
-  /* ---------- top HUD ---------- */
+  /* ---------- HUD ---------- */
   #hud {
     position: absolute; top: 0; left: 0; right: 0;
     display: flex; align-items: flex-start; gap: 8px;
-    padding: 8px 10px; pointer-events: none;
+    padding: 7px 10px; pointer-events: none;
   }
   .side { flex: 1 1 0; min-width: 0; }
   .side.right { text-align: right; }
   .hpbar {
-    height: 18px; border: 2px solid #241d10; border-radius: 4px;
-    background: #2a1d16; overflow: hidden; position: relative;
-    box-shadow: 0 2px 0 #0007;
+    height: 17px; border: 2px solid #241d10; border-radius: 3px;
+    background: #2a1d16; overflow: hidden; position: relative; box-shadow: 0 2px 0 #0007;
   }
-  .hpfill { height: 100%; width: 100%; transition: width .18s linear; }
-  .p1 .hpfill { background: linear-gradient(#7fc4ff, #2b6fd6); }
-  .p2 .hpfill { background: linear-gradient(#ffb27f, #d64b2b); }
+  .hpfill { height: 100%; width: 100%; transition: width .15s linear; }
+  .p1 .hpfill { background: linear-gradient(#9fd8ff, #2b6fd6); }
+  .p2 .hpfill { background: linear-gradient(#ffc49f, #d64b2b); }
   .hpbar span {
-    position: absolute; inset: 0; text-align: center; font-size: 12px;
-    line-height: 14px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000;
+    position: absolute; inset: 0; text-align: center; font-size: 11px;
+    line-height: 13px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000;
   }
-  .stats { margin-top: 4px; font-size: 14px; font-weight: bold; text-shadow: 0 2px 3px #000; }
-  .stats b { font-weight: bold; }
-  .gold { color: #ffd75e; }
-  .army { color: #cfe8ff; }
-  .ready { color: #8dff8d; }
-  #centre {
-    flex: 0 0 auto; text-align: center; pointer-events: none;
-    padding: 0 6px;
-  }
+  .stats { margin-top: 3px; font-size: 13px; font-weight: bold; text-shadow: 0 2px 3px #000; }
+  .gold { color: #ffd75e; } .inc { color: #8dff8d; } .army { color: #cfe8ff; }
+  #centre { flex: 0 0 auto; text-align: center; pointer-events: none; padding: 0 6px; }
   #round {
-    background: #1c1710; border: 2px solid #4a3c22; border-radius: 6px;
-    padding: 2px 14px; font-weight: bold; font-size: 18px; color: #ffd75e;
-    box-shadow: 0 2px 0 #0007;
+    background: #1c1710; border: 2px solid #4a3c22; border-radius: 5px;
+    padding: 1px 14px; font-weight: bold; font-size: 17px; color: #ffd75e; box-shadow: 0 2px 0 #0007;
   }
-  #phase { font-size: 13px; margin-top: 4px; text-shadow: 0 2px 3px #000; }
+  #tick { font-size: 11px; margin-top: 3px; color: #cfc6ae; text-shadow: 0 2px 3px #000; }
 
   /* ---------- shops ---------- */
-  #shops {
-    flex: 0 0 auto; display: flex; gap: 6px; padding: 6px;
-    background: #16120c; border-top: 3px solid #372c19;
-  }
-  .shop { flex: 1 1 0; display: flex; gap: 4px; min-width: 0; }
+  #shops { flex: 0 0 auto; display: flex; gap: 8px; padding: 5px 6px 3px;
+           background: #14100b; border-top: 3px solid #372c19; }
+  .half { flex: 1 1 0; min-width: 0; }
+  .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; }
   .card {
-    flex: 1 1 0; min-width: 0; cursor: pointer;
-    background: #241c12; border: 2px solid #4a3c22; border-radius: 5px;
-    padding: 3px 2px 4px; text-align: center; position: relative;
-    transition: transform .06s, background .1s;
+    cursor: pointer; position: relative; min-width: 0;
+    background: #241c12; border: 2px solid #4a3c22; border-radius: 4px;
+    padding: 1px 1px 2px; text-align: center; transition: transform .05s, background .1s;
   }
   .card:hover { background: #33291a; }
-  .card:active, .card.hit { transform: translateY(2px); background: #4a3c22; }
-  .card.poor { opacity: .38; }
-  .card canvas { width: 100%; height: 34px; }
-  .card .nm { font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .card .cost { font-size: 11px; color: #ffd75e; font-weight: bold; }
-  .card .key {
-    position: absolute; top: 1px; left: 3px; font-size: 10px;
-    color: #9e8b63; font-weight: bold;
-  }
-  .card .cnt {
-    position: absolute; top: 1px; right: 3px; font-size: 11px;
-    color: #8dff8d; font-weight: bold;
-  }
-  #vs {
-    flex: 0 0 auto; align-self: center; padding: 0 10px;
-    font-size: 24px; font-weight: bold; color: #ffd75e; text-shadow: 0 2px 0 #000;
-  }
+  .card.hit { transform: translateY(2px); background: #6b5a33; }
+  .card.poor { opacity: .34; }
+  .card canvas { width: 100%; height: 30px; display: block; }
+  .card .nm { font-size: 9px; font-weight: bold; line-height: 11px; white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; }
+  .card .cost { font-size: 10px; color: #ffd75e; font-weight: bold; line-height: 11px; }
+  .card .key { position: absolute; top: 0; left: 2px; font-size: 9px; color: #b09a6c; font-weight: bold; }
+  .card .arm { position: absolute; top: 0; right: 2px; font-size: 9px; font-weight: bold; }
+  .card .arm.a { color: #9fd0ff; }   /* armored */
+  .card .arm.l { color: #ffd0a0; }   /* light */
+  #vs { flex: 0 0 auto; align-self: center; font-size: 20px; font-weight: bold;
+        color: #ffd75e; text-shadow: 0 2px 0 #000; padding: 0 4px; }
   .ctrls { font-size: 10px; color: #9e8b63; text-align: center; padding: 2px 0 0; }
 
   /* ---------- overlay ---------- */
   #overlay {
     position: absolute; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 14px;
-    background: rgba(8,12,8,.86); text-align: center; padding: 20px;
+    align-items: center; justify-content: center; gap: 12px;
+    background: rgba(6,10,8,.9); text-align: center; padding: 18px; overflow: auto;
   }
   #overlay.hide { display: none; }
-  #overlay h1 { margin: 0; font-size: 40px; color: #ffd75e; text-shadow: 0 3px 0 #000; letter-spacing: 1px; }
-  #overlay p { margin: 0; max-width: 640px; line-height: 1.5; font-size: 15px; color: #cfc6ae; }
-  #overlay .keys { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; font-size: 14px; }
-  #overlay .keys div { line-height: 1.7; }
-  kbd {
-    background: #2b2418; border: 1px solid #5a4930; border-bottom-width: 3px;
-    border-radius: 4px; padding: 1px 6px; font-family: inherit; font-size: 13px; color: #ffe9a8;
-  }
+  #overlay h1 { margin: 0; font-size: 38px; color: #ffd75e; text-shadow: 0 3px 0 #000; letter-spacing: 1px; }
+  #overlay p { margin: 0; max-width: 700px; line-height: 1.5; font-size: 14px; color: #cfc6ae; }
+  .keys { display: flex; gap: 34px; flex-wrap: wrap; justify-content: center; font-size: 13px; }
+  kbd { background: #2b2418; border: 1px solid #5a4930; border-bottom-width: 3px;
+        border-radius: 3px; padding: 0 5px; font-family: inherit; font-size: 12px; color: #ffe9a8; }
   button.big {
-    font: inherit; font-size: 20px; font-weight: bold; cursor: pointer;
+    font: inherit; font-size: 19px; font-weight: bold; cursor: pointer;
     background: #3f6b2c; color: #eaffdf; border: 2px solid #6fae4d;
-    border-bottom-width: 5px; border-radius: 8px; padding: 10px 34px;
+    border-bottom-width: 5px; border-radius: 7px; padding: 9px 32px;
   }
   button.big:active { border-bottom-width: 2px; transform: translateY(3px); }
   .banner {
-    position: absolute; left: 0; right: 0; top: 34%; text-align: center;
-    font-size: 46px; font-weight: bold; color: #ffd75e;
-    text-shadow: 0 4px 0 #000, 0 0 24px #ffae00; pointer-events: none;
+    position: absolute; left: 0; right: 0; top: 30%; text-align: center;
+    font-size: 42px; font-weight: bold; color: #ffd75e;
+    text-shadow: 0 4px 0 #000, 0 0 22px #ffae00; pointer-events: none;
     opacity: 0; transition: opacity .2s;
   }
   .banner.show { opacity: 1; }
@@ -126,22 +105,22 @@
       <div class="side p1">
         <div class="hpbar"><div class="hpfill" id="hp1"></div><span id="hpt1"></span></div>
         <div class="stats">
-          <span class="gold">◆ <span id="g1">0</span></span> &nbsp;
-          <span class="army">⚔ <span id="a1">0</span></span> &nbsp;
-          <span class="ready" id="r1"></span>
+          <span class="gold">◆<span id="g1">0</span></span> &nbsp;
+          <span class="inc">+<span id="i1">0</span>/rnd</span> &nbsp;
+          <span class="army"><span id="a1">0</span> troops</span>
         </div>
       </div>
       <div id="centre">
         <div id="round">ROUND 1</div>
-        <div id="phase">DEPLOY</div>
+        <div id="tick">payday in 20s</div>
       </div>
       <div class="side right p2">
-        <div class="hpbar"><div class="hpfill" id="hp2"></div><span id="hpt2"></span></div>
-        <div class="stats">
-          <span class="ready" id="r2"></span> &nbsp;
-          <span class="army">⚔ <span id="a2">0</span></span> &nbsp;
-          <span class="gold">◆ <span id="g2">0</span></span>
+        <div class="stats" style="margin:0 0 3px">
+          <span class="army"><span id="a2">0</span> troops</span> &nbsp;
+          <span class="inc">+<span id="i2">0</span>/rnd</span> &nbsp;
+          <span class="gold">◆<span id="g2">0</span></span>
         </div>
+        <div class="hpbar"><div class="hpfill" id="hp2"></div><span id="hpt2"></span></div>
       </div>
     </div>
 
@@ -149,34 +128,39 @@
 
     <div id="overlay">
       <h1>MIRAGE WAR</h1>
-      <p>Two players, one keyboard. Each round you spend gold on troops, then hit READY.
-         When both sides are ready the armies charge. Survivors smash the enemy castle.
-         First castle to fall loses. <b>Counters matter:</b> spears gut cavalry, cavalry runs down
-         archers &amp; mages, archers shred infantry, mages melt giants.</p>
+      <p><b>Two players, one keyboard, one screen.</b> No turns and no waiting — buy troops whenever
+      you can afford them and they march out of your crystal immediately. Smash the enemy crystal to win.</p>
+      <p><b>The counter system is armour.</b> Every unit is <span style="color:#ffd0a0">LIGHT</span> or
+      <span style="color:#9fd0ff">ARMORED</span>, and every unit has separate damage against each.
+      A Ninja butchers light troops and barely scratches armour. A Monk is the reverse. Armour also
+      subtracts flat damage, so cheap swarms literally cannot hurt an Iron Knight — but a Vampire drains it.</p>
+      <p><b>Your standing army is your economy.</b> Every living unit pays income at each payday, so
+      units you keep alive fund the next wave. Trading badly loses you the game twice over.</p>
       <div class="keys">
-        <div><b style="color:#7fc4ff">PLAYER 1 (blue, left)</b><br>
-          Buy: <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd><kbd>6</kbd><kbd>7</kbd><br>
-          Refund last: <kbd>`</kbd> &nbsp; Ready: <kbd>Left Shift</kbd>
+        <div><b style="color:#9fd8ff">PLAYER 1 — left</b><br>
+          Row 1: <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><br>
+          Row 2: <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd><kbd>V</kbd>
         </div>
-        <div><b style="color:#ffb27f">PLAYER 2 (red, right)</b><br>
-          Buy: <kbd>U</kbd><kbd>I</kbd><kbd>O</kbd><kbd>P</kbd><kbd>[</kbd><kbd>]</kbd><kbd>\</kbd><br>
-          Refund last: <kbd>Backspace</kbd> &nbsp; Ready: <kbd>Right Shift</kbd>
+        <div><b style="color:#ffc49f">PLAYER 2 — right</b><br>
+          Row 1: <kbd>7</kbd><kbd>8</kbd><kbd>9</kbd><kbd>0</kbd><kbd>U</kbd><kbd>I</kbd><kbd>O</kbd><kbd>P</kbd><br>
+          Row 2: <kbd>J</kbd><kbd>K</kbd><kbd>L</kbd><kbd>;</kbd><kbd>M</kbd><kbd>,</kbd><kbd>.</kbd><kbd>/</kbd>
         </div>
       </div>
-      <p style="font-size:13px;color:#9e8b63">Mouse works too — click the cards at the bottom of your own half.</p>
+      <p style="font-size:12px;color:#9e8b63"><kbd>Space</kbd> pause &nbsp; <kbd>`</kbd> mute &nbsp;
+      Clicking a card buys it too. Hover a card for full stats.</p>
       <button class="big" id="startBtn">FIGHT</button>
     </div>
   </div>
 
   <div id="shops">
-    <div>
-      <div class="shop p1" id="shop1"></div>
-      <div class="ctrls">P1 &nbsp; 1-7 buy &nbsp;·&nbsp; ` refund &nbsp;·&nbsp; LEFT SHIFT = ready</div>
+    <div class="half">
+      <div class="grid" id="shop1"></div>
+      <div class="ctrls">P1 &nbsp; 1 2 3 4 Q W E R &nbsp;/&nbsp; A S D F Z X C V</div>
     </div>
     <div id="vs">VS</div>
-    <div>
-      <div class="shop p2" id="shop2"></div>
-      <div class="ctrls">P2 &nbsp; U I O P [ ] \ buy &nbsp;·&nbsp; BACKSPACE refund &nbsp;·&nbsp; RIGHT SHIFT = ready</div>
+    <div class="half">
+      <div class="grid" id="shop2"></div>
+      <div class="ctrls">P2 &nbsp; 7 8 9 0 U I O P &nbsp;/&nbsp; J K L ; M , . /</div>
     </div>
   </div>
 </div>
@@ -185,63 +169,61 @@
 "use strict";
 
 /* ============================================================
-   UNIT TYPES  —  cls drives the counter matrix
+   THE ROSTER
+   Modelled on Miragine War: a straight price ladder where every
+   unit carries price / income / hp / armour / armour-type / speed /
+   damage-vs-light / damage-vs-armored / range / weapon speed.
+   The counter system *is* those two damage columns plus flat armour —
+   there is no separate rock-paper-scissors table.
    ============================================================ */
 const UNITS = [
-  { id:"peasant",  name:"Peasant",  cls:"inf",    cost:60,  hp:60,   atk:11,   rng:22,  spd:44, cd:0.7,  size:12, col:"#b8b2a0" },
-  { id:"spearman", name:"Spearman", cls:"pike",   cost:130, hp:130,  atk:23,  rng:40,  spd:38, cd:0.85, size:13, col:"#c9a86a" },
-  { id:"sword",    name:"Swordsman",cls:"inf",    cost:190, hp:200,  atk:34,  rng:26,  spd:46, cd:0.7,  size:15, col:"#d9d9e2" },
-  { id:"archer",   name:"Archer",   cls:"ranged", cost:230, hp:95,   atk:37,  rng:210, spd:36, cd:1.05, size:12, col:"#8fd98f" },
-  { id:"knight",   name:"Knight",   cls:"cav",    cost:350, hp:300,  atk:56,  rng:30,  spd:82, cd:0.8,  size:19, col:"#e0c25a", splash:26 },
-  { id:"mage",     name:"Mage",     cls:"mage",   cost:490, hp:120,  atk:68,  rng:165, spd:32, cd:1.5,  size:13, col:"#c78fe0", splash:52 },
-  { id:"giant",    name:"Giant",    cls:"tank",   cost:720, hp:1500, atk:108,  rng:44,  spd:26, cd:1.3,  size:27, col:"#9c7b5a", splash:50 },
-];
+  // name              price  inc   hp   arm  type       spd  dL   dA   rng   ws    size col        kind      extras
+  ["Newbie",             40,   2,   70,   0, "light",    46,   12,   5,   22, 0.75,  11, "#b8b2a0", "melee",  {}],
+  ["Veteran",            90,   4,  140,   1, "light",    44,  21,   10,   24, 0.80,  12, "#c2a878", "melee",  {}],
+  ["Zombie",            140,   5,  320,   2, "light",    26,  18,  13,   22, 1.00,  13, "#7fa86a", "melee",  {}],
+  ["Samurai",           200,   7,  190,   2, "light",    52,  42,  14,   26, 0.70,  13, "#d96a6a", "melee",  {}],
+  ["Sword Man",         280,   9,  260,   4, "armored",  44,  33,  24,   26, 0.80,  14, "#d9d9e2", "melee",  {}],
+  ["Ninja",             360,  11,  170,   1, "light",    96,  74,   9,   24, 0.55,  12, "#5f5f74", "melee",  {}],
+  ["Novice",            440,  14,  200,   2, "light",    40,  38,  38,  160, 1.10,  12, "#8fd98f", "ranged", {}],
+  ["Heavy Sword",       560,  17,  540,   8, "armored",  36,  43,  43,   30, 0.90,  16, "#a9b4c2", "melee",  {}],
+  ["Monk",              700,  20,  300,   3, "light",    40,  26,  118,  130, 1.00,  13, "#e0c060", "ranged", {}],
+  ["Vampire",           880,  24,  420,   4, "light",    62,  54, 118,   28, 0.70,  14, "#a05ac0", "melee",  {drain:0.75}],
+  ["Cavalry",          1100,  28,  620,   6, "armored", 104,  76,  38,   30, 0.75,  18, "#e0c25a", "mount",  {splash:30}],
+  ["Immortal",         1400,  33, 1150,  12, "armored",  32,  51,  51,   30, 0.90,  18, "#c0a0d0", "melee",  {}],
+  ["Mage",             1750,  38,  380,   2, "light",    34,  89,  89,  205, 1.40,  14, "#c78fe0", "ranged", {splash:60}],
+  ["Iron Knight",      2200,  44, 1900,  20, "armored",  30,  101,  76,   34, 1.00,  22, "#8fa0b8", "melee",  {splash:40}],
+  ["Dread Lord",       2800,  52, 1500,  10, "armored",  46, 139,  120,   36, 0.80,  20, "#8a3a3a", "melee",  {splash:46}],
+  ["High Lord",        3600,  62, 2600,  16, "armored",  40, 164, 139,   40, 0.85,  26, "#e0d070", "melee",  {splash:55}],
+].map((r, i) => ({
+  idx: i, name: r[0], price: r[1], income: r[2], hp: r[3], armour: r[4], type: r[5],
+  spd: r[6], dL: r[7], dA: r[8], rng: r[9], ws: r[10], size: r[11], col: r[12],
+  kind: r[13], ...r[14],
+}));
 
-// attacker class -> defender class -> damage multiplier
-const COUNTER = {
-  inf:    { pike:1.6, mage:1.4 },
-  pike:   { cav:2.4, tank:1.4 },
-  cav:    { ranged:2.6, mage:2.6, pike:0.5 },
-  ranged: { inf:1.7, pike:1.5, tank:0.6 },
-  mage:   { tank:2.6, inf:1.6, cav:0.7 },
-  tank:   { inf:1.4, pike:0.7 },
-};
-const mult = (a, d) => (COUNTER[a] && COUNTER[a][d]) || 1;
-
-const P1_KEYS = ["Digit1","Digit2","Digit3","Digit4","Digit5","Digit6","Digit7"];
-const P2_KEYS = ["KeyU","KeyI","KeyO","KeyP","BracketLeft","BracketRight","Backslash"];
-const P1_LBL  = ["1","2","3","4","5","6","7"];
-const P2_LBL  = ["U","I","O","P","[","]","\\"];
+const P1_KEYS = ["Digit1","Digit2","Digit3","Digit4","KeyQ","KeyW","KeyE","KeyR",
+                 "KeyA","KeyS","KeyD","KeyF","KeyZ","KeyX","KeyC","KeyV"];
+const P2_KEYS = ["Digit7","Digit8","Digit9","Digit0","KeyU","KeyI","KeyO","KeyP",
+                 "KeyJ","KeyK","KeyL","Semicolon","KeyM","Comma","Period","Slash"];
+const P1_LBL = ["1","2","3","4","Q","W","E","R","A","S","D","F","Z","X","C","V"];
+const P2_LBL = ["7","8","9","0","U","I","O","P","J","K","L",";","M",",",".","/"];
 
 /* ============================================================
    STATE
    ============================================================ */
-const BASE_HP   = 2200;
-const START_GOLD= 1400;
-const DEPLOY_T  = 25;      // seconds of deploy phase before auto-start
-const BATTLE_T  = 40;      // hard cap on a round; ends the round, never kills a unit
+const CRYSTAL_HP  = 2000;
+const START_GOLD  = 700;
+const TICK_T      = 15;     // seconds between paydays ("rounds")
+const BASE_INCOME = 130;    // plus 30 per round, plus every living unit's income
 
-const G = {
-  phase: "menu",           // menu | deploy | battle | over
-  round: 1,
-  t: 0,
-  units: [],
-  shots: [],
-  fx: [],
-  W: 100, H: 100,
-  shake: 0,
-};
-
+const G = { running:false, over:false, paused:false, round:1, tick:TICK_T,
+            units:[], shots:[], fx:[], W:100, H:100, shake:0, frame:0 };
+let P = [];
 function mkPlayer(team) {
-  return { team, gold: START_GOLD, hp: BASE_HP, ready: false, queue: [] };
+  return { team, gold: START_GOLD, hp: CRYSTAL_HP, cool: 0, kills: 0 };
 }
-let P = [mkPlayer(0), mkPlayer(1)];
 
-/* ============================================================
-   CANVAS
-   ============================================================ */
-const cv  = document.getElementById("cv");
-let ctx   = cv.getContext("2d");   // swapped temporarily when drawing shop icons
+const cv = document.getElementById("cv");
+let ctx = cv.getContext("2d");
 let DPR = 1;
 
 function resize() {
@@ -249,348 +231,301 @@ function resize() {
   const r = cv.getBoundingClientRect();
   G.W = Math.max(320, r.width);
   G.H = Math.max(200, r.height);
-  cv.width  = Math.round(G.W * DPR);
+  cv.width = Math.round(G.W * DPR);
   cv.height = Math.round(G.H * DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   buildTerrain();
 }
 window.addEventListener("resize", resize);
 
-/* decorative grass tufts / rocks, regenerated on resize */
 let terrain = [];
 function buildTerrain() {
   terrain = [];
   const n = Math.round(G.W * G.H / 5200);
-  for (let i = 0; i < n; i++) {
-    terrain.push({
-      x: Math.random() * G.W, y: Math.random() * G.H,
-      s: 2 + Math.random() * 4,
-      k: Math.random() < 0.12 ? "rock" : "grass",
-      c: Math.random(),
-    });
-  }
+  for (let i = 0; i < n; i++)
+    terrain.push({ x: Math.random()*G.W, y: Math.random()*G.H, s: 2 + Math.random()*4,
+                   k: Math.random() < 0.12 ? "rock" : "grass", c: Math.random() });
 }
 
-const GROUND_TOP = () => 92;                 // keep units clear of the HUD
-const GROUND_BOT = () => G.H - 14;
-const baseX = (team) => (team === 0 ? 46 : G.W - 46);
+const TOP = () => 76;
+const BOT = () => G.H - 12;
+const crystalX = t => (t === 0 ? 58 : G.W - 58);
+const crystalY = () => (TOP() + BOT()) / 2;
 
 /* ============================================================
-   SOUND — a few oscillator blips, no assets. M mutes.
+   SOUND
    ============================================================ */
 let AC = null, muted = false;
-function tone(freq, dur, type, vol, slideTo) {
+function tone(f, dur, type, vol, slide) {
   if (muted) return;
   try {
     AC = AC || new (window.AudioContext || window.webkitAudioContext)();
     const o = AC.createOscillator(), g = AC.createGain();
     o.type = type || "square";
-    o.frequency.setValueAtTime(freq, AC.currentTime);
-    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, AC.currentTime + dur);
-    g.gain.setValueAtTime(vol || 0.05, AC.currentTime);
+    o.frequency.setValueAtTime(f, AC.currentTime);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + dur);
+    g.gain.setValueAtTime(vol || 0.04, AC.currentTime);
     g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
     o.connect(g); g.connect(AC.destination);
     o.start(); o.stop(AC.currentTime + dur);
-  } catch (e) { /* audio is a nicety — never break the game over it */ }
+  } catch (e) { /* audio is a nicety, never a failure */ }
 }
-const sfxBuy   = () => tone(560, 0.07, "square", 0.045, 840);
-const sfxDeny  = () => tone(150, 0.09, "sawtooth", 0.04, 90);
-const sfxReady = () => tone(700, 0.12, "triangle", 0.06, 1050);
-const sfxHorn  = () => { tone(220, 0.35, "sawtooth", 0.05, 330); setTimeout(() => tone(330, 0.4, "sawtooth", 0.05, 440), 130); };
-const sfxThud  = () => tone(90, 0.16, "sawtooth", 0.07, 45);
+const sfxBuy  = () => tone(600, 0.06, "square", 0.04, 900);
+const sfxDeny = () => tone(140, 0.08, "sawtooth", 0.035, 90);
+const sfxPay  = () => { tone(660, 0.1, "triangle", 0.05, 990); setTimeout(()=>tone(880,0.12,"triangle",0.05,1180), 90); };
+const sfxThud = () => tone(85, 0.15, "sawtooth", 0.06, 45);
 
 /* ============================================================
-   DEPLOY / BUY
+   COMBAT MATH — the whole counter system lives here
    ============================================================ */
+function dmgOf(src, dst) {
+  const raw = dst.u.type === "light" ? src.u.dL : src.u.dA;
+  return Math.max(2, raw - dst.u.armour);          // flat armour reduction, min chip damage
+}
+
+let UID = 0;
+function spawn(idx, team) {
+  const u = UNITS[idx];
+  const lane = (Math.random() - 0.5);
+  return {
+    uid: ++UID, team, u,
+    x: crystalX(team) + (team === 0 ? 34 : -34) + (Math.random()*10-5),
+    y: crystalY() + lane * (BOT() - TOP()) * 0.62,
+    hp: u.hp, maxhp: u.hp,
+    cool: Math.random() * u.ws,
+    tgt: null, retarget: Math.random() * 0.3,
+    swing: 0, hurt: 0, step: Math.random()*6.28, dead: false,
+  };
+}
+
 function buy(team, idx) {
-  if (G.phase !== "deploy") return false;
+  if (!G.running || G.over || G.paused) return false;
   const p = P[team], u = UNITS[idx];
-  if (p.ready || p.gold < u.cost) { sfxDeny(); return false; }
-  p.gold -= u.cost;
-  p.queue.push(idx);
+  if (p.gold < u.price) { sfxDeny(); return false; }
+  p.gold -= u.price;
+  G.units.push(spawn(idx, team));
   flashCard(team, idx);
   sfxBuy();
   return true;
 }
-function refund(team) {
-  if (G.phase !== "deploy") return;
-  const p = P[team];
-  if (p.ready || !p.queue.length) return;
-  p.gold += UNITS[p.queue.pop()].cost;
-  tone(400, 0.06, "square", 0.04, 260);
-}
-function setReady(team) {
-  if (G.phase !== "deploy") return;
-  P[team].ready = !P[team].ready;
-  sfxReady();
-  if (P[0].ready && P[1].ready) startBattle();
-}
 
-/* formation: melee up front, ranged behind, packed into a block that stays
-   centred on the field no matter how big the army gets */
-function formation(queue, team) {
-  const order = queue.slice().sort((a, b) => UNITS[a].rng - UNITS[b].rng);
-  const top = GROUND_TOP() + 16, bot = GROUND_BOT() - 16;
-  const gapY = 32, gapX = 30;
-  const maxRows = Math.max(3, Math.floor((bot - top) / gapY));
-  const rows = Math.max(1, Math.min(maxRows, Math.ceil(Math.sqrt(order.length * 3.5))));
-  const gapXa = order.length > maxRows * 12 ? 18 : gapX;   // deep armies pack tighter, never capped
-  const cy = (top + bot) / 2;
-  const y0 = cy - (rows - 1) * gapY / 2;
-  const front = team === 0 ? 250 : G.W - 250;
-  const dir = team === 0 ? -1 : 1;      // deeper columns sit further back
-  return order.map((idx, i) => ({
-    idx,
-    x: front + dir * Math.floor(i / rows) * gapXa,
-    y: y0 + (i % rows) * gapY,
-  }));
+/* ---------- spatial hash so big armies stay cheap ---------- */
+const CELL = 70;
+let grid = new Map();
+function gkey(cx, cy) { return cx * 100000 + cy; }
+function rebuildGrid() {
+  grid = new Map();
+  for (const a of G.units) {
+    if (a.dead) continue;
+    const k = gkey(Math.floor(a.x / CELL), Math.floor(a.y / CELL));
+    const b = grid.get(k);
+    if (b) b.push(a); else grid.set(k, [a]);
+  }
 }
-
-function deploy() {
-  for (const p of P) {
-    for (const s of formation(p.queue, p.team)) {
-      G.units.push(spawn(s.idx, p.team,
-        s.x + (Math.random() * 7 - 3.5),
-        Math.max(GROUND_TOP(), Math.min(GROUND_BOT(), s.y + (Math.random() * 7 - 3.5)))));
+function nearby(x, y, r, fn) {
+  const c0 = Math.floor((x - r) / CELL), c1 = Math.floor((x + r) / CELL);
+  const r0 = Math.floor((y - r) / CELL), r1 = Math.floor((y + r) / CELL);
+  for (let cx = c0; cx <= c1; cx++)
+    for (let cy = r0; cy <= r1; cy++) {
+      const b = grid.get(gkey(cx, cy));
+      if (b) for (const o of b) fn(o);
     }
-    p.queue = [];
-  }
 }
 
-let UID = 0;
-function spawn(idx, team, x, y) {
-  const u = UNITS[idx];
-  return {
-    uid: ++UID, idx, team, x, y, u,
-    hp: u.hp, maxhp: u.hp,
-    cool: Math.random() * u.cd,
-    tgt: null, swing: 0, hurt: 0, step: Math.random() * 6.28,
-    dead: false,
-  };
-}
-
-/* ============================================================
-   BATTLE
-   ============================================================ */
-function startBattle() {
-  G.phase = "battle";
-  G.t = 0;
-  deploy();
-  banner("CHARGE!", 900);
-  sfxHorn();
-}
-
+const SIGHT = 300;    // beyond this a unit just advances on the enemy crystal
 function findTarget(a) {
-  let best = null, bd = 1e12;
-  for (const b of G.units) {
-    if (b.dead || b.team === a.team) continue;
+  let best = null, bd = SIGHT * SIGHT;
+  nearby(a.x, a.y, SIGHT, b => {
+    if (b.dead || b.team === a.team) return;
     const d = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
-    // prefer whatever this unit counters, slightly
-    const w = d / mult(a.u.cls, b.u.cls);
-    if (w < bd) { bd = w; best = b; }
-  }
+    if (d < bd) { bd = d; best = b; }
+  });
   return best;
 }
 
-function damage(target, amt, srcCls) {
-  const m = mult(srcCls, target.u.cls);
-  target.hp -= amt * m;
-  target.hurt = 0.18;
+function hurt(target, amt, src) {
+  target.hp -= amt;
+  target.hurt = 0.16;
+  if (src && src.u.drain) {
+    src.hp = Math.min(src.maxhp, src.hp + amt * src.u.drain);
+    G.fx.push({ x: src.x, y: src.y - 8, vx: 0, vy: -40, life: .4, max: .4, c: "#ff5e8a", r: 2.5 });
+  }
   if (target.hp <= 0 && !target.dead) {
     target.dead = true;
+    P[1 - target.team].kills++;
     puff(target.x, target.y, target.team, target.u.size);
   }
 }
 
-let lastThud = -9;
-function hitBase(team, amt) {          // team = the side taking damage
+function hitCrystal(team, amt) {
   const p = P[team];
+  if (p.hp <= 0) return;
   p.hp = Math.max(0, p.hp - amt);
-  G.shake = Math.min(9, G.shake + amt * 0.05);
-  if (G.t - lastThud > 0.15) { lastThud = G.t; sfxThud(); }
-  for (let i = 0; i < 4; i++) {
-    G.fx.push({ x: baseX(team) + (Math.random()*30-15), y: G.H*0.55 + (Math.random()*60-30),
-                vx: (Math.random()-0.5)*70, vy: -30 - Math.random()*60,
-                life: 0.6, max: 0.6, c: "#ffb648", r: 3 + Math.random()*3 });
-  }
+  G.shake = Math.min(10, G.shake + amt * 0.02);
+  if (G.frame % 7 === 0) sfxThud();
+  for (let i = 0; i < 3; i++)
+    G.fx.push({ x: crystalX(team) + (Math.random()*26-13), y: crystalY() + (Math.random()*70-35),
+                vx: (Math.random()-.5)*80, vy: -40 - Math.random()*60,
+                life: .5, max: .5, c: team === 0 ? "#9fd8ff" : "#ffc49f", r: 2 + Math.random()*3 });
   if (p.hp <= 0) endGame(1 - team);
 }
 
-function stepBattle(dt) {
+/* ============================================================
+   STEP
+   ============================================================ */
+function step(dt) {
+  G.frame++;
+  rebuildGrid();
+
+  // ---- payday ----
+  G.tick -= dt;
+  if (G.tick <= 0) {
+    G.tick += TICK_T;
+    G.round++;
+    const inc = [0, 0];
+    for (const a of G.units) if (!a.dead) inc[a.team] += a.u.income;
+    for (const t of [0, 1]) P[t].gold += BASE_INCOME + 30 * G.round + inc[t];
+    banner("PAYDAY", 900);
+    sfxPay();
+  }
+
+  // ---- units ----
   for (const a of G.units) {
     if (a.dead) continue;
     a.cool -= dt;
     a.swing = Math.max(0, a.swing - dt * 4);
-    a.hurt  = Math.max(0, a.hurt - dt);
+    a.hurt = Math.max(0, a.hurt - dt);
+    a.retarget -= dt;
 
-    if (!a.tgt || a.tgt.dead) a.tgt = findTarget(a);
-    const enemyBase = baseX(1 - a.team);
+    if (a.retarget <= 0 || !a.tgt || a.tgt.dead) { a.tgt = findTarget(a); a.retarget = 0.2 + Math.random()*0.2; }
 
-    let tx, ty, reach, isBase = false;
+    const cx = crystalX(1 - a.team);
+    let tx, ty, reach, isCrystal = false;
     if (a.tgt) {
-      tx = a.tgt.x; ty = a.tgt.y;
-      reach = a.u.rng + a.u.size + a.tgt.u.size;
+      tx = a.tgt.x; ty = a.tgt.y; reach = a.u.rng + a.u.size + a.tgt.u.size;
     } else {
-      tx = enemyBase; ty = a.y; reach = a.u.rng + a.u.size + 26; isBase = true;
+      tx = cx; ty = crystalY(); reach = a.u.rng + a.u.size + 30; isCrystal = true;
     }
 
-    const dx = tx - a.x, dy = ty - a.y;
-    const dist = Math.hypot(dx, dy) || 1;
+    const dx = tx - a.x, dy = ty - a.y, dist = Math.hypot(dx, dy) || 1;
 
     if (dist > reach) {
       const sp = a.u.spd * dt;
-      a.x += (dx / dist) * sp;
-      a.y += (dy / dist) * sp;
-      a.step += dt * a.u.spd * 0.22;
-      // soft separation so blobs don't fully overlap
-      a.y = Math.max(GROUND_TOP(), Math.min(GROUND_BOT(), a.y));
+      a.x += dx / dist * sp;
+      a.y += dy / dist * sp;
+      a.step += dt * a.u.spd * 0.2;
+      a.y = Math.max(TOP(), Math.min(BOT(), a.y));
     } else if (a.cool <= 0) {
-      a.cool = a.u.cd;
+      a.cool = a.u.ws;
       a.swing = 1;
-      if (isBase) {
-        hitBase(1 - a.team, a.u.atk * 1.6);
-      } else if (a.u.rng > 60) {
-        G.shots.push({ x: a.x, y: a.y - 6, tx: a.tgt.x, ty: a.tgt.y - 6, t: 0,
-                       sp: a.u.cls === "mage" ? 320 : 480, dmg: a.u.atk, cls: a.u.cls,
-                       team: a.team, splash: a.u.splash || 0, tgt: a.tgt,
-                       col: a.u.cls === "mage" ? "#e08fff" : "#f5e6b0" });
+      if (isCrystal) {
+        hitCrystal(1 - a.team, Math.max(a.u.dL, a.u.dA) * 2);
+      } else if (a.u.kind === "ranged") {
+        G.shots.push({ x: a.x, y: a.y - 7, tx: a.tgt.x, ty: a.tgt.y - 7, src: a, tgt: a.tgt,
+                       sp: a.u.splash ? 330 : 500, splash: a.u.splash || 0, team: a.team, t: 0,
+                       col: a.u.splash ? "#e08fff" : "#f5e6b0" });
       } else if (a.u.splash) {
-        // heavy melee cleaves through everything in the swing arc
-        for (const b of G.units) {
-          if (b.dead || b.team === a.team) continue;
+        nearby(a.tgt.x, a.tgt.y, a.u.splash, b => {
+          if (b.dead || b.team === a.team) return;
           if (Math.hypot(b.x - a.tgt.x, b.y - a.tgt.y) < a.u.splash) {
-            damage(b, a.u.atk, a.u.cls);
-            spark(b.x, b.y, b.team);
+            hurt(b, dmgOf(a, b), a); spark(b.x, b.y);
           }
-        }
+        });
       } else {
-        damage(a.tgt, a.u.atk, a.u.cls);
-        spark(a.tgt.x, a.tgt.y, a.tgt.team);
+        hurt(a.tgt, dmgOf(a, a.tgt), a);
+        spark(a.tgt.x, a.tgt.y);
       }
     }
   }
 
-  // separation pass — cheap O(n^2) but n stays modest
-  const us = G.units;
-  for (let i = 0; i < us.length; i++) {
-    const a = us[i]; if (a.dead) continue;
-    for (let j = i + 1; j < us.length; j++) {
-      const b = us[j]; if (b.dead) continue;
-      const dx = b.x - a.x, dy = b.y - a.y;
-      const md = (a.u.size + b.u.size) * 0.85;
-      const d2 = dx*dx + dy*dy;
-      if (d2 < md*md && d2 > 0.01) {
-        const d = Math.sqrt(d2), push = (md - d) * 0.5;
-        const nx = dx / d * push, ny = dy / d * push;
-        a.x -= nx; a.y -= ny; b.x += nx; b.y += ny;
-      }
+  // ---- crystals shoot back ----
+  for (const p of P) {
+    if (p.hp <= 0) continue;
+    p.cool -= dt;
+    if (p.cool > 0) continue;
+    let best = null, bd = 175 * 175;
+    nearby(crystalX(p.team), crystalY(), 175, b => {
+      if (b.dead || b.team === p.team) return;
+      const d = (b.x - crystalX(p.team)) ** 2 + (b.y - crystalY()) ** 2;
+      if (d < bd) { bd = d; best = b; }
+    });
+    if (best) {
+      p.cool = 0.9;
+      G.shots.push({ x: crystalX(p.team), y: crystalY() - 20, tx: best.x, ty: best.y, tgt: best,
+                     src: null, crystal: true, sp: 460, splash: 0, team: p.team, t: 0, col: "#bff0ff" });
     }
   }
 
-  // projectiles
+  // ---- projectiles ----
   for (const s of G.shots) {
     s.t += dt;
-    const dx = s.tx - s.x, dy = s.ty - s.y, d = Math.hypot(dx, dy);
-    const step = s.sp * dt;
-    if (s.tgt && !s.tgt.dead) { s.tx = s.tgt.x; s.ty = s.tgt.y - 6; }
-    if (d <= step || s.t > 3) {
+    if (s.tgt && !s.tgt.dead) { s.tx = s.tgt.x; s.ty = s.tgt.y - 7; }
+    const dx = s.tx - s.x, dy = s.ty - s.y, d = Math.hypot(dx, dy) || 1;
+    const stepd = s.sp * dt;
+    if (d <= stepd || s.t > 4) {
       s.done = true;
       if (s.splash) {
-        for (const b of G.units) {
-          if (b.dead || b.team === s.team) continue;
-          if (Math.hypot(b.x - s.tx, b.y - s.ty) < s.splash) damage(b, s.dmg, s.cls);
-        }
+        nearby(s.tx, s.ty, s.splash, b => {
+          if (b.dead || b.team === s.team) return;
+          if (Math.hypot(b.x - s.tx, b.y - s.ty) < s.splash) hurt(b, dmgOf(s.src, b), s.src);
+        });
         boom(s.tx, s.ty, s.splash);
       } else if (s.tgt && !s.tgt.dead) {
-        damage(s.tgt, s.dmg, s.cls);
-        spark(s.tx, s.ty, s.tgt.team);
+        hurt(s.tgt, s.crystal ? 70 : dmgOf(s.src, s.tgt), s.crystal ? null : s.src);
+        spark(s.tx, s.ty);
       }
-    } else {
-      s.x += dx / d * step; s.y += dy / d * step;
-    }
+    } else { s.x += dx / d * stepd; s.y += dy / d * stepd; }
   }
   G.shots = G.shots.filter(s => !s.done);
 
-  // fx
-  for (const f of G.fx) {
-    f.life -= dt;
-    f.x += f.vx * dt; f.y += f.vy * dt;
-    f.vy += 220 * dt;
+  // ---- separation (grid-limited) ----
+  for (const a of G.units) {
+    if (a.dead) continue;
+    nearby(a.x, a.y, a.u.size * 2, b => {
+      if (b === a || b.dead) return;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const md = (a.u.size + b.u.size) * 0.82;
+      const d2 = dx*dx + dy*dy;
+      if (d2 < md*md && d2 > 0.01) {
+        const d = Math.sqrt(d2), push = (md - d) * 0.28;
+        const nx = dx/d*push, ny = dy/d*push;
+        a.x -= nx; a.y -= ny; b.x += nx; b.y += ny;
+      }
+    });
+    a.y = Math.max(TOP(), Math.min(BOT(), a.y));
   }
+
+  // ---- fx ----
+  for (const f of G.fx) { f.life -= dt; f.x += f.vx*dt; f.y += f.vy*dt; f.vy += 220*dt; }
   G.fx = G.fx.filter(f => f.life > 0);
-
   G.units = G.units.filter(u => !u.dead || (u.fade = (u.fade ?? 0.5) - dt) > 0);
-
-  // round over?
-  const now = [0, 0];
-  for (const a of G.units) if (!a.dead) now[a.team]++;
-  if (G.phase === "battle" && (now[0] === 0 || now[1] === 0 || G.t > BATTLE_T)) endRound();
-}
-
-function endRound() {
-  if (G.phase !== "battle") return;
-  // whoever still holds the field marches on the enemy castle.
-  // capped per round so no single blowout ends the war outright.
-  const CAP = BASE_HP * 0.34;
-  const surv = [0, 0];
-  for (const a of G.units) if (!a.dead) surv[a.team] += UNITS[a.idx].cost;
-  // holding the field is worth a flat siege hit; the size of what's left does the rest
-  let dmg = [0, 0];
-  for (const t of [0, 1]) if (surv[t] > 0) dmg[1 - t] = Math.min(CAP, 150 + surv[t] * 0.35);
-  if (dmg[0] > dmg[1]) banner("RED HOLDS THE FIELD", 1400);
-  else if (dmg[1] > dmg[0]) banner("BLUE HOLDS THE FIELD", 1400);
-  else banner("STALEMATE", 1200);
-  if (dmg[0]) hitBase(0, dmg[0]);
-  if (dmg[1]) hitBase(1, dmg[1]);
-  if (G.phase === "over") return;
-
-  G.units = []; G.shots = []; G.fx = [];
-  G.round++;
-  const income = 400 + 120 * G.round;
-  for (const p of P) {
-    p.gold += income + Math.floor(p.gold * 0.08);   // small interest on savings
-    p.ready = false;
-  }
-  G.phase = "deploy";
-  G.t = 0;
-}
-
-function endGame(winner) {
-  G.phase = "over";
-  const ov = document.getElementById("overlay");
-  ov.querySelector("h1").textContent = (winner === 0 ? "BLUE" : "RED") + " WINS!";
-  ov.querySelector("h1").style.color = winner === 0 ? "#7fc4ff" : "#ffb27f";
-  ov.querySelector("p").textContent = "Castle destroyed on round " + G.round + ".";
-  document.getElementById("startBtn").textContent = "REMATCH";
-  ov.classList.remove("hide");
 }
 
 /* ============================================================
-   FX helpers
+   FX
    ============================================================ */
-function spark(x, y, team) {
-  for (let i = 0; i < 4; i++)
-    G.fx.push({ x, y, vx: (Math.random()-0.5)*90, vy: -Math.random()*70,
-                life: 0.3, max: 0.3, c: "#ff6b5e", r: 1.6 + Math.random()*1.6 });
+function spark(x, y) {
+  for (let i = 0; i < 3; i++)
+    G.fx.push({ x, y, vx: (Math.random()-.5)*90, vy: -Math.random()*70,
+                life: .28, max: .28, c: "#ff6b5e", r: 1.5 + Math.random()*1.5 });
 }
 function puff(x, y, team, size) {
-  const c = team === 0 ? "#7fc4ff" : "#ff9a7f";
+  const c = team === 0 ? "#9fd8ff" : "#ffb08f";
   for (let i = 0; i < 8; i++)
-    G.fx.push({ x, y, vx: (Math.random()-0.5)*130, vy: -Math.random()*120,
-                life: 0.5, max: 0.5, c, r: 1.5 + Math.random() * size * 0.35 });
+    G.fx.push({ x, y, vx: (Math.random()-.5)*140, vy: -Math.random()*130,
+                life: .5, max: .5, c, r: 1.5 + Math.random()*size*0.3 });
 }
 function boom(x, y, r) {
   for (let i = 0; i < 16; i++) {
-    const a = Math.random() * 6.28, s = Math.random() * r * 3;
+    const a = Math.random()*6.28, s = Math.random()*r*2.6;
     G.fx.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s - 40,
-                life: 0.45, max: 0.45, c: "#e08fff", r: 2 + Math.random()*3 });
+                life: .45, max: .45, c: "#e08fff", r: 2 + Math.random()*3 });
   }
 }
 let bannerT = 0;
 function banner(text, ms) {
   const el = document.getElementById("banner");
-  el.textContent = text;
-  el.classList.add("show");
+  el.textContent = text; el.classList.add("show");
   bannerT = performance.now() + ms;
 }
 
@@ -600,204 +535,208 @@ function banner(text, ms) {
 function draw() {
   const W = G.W, H = G.H;
   ctx.save();
-  if (G.shake > 0.2) ctx.translate((Math.random()-0.5)*G.shake, (Math.random()-0.5)*G.shake);
+  if (G.shake > 0.2) ctx.translate((Math.random()-.5)*G.shake, (Math.random()-.5)*G.shake);
 
-  // field
   const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, "#7fa93c"); g.addColorStop(0.5, "#8dbb43"); g.addColorStop(1, "#6d9633");
-  ctx.fillStyle = g; ctx.fillRect(-12, -12, W + 24, H + 24);
+  g.addColorStop(0, "#7fa93c"); g.addColorStop(.5, "#8dbb43"); g.addColorStop(1, "#6d9633");
+  ctx.fillStyle = g; ctx.fillRect(-12, -12, W+24, H+24);
 
   for (const t of terrain) {
     if (t.k === "rock") {
-      ctx.fillStyle = "rgba(90,90,80,.45)";
-      ctx.beginPath(); ctx.ellipse(t.x, t.y, t.s, t.s * 0.7, 0, 0, 6.29); ctx.fill();
+      ctx.fillStyle = "rgba(90,90,80,.4)";
+      ctx.beginPath(); ctx.ellipse(t.x, t.y, t.s, t.s*.7, 0, 0, 6.29); ctx.fill();
     } else {
-      ctx.strokeStyle = t.c > 0.5 ? "rgba(60,110,30,.5)" : "rgba(160,200,90,.45)";
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(t.x, t.y); ctx.lineTo(t.x - t.s*0.5, t.y - t.s*1.6);
-      ctx.moveTo(t.x, t.y); ctx.lineTo(t.x + t.s*0.6, t.y - t.s*1.3);
+      ctx.strokeStyle = t.c > .5 ? "rgba(60,110,30,.45)" : "rgba(160,200,90,.4)";
+      ctx.lineWidth = 1.4; ctx.beginPath();
+      ctx.moveTo(t.x, t.y); ctx.lineTo(t.x - t.s*.5, t.y - t.s*1.6);
+      ctx.moveTo(t.x, t.y); ctx.lineTo(t.x + t.s*.6, t.y - t.s*1.3);
       ctx.stroke();
     }
   }
 
-  drawCastle(0); drawCastle(1);
+  drawCrystal(0); drawCrystal(1);
 
-  if (G.phase === "deploy") drawGhostArmies();
-
-  // depth sort
   const list = G.units.slice().sort((a, b) => a.y - b.y);
   for (const a of list) drawUnit(a);
 
   for (const s of G.shots) {
-    ctx.strokeStyle = s.col; ctx.lineWidth = s.splash ? 4 : 2;
-    ctx.lineCap = "round";
+    ctx.strokeStyle = s.col; ctx.lineWidth = s.splash ? 4 : 2; ctx.lineCap = "round";
     const dx = s.tx - s.x, dy = s.ty - s.y, d = Math.hypot(dx, dy) || 1;
-    ctx.beginPath();
-    ctx.moveTo(s.x, s.y);
-    ctx.lineTo(s.x - dx/d * (s.splash ? 8 : 13), s.y - dy/d * (s.splash ? 8 : 13));
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s.x, s.y);
+    ctx.lineTo(s.x - dx/d*(s.splash?8:13), s.y - dy/d*(s.splash?8:13)); ctx.stroke();
   }
 
   for (const f of G.fx) {
-    ctx.globalAlpha = Math.max(0, f.life / f.max);
+    ctx.globalAlpha = Math.max(0, f.life/f.max);
     ctx.fillStyle = f.c;
     ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.29); ctx.fill();
   }
   ctx.globalAlpha = 1;
-
-  // deploy-phase line markers
-  if (G.phase === "deploy") {
-    ctx.setLineDash([7, 7]); ctx.lineWidth = 2;
-    ctx.strokeStyle = "rgba(255,255,255,.28)";
-    ctx.beginPath(); ctx.moveTo(W/2, GROUND_TOP()); ctx.lineTo(W/2, GROUND_BOT()+10); ctx.stroke();
-    ctx.setLineDash([]);
-  }
   ctx.restore();
 }
 
-function drawCastle(team) {
-  const x = baseX(team), cy = G.H * 0.55;
-  const w = 42, h = 120;
-  const dir = team === 0 ? 1 : -1;
-  const dark = team === 0 ? "#2b4a80" : "#7a2f22";
-  const lite = team === 0 ? "#4d7fc4" : "#c25b40";
-  ctx.fillStyle = "rgba(0,0,0,.22)";
-  ctx.beginPath(); ctx.ellipse(x, cy + h/2 + 6, w*0.9, 12, 0, 0, 6.29); ctx.fill();
-  ctx.fillStyle = dark;
-  ctx.fillRect(x - w/2, cy - h/2, w, h);
-  ctx.fillStyle = lite;
-  ctx.fillRect(x - w/2, cy - h/2, w * 0.5, h);
-  // battlements
-  ctx.fillStyle = dark;
-  for (let i = 0; i < 4; i++) ctx.fillRect(x - w/2 + i * (w/4), cy - h/2 - 10, w/8, 10);
-  // gate facing the field
-  ctx.fillStyle = "#2a1b12";
-  ctx.beginPath();
-  ctx.moveTo(x + dir*w/2, cy + 26);
-  ctx.lineTo(x + dir*w/2, cy - 6);
-  ctx.quadraticCurveTo(x + dir*(w/2 - 14), cy - 24, x + dir*(w/2 - 26), cy - 6);
-  ctx.lineTo(x + dir*(w/2 - 26), cy + 26);
-  ctx.closePath(); ctx.fill();
-  // banner pole
-  ctx.strokeStyle = "#3a2c18"; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(x, cy - h/2 - 10); ctx.lineTo(x, cy - h/2 - 40); ctx.stroke();
-  ctx.fillStyle = lite;
-  const fl = Math.sin(performance.now()/240) * 3;
-  ctx.beginPath();
-  ctx.moveTo(x, cy - h/2 - 40);
-  ctx.lineTo(x + dir*24, cy - h/2 - 34 + fl);
-  ctx.lineTo(x, cy - h/2 - 26);
-  ctx.closePath(); ctx.fill();
-}
+function drawCrystal(team) {
+  const x = crystalX(team), y = crystalY();
+  const p = P[team] || { hp: CRYSTAL_HP };
+  const f = Math.max(0, p.hp / CRYSTAL_HP);
+  const h = 108, w = 44;
+  const lite = team === 0 ? "#7fc4ff" : "#ff8a6a";
+  const dark = team === 0 ? "#20487f" : "#7a2f22";
+  const t = performance.now() / 600;
 
-/* faint preview of what you've bought, during deploy */
-function drawGhostArmies() {
-  ctx.globalAlpha = 0.6;
-  for (const p of P) {
-    for (const s of formation(p.queue, p.team)) {
-      drawUnit({ idx: s.idx, team: p.team, u: UNITS[s.idx], x: s.x, y: s.y,
-                 hp: 1, maxhp: 1, swing: 0, hurt: 0, step: 0, dead: false, ghost: true });
-    }
+  ctx.fillStyle = "rgba(0,0,0,.22)";
+  ctx.beginPath(); ctx.ellipse(x, y + h/2 + 8, w*0.95, 13, 0, 0, 6.29); ctx.fill();
+
+  // plinth
+  ctx.fillStyle = "#5b5348";
+  ctx.fillRect(x - w*0.8, y + h/2 - 6, w*1.6, 18);
+  ctx.fillStyle = "#6e6558";
+  ctx.fillRect(x - w*0.8, y + h/2 - 6, w*1.6, 6);
+
+  // glow
+  const gl = ctx.createRadialGradient(x, y, 4, x, y, w*1.9);
+  gl.addColorStop(0, team === 0 ? "rgba(120,190,255,.4)" : "rgba(255,150,110,.4)");
+  gl.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = gl;
+  ctx.beginPath(); ctx.arc(x, y, w*1.9, 0, 6.29); ctx.fill();
+
+  // crystal body — damage shows as the shard shrinking and dimming
+  const s = 0.45 + 0.55 * f;
+  ctx.globalAlpha = 0.55 + 0.45 * f;
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.moveTo(x, y - h/2*s);
+  ctx.lineTo(x + w/2*s, y - h/8*s);
+  ctx.lineTo(x + w/3*s, y + h/2*s);
+  ctx.lineTo(x - w/3*s, y + h/2*s);
+  ctx.lineTo(x - w/2*s, y - h/8*s);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = lite;
+  ctx.beginPath();
+  ctx.moveTo(x, y - h/2*s);
+  ctx.lineTo(x + w/2*s, y - h/8*s);
+  ctx.lineTo(x, y + h/2*s);
+  ctx.lineTo(x - w/2*s, y - h/8*s);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.55)";
+  ctx.beginPath();
+  ctx.moveTo(x, y - h/2*s);
+  ctx.lineTo(x + w/6*s, y - h/8*s);
+  ctx.lineTo(x, y + h/4*s);
+  ctx.lineTo(x - w/6*s, y - h/8*s);
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // orbiting motes
+  for (let i = 0; i < 3; i++) {
+    const a = t + i * 2.1;
+    ctx.fillStyle = lite;
+    ctx.globalAlpha = .7;
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * w * 0.9, y + Math.sin(a * 1.3) * h * 0.32, 2.6, 0, 6.29);
+    ctx.fill();
   }
   ctx.globalAlpha = 1;
 }
 
 function drawUnit(a) {
-  const s = a.u.size;
-  const face = a.team === 0 ? 1 : -1;
+  const s = a.u.size, face = a.team === 0 ? 1 : -1;
   const teamCol = a.team === 0 ? "#3f7fd6" : "#d64b2b";
   const bob = a.dead ? 0 : Math.sin(a.step) * 1.4;
   const x = a.x, y = a.y + bob;
   const alpha0 = ctx.globalAlpha;
+  if (a.dead) ctx.globalAlpha = alpha0 * Math.max(0, (a.fade ?? 0) / 0.5) * 0.7;
 
-  if (a.dead) { ctx.globalAlpha = alpha0 * Math.max(0, (a.fade ?? 0) / 0.5) * 0.7; }
-
-  // shadow
   ctx.fillStyle = "rgba(0,0,0,.22)";
-  ctx.beginPath(); ctx.ellipse(a.x, a.y + s * 0.9, s * 0.85, s * 0.35, 0, 0, 6.29); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(a.x, a.y + s*0.9, s*0.85, s*0.34, 0, 0, 6.29); ctx.fill();
 
   if (a.dead) {
     ctx.fillStyle = teamCol;
     ctx.beginPath(); ctx.ellipse(a.x, a.y + s*0.6, s*0.9, s*0.4, 0, 0, 6.29); ctx.fill();
-    ctx.globalAlpha = alpha0;
-    return;
+    ctx.globalAlpha = alpha0; return;
   }
 
   const hurt = a.hurt > 0;
+  const armored = a.u.type === "armored";
+
   // legs
-  ctx.strokeStyle = "#3a2c1c"; ctx.lineWidth = Math.max(1.6, s * 0.22);
-  const sw = Math.sin(a.step) * s * 0.45;
+  ctx.strokeStyle = "#3a2c1c"; ctx.lineWidth = Math.max(1.6, s*0.2);
+  const sw = Math.sin(a.step) * s * 0.42;
   ctx.beginPath();
   ctx.moveTo(x, y + s*0.5); ctx.lineTo(x - sw, y + s*1.0);
   ctx.moveTo(x, y + s*0.5); ctx.lineTo(x + sw, y + s*1.0);
   ctx.stroke();
 
-  // body
+  // torso (team colour) + unit-coloured harness
   ctx.fillStyle = hurt ? "#fff" : teamCol;
-  ctx.fillRect(x - s*0.5, y - s*0.5, s, s * 1.05);
-  // armour trim in the unit colour
+  ctx.fillRect(x - s*0.5, y - s*0.5, s, s*1.05);
   ctx.fillStyle = hurt ? "#fff" : a.u.col;
-  ctx.fillRect(x - s*0.5, y - s*0.5, s, s * 0.4);
+  ctx.fillRect(x - s*0.5, y - s*0.5, s, s*0.42);
 
-  // head
+  // armour plating reads at a glance
+  if (armored && !hurt) {
+    ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = 1.2;
+    ctx.strokeRect(x - s*0.5, y - s*0.5, s, s*1.05);
+    ctx.fillStyle = "#cfd8e4";
+    ctx.fillRect(x - s*0.62, y - s*0.36, s*0.22, s*0.72);   // shield
+  }
+
+  // head + helm
   ctx.fillStyle = hurt ? "#fff" : "#e8c9a0";
-  ctx.beginPath(); ctx.arc(x, y - s*0.85, s*0.42, 0, 6.29); ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y - s*0.85, s*0.4, 0, 6.29); ctx.fill();
   ctx.fillStyle = hurt ? "#fff" : a.u.col;
-  ctx.beginPath(); ctx.arc(x, y - s*0.95, s*0.45, Math.PI, 6.29); ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y - s*0.95, s*0.44, Math.PI, 6.29); ctx.fill();
 
   // weapon
-  const sg = a.swing;
-  ctx.strokeStyle = "#efe6cf"; ctx.lineWidth = Math.max(1.6, s*0.2); ctx.lineCap = "round";
-  const hx = x + face * s*0.55, hy = y - s*0.1;
+  const sg = a.swing, hx = x + face*s*0.55, hy = y - s*0.1;
+  ctx.lineWidth = Math.max(1.6, s*0.2); ctx.lineCap = "round";
   ctx.beginPath();
-  switch (a.u.cls) {
-    case "pike":
-      ctx.strokeStyle = "#c9a86a";
-      ctx.moveTo(hx - face*s*0.6, hy + s*0.4);
-      ctx.lineTo(hx + face*(s*1.9 + sg*s), hy - s*0.5);
-      break;
-    case "ranged": {
-      ctx.strokeStyle = "#6b4a26"; ctx.lineWidth = Math.max(1.4, s*0.18);
-      ctx.arc(hx, hy, s*0.75, -1.1 + (face<0?Math.PI:0), 1.1 + (face<0?Math.PI:0));
-      break;
-    }
-    case "mage":
+  if (a.u.kind === "ranged") {
+    if (a.u.splash) {                       // staff
       ctx.strokeStyle = "#7a5aa0";
       ctx.moveTo(hx, hy + s*0.7); ctx.lineTo(hx + face*s*0.2, hy - s*1.2);
-      break;
-    case "cav":
-      ctx.strokeStyle = "#efe6cf";
-      ctx.moveTo(hx, hy + s*0.2);
-      ctx.lineTo(hx + face*(s*1.5 + sg*s*0.6), hy - s*0.9 - sg*s*0.4);
-      break;
-    case "tank":
-      ctx.strokeStyle = "#8a8378"; ctx.lineWidth = Math.max(3, s*0.3);
-      ctx.moveTo(hx, hy + s*0.3);
-      ctx.lineTo(hx + face*(s*0.9 + sg*s*0.5), hy - s*0.8 - sg*s*0.5);
-      break;
-    default:
-      ctx.moveTo(hx, hy + s*0.3);
-      ctx.lineTo(hx + face*(s*0.9 + sg*s*0.7), hy - s*0.7 - sg*s*0.5);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(210,130,255,.9)";
+      ctx.beginPath(); ctx.arc(hx + face*s*0.2, hy - s*1.3, s*0.26, 0, 6.29); ctx.fill();
+      ctx.beginPath();
+    } else {                                // bow
+      ctx.strokeStyle = "#6b4a26";
+      ctx.arc(hx, hy, s*0.72, -1.1 + (face<0?Math.PI:0), 1.1 + (face<0?Math.PI:0));
+    }
+  } else if (a.u.kind === "mount") {
+    ctx.strokeStyle = "#efe6cf";
+    ctx.moveTo(hx, hy + s*0.2);
+    ctx.lineTo(hx + face*(s*1.5 + sg*s*0.6), hy - s*0.9 - sg*s*0.4);
+  } else if (a.u.size >= 18) {              // greatsword for the big ones
+    ctx.strokeStyle = "#c8ccd4"; ctx.lineWidth = Math.max(3, s*0.26);
+    ctx.moveTo(hx, hy + s*0.35);
+    ctx.lineTo(hx + face*(s*1.1 + sg*s*0.6), hy - s*1.0 - sg*s*0.5);
+  } else {
+    ctx.strokeStyle = "#efe6cf";
+    ctx.moveTo(hx, hy + s*0.3);
+    ctx.lineTo(hx + face*(s*0.95 + sg*s*0.7), hy - s*0.7 - sg*s*0.5);
   }
   ctx.stroke();
 
-  if (a.u.cls === "cav") {   // simple mount under the rider
+  if (a.u.kind === "mount") {
     ctx.fillStyle = "#5a3f28";
-    ctx.fillRect(x - s*0.9, y + s*0.55, s*1.8, s*0.42);
-    ctx.fillRect(x + face*s*0.85, y + s*0.25, s*0.4, s*0.4);
+    ctx.fillRect(x - s*0.9, y + s*0.55, s*1.8, s*0.4);
+    ctx.fillRect(x + face*s*0.85, y + s*0.25, s*0.38, s*0.38);
   }
-  if (a.u.cls === "mage" && !a.ghost) {   // orb glow
-    ctx.fillStyle = "rgba(200,120,255,.85)";
-    ctx.beginPath(); ctx.arc(hx + face*s*0.2, hy - s*1.25, s*0.28, 0, 6.29); ctx.fill();
+  if (a.u.drain) {                          // vampire cloak
+    ctx.fillStyle = "rgba(120,20,60,.85)";
+    ctx.beginPath();
+    ctx.moveTo(x - face*s*0.5, y - s*0.6);
+    ctx.lineTo(x - face*s*1.15, y + s*0.9);
+    ctx.lineTo(x - face*s*0.1, y + s*0.7);
+    ctx.closePath(); ctx.fill();
   }
 
-  // hp pip
   if (!a.ghost && a.hp < a.maxhp) {
-    const w = s * 1.8, f = Math.max(0, a.hp / a.maxhp);
-    ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(x - w/2, y - s*1.7, w, 3);
-    ctx.fillStyle = f > 0.5 ? "#6de06d" : f > 0.25 ? "#ffd75e" : "#ff5e5e";
-    ctx.fillRect(x - w/2, y - s*1.7, w * f, 3);
+    const w = s*1.8, f = Math.max(0, a.hp/a.maxhp);
+    ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(x - w/2, y - s*1.65, w, 3);
+    ctx.fillStyle = f > .5 ? "#6de06d" : f > .25 ? "#ffd75e" : "#ff5e5e";
+    ctx.fillRect(x - w/2, y - s*1.65, w*f, 3);
   }
   ctx.globalAlpha = alpha0;
 }
@@ -815,11 +754,15 @@ function buildShops() {
       el.className = "card";
       el.innerHTML =
         '<div class="key">' + (team === 0 ? P1_LBL[i] : P2_LBL[i]) + '</div>' +
-        '<div class="cnt"></div>' +
-        '<canvas width="80" height="46"></canvas>' +
+        '<div class="arm ' + (u.type === "armored" ? 'a">A' : 'l">L') + '</div>' +
+        '<canvas width="76" height="42"></canvas>' +
         '<div class="nm">' + u.name + '</div>' +
-        '<div class="cost">◆' + u.cost + '</div>';
-      el.title = u.name + " — " + counterText(u);
+        '<div class="cost">◆' + u.price + '</div>';
+      el.title = u.name + "  ◆" + u.price + "  income +" + u.income +
+                 "\n" + (u.type === "armored" ? "ARMORED" : "LIGHT") + "  hp " + u.hp + "  armour " + u.armour +
+                 "\ndmg vs light " + u.dL + "  vs armored " + u.dA +
+                 "\nrange " + u.rng + "  speed " + u.spd + "  attack every " + u.ws + "s" +
+                 (u.splash ? "\nsplash " + u.splash : "") + (u.drain ? "\ndrains " + (u.drain*100) + "% of damage as health" : "");
       el.addEventListener("pointerdown", e => { e.preventDefault(); buy(team, i); });
       host.appendChild(el);
       drawIcon(el.querySelector("canvas"), i, team);
@@ -827,93 +770,82 @@ function buildShops() {
     });
   });
 }
-function counterText(u) {
-  const m = COUNTER[u.cls] || {};
-  const strong = Object.keys(m).filter(k => m[k] > 1.2);
-  const weak   = Object.keys(m).filter(k => m[k] < 0.9);
-  const nm = { inf:"infantry", pike:"spears", cav:"cavalry", ranged:"archers", mage:"mages", tank:"giants" };
-  let s = u.cls.toUpperCase();
-  if (strong.length) s += " · strong vs " + strong.map(k => nm[k]).join(", ");
-  if (weak.length)   s += " · weak vs " + weak.map(k => nm[k]).join(", ");
-  return s;
-}
 function drawIcon(c, i, team) {
   const g = c.getContext("2d");
   g.clearRect(0, 0, c.width, c.height);
-  const real = ctx;
-  ctx = g;                       // drawUnit renders through the module-level ctx
-  drawUnit({ idx: i, team, u: UNITS[i], x: 40, y: 28, hp: 1, maxhp: 1,
-             swing: 0, hurt: 0, step: 0.6, dead: false, ghost: true });
+  const real = ctx; ctx = g;
+  const u = UNITS[i];
+  const sc = Math.min(1, 15 / u.size);
+  g.save(); g.translate(38, 26); g.scale(sc, sc); g.translate(-38, -26);
+  drawUnit({ team, u, x: 38, y: 22, hp: 1, maxhp: 1, swing: 0, hurt: 0, step: .6, dead: false, ghost: true });
+  g.restore();
   ctx = real;
 }
-
 function flashCard(team, idx) {
   const el = cards[team][idx];
   if (!el) return;
   el.classList.add("hit");
-  setTimeout(() => el.classList.remove("hit"), 90);
+  setTimeout(() => el.classList.remove("hit"), 80);
 }
 
 /* ============================================================
    HUD
    ============================================================ */
 function updateHUD() {
+  const inc = [0, 0], cnt = [0, 0];
+  for (const a of G.units) if (!a.dead) { inc[a.team] += a.u.income; cnt[a.team]++; }
   for (const t of [0, 1]) {
     const p = P[t], n = t + 1;
-    const f = Math.max(0, p.hp / BASE_HP);
-    document.getElementById("hp" + n).style.width = (f * 100) + "%";
-    document.getElementById("hpt" + n).textContent = Math.ceil(p.hp) + " / " + BASE_HP;
+    const f = Math.max(0, p.hp / CRYSTAL_HP);
+    document.getElementById("hp" + n).style.width = (f*100) + "%";
+    document.getElementById("hpt" + n).textContent = Math.ceil(p.hp) + " / " + CRYSTAL_HP;
     document.getElementById("g" + n).textContent = Math.floor(p.gold);
-    const live = G.units.filter(u => !u.dead && u.team === t).length;
-    document.getElementById("a" + n).textContent = G.phase === "deploy" ? p.queue.length : live;
-    document.getElementById("r" + n).textContent =
-      G.phase === "deploy" ? (p.ready ? "READY ✔" : "") : "";
-    // affordability
-    UNITS.forEach((u, i) => {
-      const el = cards[t][i];
-      el.classList.toggle("poor", G.phase !== "deploy" || p.ready || p.gold < u.cost);
-      const c = p.queue.reduce((s, q) => s + (q === i ? 1 : 0), 0);
-      el.querySelector(".cnt").textContent = c || "";
-    });
+    document.getElementById("i" + n).textContent = BASE_INCOME + 30*G.round + inc[t];
+    document.getElementById("a" + n).textContent = cnt[t];
+    UNITS.forEach((u, i) => cards[t][i].classList.toggle("poor", p.gold < u.price));
   }
   document.getElementById("round").textContent = "ROUND " + G.round;
-  document.getElementById("phase").textContent =
-    G.phase === "deploy" ? "DEPLOY  " + Math.max(0, Math.ceil(DEPLOY_T - G.t)) + "s"
-    : G.phase === "battle" ? "BATTLE  " + Math.max(0, Math.ceil(BATTLE_T - G.t)) + "s"
-    : G.phase === "over" ? "GAME OVER" : "";
+  document.getElementById("tick").textContent =
+    G.paused ? "PAUSED" : "payday in " + Math.ceil(G.tick) + "s";
 }
 
 /* ============================================================
    INPUT
    ============================================================ */
 window.addEventListener("keydown", e => {
-  // a held key auto-repeats — without this it drains your whole treasury the
-  // instant the deploy phase opens
-  if (e.repeat) { e.preventDefault(); return; }
-  if (e.code === "KeyM") { muted = !muted; banner(muted ? "SOUND OFF" : "SOUND ON", 700); return; }
-  if (G.phase === "menu" || G.phase === "over") {
+  if (e.repeat) { e.preventDefault(); return; }   // held keys must not drain the treasury
+  if (e.code === "Backquote") { muted = !muted; banner(muted ? "SOUND OFF" : "SOUND ON", 700); return; }
+  if (!G.running || G.over) {
     if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); newGame(); }
     return;
   }
+  if (e.code === "Space") { e.preventDefault(); G.paused = !G.paused; banner(G.paused ? "PAUSED" : "", 600); return; }
   let i = P1_KEYS.indexOf(e.code);
   if (i >= 0) { e.preventDefault(); buy(0, i); return; }
   i = P2_KEYS.indexOf(e.code);
   if (i >= 0) { e.preventDefault(); buy(1, i); return; }
-  if (e.code === "Backquote")  { e.preventDefault(); refund(0); return; }
-  if (e.code === "Backspace")  { e.preventDefault(); refund(1); return; }
-  if (e.code === "ShiftLeft")  { e.preventDefault(); setReady(0); return; }
-  if (e.code === "ShiftRight") { e.preventDefault(); setReady(1); return; }
 });
-
 document.getElementById("startBtn").addEventListener("click", newGame);
 
 function newGame() {
   P = [mkPlayer(0), mkPlayer(1)];
   G.units = []; G.shots = []; G.fx = [];
-  G.round = 1; G.t = 0; G.phase = "deploy"; G.shake = 0;
+  G.round = 1; G.tick = TICK_T; G.shake = 0;
+  G.running = true; G.over = false; G.paused = false;
+  document.getElementById("overlay").classList.add("hide");
+  banner("FIGHT!", 900);
+}
+
+function endGame(winner) {
+  G.over = true; G.running = false;
   const ov = document.getElementById("overlay");
-  ov.classList.add("hide");
-  banner("ROUND 1", 900);
+  ov.querySelector("h1").textContent = (winner === 0 ? "BLUE" : "RED") + " WINS";
+  ov.querySelector("h1").style.color = winner === 0 ? "#9fd8ff" : "#ffc49f";
+  ov.querySelectorAll("p")[0].innerHTML =
+    "Crystal shattered on round <b>" + G.round + "</b>. &nbsp; Kills — blue <b>" +
+    P[0].kills + "</b>, red <b>" + P[1].kills + "</b>.";
+  document.getElementById("startBtn").textContent = "REMATCH";
+  ov.classList.remove("hide");
 }
 
 /* ============================================================
@@ -921,29 +853,17 @@ function newGame() {
    ============================================================ */
 let last = performance.now();
 function frame(now) {
-  let dt = (now - last) / 1000;
-  last = now;
+  let dt = (now - last) / 1000; last = now;
   if (dt > 0.05) dt = 0.05;
-
-  if (G.phase === "deploy") {
-    G.t += dt;
-    if (G.t >= DEPLOY_T) startBattle();
-  } else if (G.phase === "battle") {
-    G.t += dt;
-    stepBattle(dt);
-  }
+  if (G.running && !G.paused && !G.over) step(dt);
   G.shake *= 0.88;
-
-  if (bannerT && now > bannerT) {
-    document.getElementById("banner").classList.remove("show");
-    bannerT = 0;
-  }
-
+  if (bannerT && now > bannerT) { document.getElementById("banner").classList.remove("show"); bannerT = 0; }
   draw();
-  updateHUD();
+  if (P.length) updateHUD();
   requestAnimationFrame(frame);
 }
 
+P = [mkPlayer(0), mkPlayer(1)];
 buildShops();
 resize();
 requestAnimationFrame(frame);
