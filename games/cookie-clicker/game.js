@@ -180,6 +180,73 @@ var SPECIALS = [
     req:function(s){ return s.totalEver >= 1e10; }, apply:function(m){ m.offlineCap = 12 * 3600; } }
 ];
 
+/* Bakery news. `when` gates a headline on the current state; the ones without
+ * it are always in the pool. Rotated every NEWS_EVERY ms. */
+var NEWS_EVERY = 12000;
+
+var NEWS = [
+  { text: 'You feel like making cookies. But nobody wants to eat your cookies.',
+    when: function (s) { return totalBuildings(s) === 0; } },
+  { text: 'Your first customer asks whether the cookies are "safe". You say yes.',
+    when: function (s) { return totalBuildings(s) >= 1 && s.totalEver < 1e4; } },
+  { text: 'Local paper runs a short piece on your bakery. It is mostly complimentary.',
+    when: function (s) { return s.totalEver >= 1e4 && s.totalEver < 1e7; } },
+  { text: 'Cookie futures close up four points. Nobody is quite sure why.',
+    when: function (s) { return s.totalEver >= 1e7; } },
+  { text: 'Economists warn of a looming shortage of adjectives for your cookies.',
+    when: function (s) { return s.totalEver >= 1e10; } },
+  { text: 'A minor moon has been renamed in your honour. It is chocolate now.',
+    when: function (s) { return s.totalEver >= 1e13; } },
+  { text: 'Physicists confirm the universe is, at large scales, faintly biscuit-flavoured.',
+    when: function (s) { return s.totalEver >= 1e16; } },
+
+  { text: 'Grandmothers seen queueing outside since dawn. None will say why.',
+    when: function (s) { return s.own.granny >= 10; } },
+  { text: 'Your grandmothers have started finishing each other\'s recipes.',
+    when: function (s) { return s.own.granny >= 60; } },
+  { text: 'Dough farm yields up 12% this season. The soil is suspiciously warm.',
+    when: function (s) { return s.own.farm >= 10; } },
+  { text: 'Factory inspectors declare everything "fine, probably".',
+    when: function (s) { return s.own.factory >= 10; } },
+  { text: 'Something came back through the pastry portal. It has been given a job.',
+    when: function (s) { return s.own.portal >= 5; } },
+  { text: 'Time kiln accident sends an apprentice to last Tuesday. He is fine. He was fine.',
+    when: function (s) { return s.own.timex >= 5; } },
+  { text: 'Antimatter oven running at nominal. Do not lick the oven.',
+    when: function (s) { return s.own.anti >= 3; } },
+
+  { text: 'Cursor union demands shorter fingers and longer breaks.',
+    when: function (s) { return s.own.cursor >= 40; } },
+  { text: 'Study finds clicking is good for you. Study funded by you.',
+    when: function (s) { return s.clicks >= 2000; } },
+  { text: 'Golden cookie sightings up sharply. Authorities advise clicking them.',
+    when: function (s) { return s.goldens >= 5; } },
+  { text: 'Someone has started a religion. It is about your bakery.',
+    when: function (s) { return s.legacies >= 1; } },
+  { text: 'Historians note this is not your first bakery, and will not be your last.',
+    when: function (s) { return s.legacies >= 3; } },
+
+  { text: 'Cookie declared the national dish of three countries and one small boat.' },
+  { text: 'Nutritionists split on whether your cookies count as a food group.' },
+  { text: 'Butter prices steady. Sugar prices steady. Everything is, briefly, fine.' },
+  { text: 'A rival bakery opens across the street. It closes by lunchtime.' },
+  { text: 'Missing: one wooden spoon. Sentimental value. No questions asked.' },
+  { text: 'Health and safety would like a word about the oven. Again.' },
+  { text: 'Overheard in the queue: "I only came in for a coffee."' }
+];
+
+/* Milk rises with badges. Each band renames and recolours it. */
+var MILK_TIERS = [
+  { at: 0.00, name: 'Plain milk',      top: '#f6efdd', bot: '#e4d8bd' },
+  { at: 0.10, name: 'Chocolate milk',  top: '#a97449', bot: '#7d5330' },
+  { at: 0.25, name: 'Raspberry milk',  top: '#e59aae', bot: '#c26f88' },
+  { at: 0.40, name: 'Orange milk',     top: '#f0b269', bot: '#d18d3d' },
+  { at: 0.55, name: 'Caramel milk',    top: '#d9a04e', bot: '#b07a2c' },
+  { at: 0.70, name: 'Zebra milk',      top: '#dcd6cb', bot: '#5c554c' },
+  { at: 0.85, name: 'Cosmic milk',     top: '#9d8fd6', bot: '#5b4a99' },
+  { at: 0.97, name: 'Impossible milk', top: '#bff3ea', bot: '#4fbfae' }
+];
+
 /* Golden cookie effects. `weight` is relative spawn odds. */
 var GOLDEN_EFFECTS = [
   { id:'frenzy', weight:42, icon:'🔥', name:'Frenzy',
@@ -276,6 +343,7 @@ function freshState() {
     legacies: 0,
     chips: 0,            // prestige currency, spent implicitly (never decreases)
     handClicked: 0,      // cookies earned by hand this legacy
+    bakery: 'Your',
     started: now(),
     playTime: 0,
     lastSave: now(),
@@ -531,6 +599,7 @@ function doPrestige() {
     goldens: state.goldens,
     bestCombo: state.bestCombo,
     legacies: state.legacies + 1,
+    bakery: state.bakery,
     chips: state.chips + gain,
     started: state.started,
     playTime: state.playTime,
@@ -606,9 +675,8 @@ function pickEffect() {
 
 function collectGolden(node) {
   var rect = node.getBoundingClientRect();
-  var stageRect = el.stage.getBoundingClientRect();
-  var x = rect.left - stageRect.left + rect.width / 2;
-  var y = rect.top - stageRect.top + rect.height / 2;
+  var x = rect.left + rect.width / 2;
+  var y = rect.top + rect.height / 2;
 
   clearGolden();
   state.goldens++;
@@ -713,6 +781,9 @@ function loadRaw(text) {
   if (data.achievements) ACHIEVEMENTS.forEach(function (a) {
     if (data.achievements[a.id]) fresh.achievements[a.id] = true;
   });
+  if (typeof data.bakery === 'string' && data.bakery.trim()) {
+    fresh.bakery = data.bakery.slice(0, 24);
+  }
   if (data.opts) {
     ['fx', 'shorthand', 'confirmPrestige'].forEach(function (k) {
       if (typeof data.opts[k] === 'boolean') fresh.opts[k] = data.opts[k];
@@ -765,9 +836,10 @@ var EL_IDS = [
   'cookieCount','cpsCount','cpsBuffTag','buffBar','stage','fx','goldenLayer','bigCookie',
   'clickValue','critChance','comboValue','comboFill','comboBox','chipsOwned','chipBonus',
   'prestigeBtn','prestigeNote','buildingList','upgradeList','upgradeEmpty','achievementList',
-  'achCount','statList','upgradeDot','toasts','settings','offlineDlg','offlineTime',
+  'achCount','statList','toasts','settings','offlineDlg','offlineTime',
   'offlineEarned','offlineRate','optFx','optShort','optConfirm','exportBtn','importBtn',
-  'wipeBtn','saveBox','saveStatus','themeBtn','tipbox'
+  'wipeBtn','saveBox','saveStatus','themeBtn','tipbox',
+  'bakeryName','newsText','milk','milkFill','milkLabel'
 ];
 
 /* Populated in boot(), so this file can also be required headlessly by the
@@ -926,6 +998,46 @@ ui.paintBuffs = function () {
   });
 };
 
+/* --- News ticker -------------------------------------------------- */
+
+var newsAt = 0;
+var lastNews = '';
+
+ui.paintNews = function (force) {
+  var t = now();
+  if (!force && t - newsAt < NEWS_EVERY) return;
+  newsAt = t;
+
+  var pool = NEWS.filter(function (n) {
+    return (!n.when || n.when(state)) && n.text !== lastNews;
+  });
+  if (!pool.length) return;
+
+  var pick = pool[Math.floor(Math.random() * pool.length)];
+  lastNews = pick.text;
+  el.newsText.textContent = pick.text;
+  // Restart the fade-in.
+  el.newsText.style.animation = 'none';
+  void el.newsText.offsetWidth;
+  el.newsText.style.animation = '';
+};
+
+/* --- Milk --------------------------------------------------------- */
+
+ui.paintMilk = function () {
+  var pct = ACHIEVEMENTS.length ? countAchievements() / ACHIEVEMENTS.length : 0;
+  var tier = MILK_TIERS[0];
+  for (var i = 0; i < MILK_TIERS.length; i++) {
+    if (pct >= MILK_TIERS[i].at) tier = MILK_TIERS[i];
+  }
+  el.milkFill.style.height = (14 + pct * 86) + '%';
+  el.milkFill.style.setProperty('--milk-top', tier.top);
+  el.milkFill.style.setProperty('--milk-bot', tier.bot);
+  el.milkLabel.textContent = tier.name + ' — ' + Math.round(pct * 100) + '%';
+  el.milk.title = tier.name + '. Milk rises as you earn badges (' +
+    countAchievements() + ' of ' + ACHIEVEMENTS.length + ').';
+};
+
 ui.paintLegacy = function () {
   var pending = pendingChips();
   el.chipsOwned.textContent = fmt(state.chips) + ' chip' + (state.chips === 1 ? '' : 's');
@@ -1025,8 +1137,12 @@ ui.paintBuildings = function () {
 
     n.count.textContent = owned ? fmt(owned, 0) : '';
     var share = derived.baseCps > 0 ? (owned * each / derived.baseCps * 100) : 0;
+    // A big bakery makes early buildings a rounding error; don't print "0%".
+    var shareText = share >= 1 ? share.toFixed(0) + '%'
+                  : share >= 0.1 ? share.toFixed(1) + '%'
+                  : '<0.1%';
     n.sub.textContent = fmt(each) + '/s each' +
-      (owned ? ' · ' + fmt(owned * each) + '/s total (' + share.toFixed(0) + '%)' : '');
+      (owned ? ' · ' + fmt(owned * each) + '/s total (' + shareText + ')' : '');
   });
 };
 
@@ -1042,11 +1158,7 @@ ui.paintUpgrades = function () {
   var sig = list.map(function (u) {
     return u.id + (u.cost <= state.cookies ? '+' : '-');
   }).join(',');
-  if (sig === upgradeSig) {
-    var affordableNow = list.filter(function (u) { return u.cost <= state.cookies; }).length;
-    el.upgradeDot.hidden = affordableNow === 0 || activeTab === 'upgrades';
-    return;
-  }
+  if (sig === upgradeSig) return;
   upgradeSig = sig;
 
   el.upgradeList.textContent = '';
@@ -1079,8 +1191,6 @@ ui.paintUpgrades = function () {
     el.upgradeList.appendChild(li);
   });
 
-  var affordable = list.filter(function (u) { return u.cost <= state.cookies; }).length;
-  el.upgradeDot.hidden = affordable === 0 || activeTab === 'upgrades';
 };
 
 /* --- Achievements ------------------------------------------------- */
@@ -1169,7 +1279,7 @@ ui.paintStats = function () {
 
 /* --- Whole-store repaint ------------------------------------------ */
 
-var activeTab = 'buildings';
+var activeTab = 'achievements';
 
 /* Call whenever `state` is swapped wholesale or number formatting changes —
  * the cached signatures above would otherwise skip a needed redraw. */
@@ -1185,6 +1295,7 @@ ui.paintAll = function () {
   ui.paintLegacy();
   ui.paintBuildings();
   ui.paintUpgrades();
+  ui.paintMilk();
   if (activeTab === 'achievements') ui.paintAchievements();
   if (activeTab === 'stats') ui.paintStats();
 };
@@ -1194,15 +1305,14 @@ ui.paintAll = function () {
  * ───────────────────────────────────────────────────────────────── */
 
 function cookieClickHandler(e) {
-  var rect = el.stage.getBoundingClientRect();
   var x, y;
   if (e && typeof e.clientX === 'number' && e.clientX !== 0) {
-    x = e.clientX - rect.left;
-    y = e.clientY - rect.top;
+    x = e.clientX;
+    y = e.clientY;
   } else {
     var cr = el.bigCookie.getBoundingClientRect();
-    x = cr.left - rect.left + cr.width / 2;
-    y = cr.top - rect.top + cr.height / 2;
+    x = cr.left + cr.width / 2;
+    y = cr.top + cr.height / 2;
   }
   clickCookie(x, y);
 }
@@ -1306,6 +1416,18 @@ function wire() {
     state.opts.confirmPrestige = el.optConfirm.checked;
   });
 
+  el.bakeryName.addEventListener('input', function () {
+    state.bakery = el.bakeryName.value.slice(0, 24);
+  });
+  el.bakeryName.addEventListener('blur', function () {
+    if (!state.bakery.trim()) state.bakery = 'Your';
+    el.bakeryName.value = state.bakery;
+    save();
+  });
+  el.bakeryName.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') el.bakeryName.blur();
+  });
+
   el.themeBtn.addEventListener('click', function () {
     state.opts.theme = state.opts.theme === 'dark' ? 'light' : 'dark';
     applyTheme();
@@ -1366,6 +1488,7 @@ function wire() {
 }
 
 function applyOpts() {
+  el.bakeryName.value = state.bakery;
   el.optFx.checked = state.opts.fx;
   el.optShort.checked = state.opts.shorthand;
   el.optConfirm.checked = state.opts.confirmPrestige;
@@ -1412,17 +1535,13 @@ function frame() {
     ui.paintHeader();
     ui.paintClickStats();
     ui.paintBuffs();
+    ui.paintNews();
     ui.paintLegacy();
     ui.paintBuildings();
-    if (activeTab === 'upgrades') ui.paintUpgrades();
+    ui.paintUpgrades();
+    ui.paintMilk();
     if (activeTab === 'stats') ui.paintStats();
     if (activeTab === 'achievements') ui.paintAchievements();
-    if (activeTab !== 'upgrades') {
-      var affordable = availableUpgrades().filter(function (u) {
-        return u.cost <= state.cookies;
-      }).length;
-      el.upgradeDot.hidden = affordable === 0;
-    }
   }
 
   if (t - lastSaveAt > SAVE_EVERY) { lastSaveAt = t; save(); }
@@ -1444,6 +1563,7 @@ function boot() {
   recalc();
   checkAchievements(true);
   ui.buildBuildings();
+  ui.paintNews(true);
   ui.paintAll();
   ui.paintAchievements();
   wire();

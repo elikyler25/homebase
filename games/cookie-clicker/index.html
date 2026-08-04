@@ -13,22 +13,7 @@
 <a class="skip-link" href="#store">Skip to store</a>
 
 <header class="topbar">
-  <div class="brand">
-    <span class="brand-mark" aria-hidden="true">🍪</span>
-    <span class="brand-text">Crumbfall</span>
-  </div>
-
-  <div class="counters">
-    <div class="bank">
-      <output id="cookieCount" class="bank-num" aria-live="polite" aria-atomic="true">0</output>
-      <span class="bank-label">cookies baked</span>
-    </div>
-    <div class="rate">
-      <span id="cpsCount">0</span> per second
-      <span id="cpsBuffTag" class="buff-tag" hidden></span>
-    </div>
-  </div>
-
+  <span class="wordmark" data-text="Crumbfall">Crumbfall</span>
   <nav class="topnav">
     <button type="button" class="ghost" id="themeBtn" aria-label="Toggle colour theme">🌗</button>
     <button type="button" class="ghost" data-open="settings">Settings</button>
@@ -37,95 +22,126 @@
 
 <div id="buffBar" class="buff-bar" aria-live="polite" aria-label="Active effects"></div>
 
-<main class="layout">
+<main class="game">
 
-  <!-- ── Left: the cookie ─────────────────────────────────────── -->
-  <section class="stage" id="stage" aria-label="Bakery">
-    <div class="stage-inner">
+  <!-- ── Left: the bakery ─────────────────────────────────────── -->
+  <section class="col col-left" id="stage" aria-label="Bakery">
+
+    <label class="bakery-name">
+      <span class="sr-only">Name your bakery</span>
+      <input id="bakeryName" maxlength="24" spellcheck="false" value="Your">
+      <span class="bakery-suffix" aria-hidden="true">'s bakery</span>
+    </label>
+
+    <div class="counter">
+      <output id="cookieCount" class="counter-num" aria-live="polite" aria-atomic="true">0</output>
+      <span class="counter-label">cookies baked</span>
+      <span class="rate">
+        <span id="cpsCount">0</span> per second
+        <span id="cpsBuffTag" class="buff-tag" hidden></span>
+      </span>
+    </div>
+
+    <div class="cookie-well">
       <button type="button" id="bigCookie" class="big-cookie" aria-describedby="clickHint">
         <span class="cookie-face" aria-hidden="true">🍪</span>
         <span class="sr-only">Bake a cookie</span>
       </button>
+    </div>
 
-      <p id="clickHint" class="hint">Click the cookie — or press <kbd>Space</kbd></p>
+    <p id="clickHint" class="hint">Click the cookie — or press <kbd>Space</kbd></p>
 
-      <div class="click-stats">
-        <div class="cs">
-          <span class="cs-label">per click</span>
-          <strong id="clickValue">1</strong>
-        </div>
-        <div class="cs">
-          <span class="cs-label">crit chance</span>
-          <strong id="critChance">5%</strong>
-        </div>
-        <div class="cs" id="comboBox">
-          <span class="cs-label">combo</span>
-          <strong id="comboValue">×1.00</strong>
-          <div class="combo-track"><div id="comboFill" class="combo-fill"></div></div>
-        </div>
+    <div class="click-stats">
+      <div class="cs">
+        <span class="cs-label">per click</span>
+        <strong id="clickValue">1</strong>
       </div>
-
-      <div class="legacy-card">
-        <div class="legacy-head">
-          <span>Legacy</span>
-          <strong id="chipsOwned">0 chips</strong>
-        </div>
-        <p class="legacy-sub">
-          Each chip: <b>+1.5%</b> cookies per second, <b>+1%</b> per click.
-          Currently <b id="chipBonus">+0%</b> CpS.
-        </p>
-        <button type="button" id="prestigeBtn" class="primary wide" disabled>
-          Bake a new legacy
-        </button>
-        <p class="legacy-note" id="prestigeNote">Bake more cookies to earn your first chip.</p>
+      <div class="cs">
+        <span class="cs-label">crit</span>
+        <strong id="critChance">5%</strong>
+      </div>
+      <div class="cs" id="comboBox">
+        <span class="cs-label">combo</span>
+        <strong id="comboValue">×1.00</strong>
+        <div class="combo-track"><div id="comboFill" class="combo-fill"></div></div>
       </div>
     </div>
 
-    <div id="fx" class="fx" aria-hidden="true"></div>
-    <div id="goldenLayer" class="golden-layer"></div>
+    <div class="legacy-card framed">
+      <div class="legacy-head">
+        <span>Legacy</span>
+        <strong id="chipsOwned">0 chips</strong>
+      </div>
+      <p class="legacy-sub">
+        Each chip: <b>+1.5%</b> per second, <b>+1%</b> per click.
+        Currently <b id="chipBonus">+0%</b> CpS.
+      </p>
+      <button type="button" id="prestigeBtn" class="primary wide" disabled>
+        Bake a new legacy
+      </button>
+      <p class="legacy-note" id="prestigeNote">Bake more cookies to earn your first chip.</p>
+    </div>
+
+    <div class="milk" id="milk" title="Milk rises as you earn badges">
+      <div class="milk-fill" id="milkFill"></div>
+      <span class="milk-label" id="milkLabel">Plain milk</span>
+    </div>
+  </section>
+
+  <!-- ── Middle: news and records ─────────────────────────────── -->
+  <section class="col col-mid" aria-label="News and records">
+    <div class="ticker framed" role="status" aria-label="Bakery news">
+      <span class="ticker-tag">News</span>
+      <p id="newsText" class="ticker-text">You feel like making cookies. But nobody wants to eat your cookies.</p>
+    </div>
+
+    <div class="panelbox framed">
+      <div class="tabs" role="tablist" aria-label="Records">
+        <button type="button" role="tab" class="tab active" data-tab="achievements" aria-selected="true">
+          Badges
+        </button>
+        <button type="button" role="tab" class="tab" data-tab="stats" aria-selected="false">Stats</button>
+      </div>
+
+      <div class="tabpanel" data-panel="achievements">
+        <p class="panel-note">
+          Every badge permanently adds <b>+0.5%</b> to cookies per second, and badges survive a
+          new legacy. <span id="achCount"></span>
+        </p>
+        <ul id="achievementList" class="grid"></ul>
+      </div>
+
+      <div class="tabpanel" data-panel="stats" hidden>
+        <dl id="statList" class="stats"></dl>
+      </div>
+    </div>
   </section>
 
   <!-- ── Right: the store ─────────────────────────────────────── -->
-  <section class="store" id="store" aria-label="Store">
-    <div class="tabs" role="tablist" aria-label="Store sections">
-      <button type="button" role="tab" class="tab active" data-tab="buildings" aria-selected="true">Bakery</button>
-      <button type="button" role="tab" class="tab" data-tab="upgrades" aria-selected="false">
-        Upgrades <span id="upgradeDot" class="dot" hidden></span>
-      </button>
-      <button type="button" role="tab" class="tab" data-tab="achievements" aria-selected="false">Badges</button>
-      <button type="button" role="tab" class="tab" data-tab="stats" aria-selected="false">Stats</button>
+  <section class="col col-right store framed" id="store" aria-label="Store">
+    <h2 class="store-title">Store</h2>
+
+    <div class="store-section">
+      <h3 class="store-sub">Upgrades</h3>
+      <ul id="upgradeList" class="grid"></ul>
+      <p id="upgradeEmpty" class="empty">Nothing on offer yet. Keep baking.</p>
     </div>
 
-    <div class="tabpanel" data-panel="buildings">
+    <div class="store-section">
       <div class="bulk" role="group" aria-label="Purchase amount">
         <button type="button" class="bulk-btn active" data-bulk="1">×1</button>
         <button type="button" class="bulk-btn" data-bulk="10">×10</button>
         <button type="button" class="bulk-btn" data-bulk="100">×100</button>
         <button type="button" class="bulk-btn" data-bulk="max">Max</button>
-        <button type="button" class="bulk-btn sell" data-bulk="sell">Sell 1</button>
+        <button type="button" class="bulk-btn sell" data-bulk="sell">Sell</button>
       </div>
       <ul id="buildingList" class="list"></ul>
     </div>
-
-    <div class="tabpanel" data-panel="upgrades" hidden>
-      <p class="panel-note">Upgrades are permanent and survive nothing — a new legacy wipes them. Buy freely.</p>
-      <ul id="upgradeList" class="grid"></ul>
-      <p id="upgradeEmpty" class="empty">No upgrades available yet. Keep baking.</p>
-    </div>
-
-    <div class="tabpanel" data-panel="achievements" hidden>
-      <p class="panel-note">
-        Every badge permanently adds <b>+0.5%</b> to cookies per second — and badges survive a new legacy.
-        <span id="achCount"></span>
-      </p>
-      <ul id="achievementList" class="grid"></ul>
-    </div>
-
-    <div class="tabpanel" data-panel="stats" hidden>
-      <dl id="statList" class="stats"></dl>
-    </div>
   </section>
 </main>
+
+<div id="fx" class="fx" aria-hidden="true"></div>
+<div id="goldenLayer" class="golden-layer"></div>
 
 <!-- ── Settings dialog ────────────────────────────────────────── -->
 <dialog id="settings" class="sheet">
@@ -177,9 +193,8 @@
   </div>
 </dialog>
 
-<!-- One shared tooltip, outside the scrolling store panel so it can never be
-     clipped by it. Purely visual: every tile carries the same text in its
-     aria-label. -->
+<!-- One shared tooltip, outside every scrolling panel so it can never be
+     clipped. Purely visual: each tile carries the same text in its aria-label. -->
 <div id="tipbox" class="tipbox" hidden aria-hidden="true"></div>
 
 <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>

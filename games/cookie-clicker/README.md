@@ -55,6 +55,28 @@ every buyable. Particles can be turned off.
 **No dark patterns.** No timers designed to pull you back, no currency you
 can't earn, no nagging. It's a game about a number going up.
 
+## The look
+
+The layout follows the genre's classic three-column shape, because it works: a
+bakery column on the left (name, counter, cookie, click stats, milk), news and
+records in the middle, the store on the right. On a wide screen the page itself
+doesn't scroll — each column scrolls inside its own frame. Below 1180px it
+collapses to two columns, and below 860px to one.
+
+Everything is drawn in CSS. The panel frames are a light top edge plus a dark
+inner ring over a warm panel colour, the page grain is an inline SVG
+`feTurbulence`, and the wordmark is a gold gradient laid over a thick dark
+outline. No image files, no web fonts, no external requests of any kind — which
+is also why it works offline from `file://`.
+
+Two flourishes worth calling out:
+
+- **A news ticker** that reacts to your bakery — headlines are gated on what
+  you own, how much you've baked, and how many legacies you've run.
+- **Milk** at the foot of the left column that rises with your badge count and
+  changes flavour as it goes, from plain through chocolate and raspberry to
+  something called Impossible.
+
 ## Progression
 
 - **12 buildings**, from a Nimble Cursor to The Idea of a Cookie.
@@ -85,9 +107,10 @@ duplicate ids and for cost/output curves that always move the right way.
 `game.js` is one closure in numbered sections — formatting, content, state,
 derived values, upgrades, actions, golden cookies, achievements, saves, DOM,
 wiring, loop, boot. Game content lives in the tables at the top; adding a
-building or an upgrade means adding a row, not touching the engine. It exports
-its pure functions under `module.exports` when required from Node, which is how
-the self-test reaches them without a DOM.
+building, an upgrade, a badge, a news headline or a milk flavour means adding a
+row, not touching the engine. It exports its pure functions under
+`module.exports` when required from Node, which is how the self-test reaches
+them without a DOM.
 
 Rendering is throttled to ~16 fps independently of the simulation, which runs
 on `requestAnimationFrame` with a clamped delta so a backgrounded tab doesn't
