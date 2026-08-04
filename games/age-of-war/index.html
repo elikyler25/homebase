@@ -295,6 +295,7 @@ function reset() {
     strikes: [],
     t: 0,
     over: null,
+    finishing: null,
     shake: 0,
   };
 }
@@ -489,9 +490,10 @@ function hitBase(side, amt, from) {
   G.shake = Math.max(G.shake, 6);
   const bx = side.isPlayer ? BASE_X.p : BASE_X.e;
   G.fx.push({ x: bx + (side.isPlayer ? 26 : -26), y: GROUND_Y - rnd(20, 70), r: rnd(5, 11), life: 0.3, max: 0.3, c: "#ffd88a", ring: true });
-  if (side.hp <= 0) {
+  if (side.hp <= 0 && !G.finishing) {
     side.hp = 0;
-    endGame(side.isPlayer ? "lose" : "win");
+    G.finishing = { result: side.isPlayer ? "lose" : "win", loser: side, t: 0 };
+    sfx("boom");
   }
 }
 
@@ -500,6 +502,25 @@ function hitBase(side, amt, from) {
 function update(dt) {
   G.t += dt;
   G.shake *= Math.pow(0.001, dt);
+
+  // a base going down gets its own beat before the result screen
+  if (G.finishing) {
+    const f = G.finishing;
+    f.t += dt;
+    const bx = f.loser.isPlayer ? BASE_X.p : BASE_X.e;
+    if (Math.random() < 0.6) {
+      G.fx.push({ x: bx + rnd(-50, 50), y: GROUND_Y - rnd(8, 130), r: rnd(14, 40),
+                  life: 0.5, max: 0.5, c: "#ffb35c", ring: true });
+      for (let i = 0; i < 5; i++) burst(bx + rnd(-44, 44), GROUND_Y - rnd(0, 120), "#ffd88a");
+    }
+    if (!f.lastBoom || f.t - f.lastBoom > 0.22) { f.lastBoom = f.t; sfx("boom"); }
+    G.shake = Math.max(G.shake, 18);
+    for (const fx of G.fx) { fx.life -= dt;
+      if (fx.vx !== undefined) { fx.x += fx.vx * dt; fx.y += fx.vy * dt; fx.vy += 320 * dt; } }
+    G.fx = G.fx.filter(fx => fx.life > 0);
+    if (f.t > 1.5) endGame(f.result);
+    return;                                   // combat is frozen during the collapse
+  }
 
   for (const side of [G.p, G.e]) {
     // passive income + cooldowns
@@ -872,8 +893,13 @@ function drawBase(side) {
   const x = side.isPlayer ? BASE_X.p : BASE_X.e;
   const flip = side.isPlayer ? 1 : -1;
   const age = side.age;
+  const frac = clamp(side.hp / side.maxHp, 0, 1);
+  const dying = G.finishing && G.finishing.loser === side
+    ? clamp(G.finishing.t / 1.5, 0, 1) : 0;
   ctx.save();
-  ctx.translate(x, GROUND_Y);
+  ctx.translate(x, GROUND_Y + dying * 26);
+  ctx.rotate(dying * 0.16 * flip);
+  ctx.globalAlpha = 1 - dying * 0.35;
   ctx.scale(flip, 1);
 
   const body = side.isPlayer ? "#4d5a6e" : "#6e4d4d";
@@ -918,6 +944,39 @@ function drawBase(side) {
     ctx.fillRect(-w / 2 + 14, -h * 0.82, w * 0.5, 5);
     ctx.globalAlpha = 1;
     ctx.fillStyle = "#0e2a33"; ctx.fillRect(2, -32, 24, 32);
+  }
+
+  // battle damage: cracks first, then fire as it nears collapse
+  if (frac < 0.72) {
+    ctx.strokeStyle = "rgba(0,0,0,.5)";
+    ctx.lineWidth = 2;
+    const n = frac < 0.4 ? 5 : 3;
+    for (let i = 0; i < n; i++) {
+      const r1 = ((i * 5471 + 29) % 977) / 977, r2 = ((i * 8017 + 53) % 983) / 983;
+      const cx = -w / 2 + r1 * w, cy = -h * (0.15 + r2 * 0.7);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + 6 - r2 * 12, cy + 13 + r1 * 10);
+      ctx.lineTo(cx - 4 + r1 * 10, cy + 27 + r2 * 12);
+      ctx.stroke();
+    }
+  }
+  if (frac < 0.36) {
+    for (let i = 0; i < 3; i++) {
+      const r1 = ((i * 3301 + 7) % 991) / 991;
+      const fxx = -w / 2 + 8 + r1 * (w - 16);
+      const fh = 13 + Math.sin(G.t * 7 + i * 2.1) * 5 + (0.36 - frac) * 34;
+      ctx.globalAlpha = (1 - dying * 0.35) * 0.72;
+      ctx.fillStyle = "#ff9a3c";
+      ctx.beginPath();
+      ctx.moveTo(fxx - 5, -h + 4); ctx.lineTo(fxx, -h + 4 - fh);
+      ctx.lineTo(fxx + 5, -h + 4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffe08a";
+      ctx.beginPath();
+      ctx.moveTo(fxx - 2, -h + 4); ctx.lineTo(fxx, -h + 4 - fh * 0.55);
+      ctx.lineTo(fxx + 2, -h + 4); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1 - dying * 0.35;
+    }
   }
 
   // turrets on the roof
