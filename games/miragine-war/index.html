@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mirage War — 2 Player Battle</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #10160f;
+    color: #eae4d3;
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #wrap { display: flex; flex-direction: column; height: 100%; }
+  #stage { position: relative; flex: 1 1 auto; min-height: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /* ---------- top HUD ---------- */
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 10px; pointer-events: none;
+  }
+  .side { flex: 1 1 0; min-width: 0; }
+  .side.right { text-align: right; }
+  .hpbar {
+    height: 18px; border: 2px solid #241d10; border-radius: 4px;
+    background: #2a1d16; overflow: hidden; position: relative;
+    box-shadow: 0 2px 0 #0007;
+  }
+  .hpfill { height: 100%; width: 100%; transition: width .18s linear; }
+  .p1 .hpfill { background: linear-gradient(#7fc4ff, #2b6fd6); }
+  .p2 .hpfill { background: linear-gradient(#ffb27f, #d64b2b); }
+  .hpbar span {
+    position: absolute; inset: 0; text-align: center; font-size: 12px;
+    line-height: 14px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000;
+  }
+  .stats { margin-top: 4px; font-size: 14px; font-weight: bold; text-shadow: 0 2px 3px #000; }
+  .stats b { font-weight: bold; }
+  .gold { color: #ffd75e; }
+  .army { color: #cfe8ff; }
+  .ready { color: #8dff8d; }
+  #centre {
+    flex: 0 0 auto; text-align: center; pointer-events: none;
+    padding: 0 6px;
+  }
+  #round {
+    background: #1c1710; border: 2px solid #4a3c22; border-radius: 6px;
+    padding: 2px 14px; font-weight: bold; font-size: 18px; color: #ffd75e;
+    box-shadow: 0 2px 0 #0007;
+  }
+  #phase { font-size: 13px; margin-top: 4px; text-shadow: 0 2px 3px #000; }
+
+  /* ---------- shops ---------- */
+  #shops {
+    flex: 0 0 auto; display: flex; gap: 6px; padding: 6px;
+    background: #16120c; border-top: 3px solid #372c19;
+  }
+  .shop { flex: 1 1 0; display: flex; gap: 4px; min-width: 0; }
+  .card {
+    flex: 1 1 0; min-width: 0; cursor: pointer;
+    background: #241c12; border: 2px solid #4a3c22; border-radius: 5px;
+    padding: 3px 2px 4px; text-align: center; position: relative;
+    transition: transform .06s, background .1s;
+  }
+  .card:hover { background: #33291a; }
+  .card:active, .card.hit { transform: translateY(2px); background: #4a3c22; }
+  .card.poor { opacity: .38; }
+  .card canvas { width: 100%; height: 34px; }
+  .card .nm { font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .cost { font-size: 11px; color: #ffd75e; font-weight: bold; }
+  .card .key {
+    position: absolute; top: 1px; left: 3px; font-size: 10px;
+    color: #9e8b63; font-weight: bold;
+  }
+  .card .cnt {
+    position: absolute; top: 1px; right: 3px; font-size: 11px;
+    color: #8dff8d; font-weight: bold;
+  }
+  #vs {
+    flex: 0 0 auto; align-self: center; padding: 0 10px;
+    font-size: 24px; font-weight: bold; color: #ffd75e; text-shadow: 0 2px 0 #000;
+  }
+  .ctrls { font-size: 10px; color: #9e8b63; text-align: center; padding: 2px 0 0; }
+
+  /* ---------- overlay ---------- */
+  #overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: rgba(8,12,8,.86); text-align: center; padding: 20px;
+  }
+  #overlay.hide { display: none; }
+  #overlay h1 { margin: 0; font-size: 40px; color: #ffd75e; text-shadow: 0 3px 0 #000; letter-spacing: 1px; }
+  #overlay p { margin: 0; max-width: 640px; line-height: 1.5; font-size: 15px; color: #cfc6ae; }
+  #overlay .keys { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; font-size: 14px; }
+  #overlay .keys div { line-height: 1.7; }
+  kbd {
+    background: #2b2418; border: 1px solid #5a4930; border-bottom-width: 3px;
+    border-radius: 4px; padding: 1px 6px; font-family: inherit; font-size: 13px; color: #ffe9a8;
+  }
+  button.big {
+    font: inherit; font-size: 20px; font-weight: bold; cursor: pointer;
+    background: #3f6b2c; color: #eaffdf; border: 2px solid #6fae4d;
+    border-bottom-width: 5px; border-radius: 8px; padding: 10px 34px;
+  }
+  button.big:active { border-bottom-width: 2px; transform: translateY(3px); }
+  .banner {
+    position: absolute; left: 0; right: 0; top: 34%; text-align: center;
+    font-size: 46px; font-weight: bold; color: #ffd75e;
+    text-shadow: 0 4px 0 #000, 0 0 24px #ffae00; pointer-events: none;
+    opacity: 0; transition: opacity .2s;
+  }
+  .banner.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+
+    <div id="hud">
+      <div class="side p1">
+        <div class="hpbar"><div class="hpfill" id="hp1"></div><span id="hpt1"></span></div>
+        <div class="stats">
+          <span class="gold">◆ <span id="g1">0</span></span> &nbsp;
+          <span class="army">⚔ <span id="a1">0</span></span> &nbsp;
+          <span class="ready" id="r1"></span>
+        </div>
+      </div>
+      <div id="centre">
+        <div id="round">ROUND 1</div>
+        <div id="phase">DEPLOY</div>
+      </div>
+      <div class="side right p2">
+        <div class="hpbar"><div class="hpfill" id="hp2"></div><span id="hpt2"></span></div>
+        <div class="stats">
+          <span class="ready" id="r2"></span> &nbsp;
+          <span class="army">⚔ <span id="a2">0</span></span> &nbsp;
+          <span class="gold">◆ <span id="g2">0</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="banner" id="banner"></div>
+
+    <div id="overlay">
+      <h1>MIRAGE WAR</h1>
+      <p>Two players, one keyboard. Each round you spend gold on troops, then hit READY.
+         When both sides are ready the armies charge. Survivors smash the enemy castle.
+         First castle to fall loses. <b>Counters matter:</b> spears gut cavalry, cavalry runs down
+         archers &amp; mages, archers shred infantry, mages melt giants.</p>
+      <div class="keys">
+        <div><b style="color:#7fc4ff">PLAYER 1 (blue, left)</b><br>
+          Buy: <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd><kbd>6</kbd><kbd>7</kbd><br>
+          Refund last: <kbd>`</kbd> &nbsp; Ready: <kbd>Left Shift</kbd>
+        </div>
+        <div><b style="color:#ffb27f">PLAYER 2 (red, right)</b><br>
+          Buy: <kbd>U</kbd><kbd>I</kbd><kbd>O</kbd><kbd>P</kbd><kbd>[</kbd><kbd>]</kbd><kbd>\</kbd><br>
+          Refund last: <kbd>Backspace</kbd> &nbsp; Ready: <kbd>Right Shift</kbd>
+        </div>
+      </div>
+      <p style="font-size:13px;color:#9e8b63">Mouse works too — click the cards at the bottom of your own half.</p>
+      <button class="big" id="startBtn">FIGHT</button>
+    </div>
+  </div>
+
+  <div id="shops">
+    <div>
+      <div class="shop p1" id="shop1"></div>
+      <div class="ctrls">P1 &nbsp; 1-7 buy &nbsp;·&nbsp; ` refund &nbsp;·&nbsp; LEFT SHIFT = ready</div>
+    </div>
+    <div id="vs">VS</div>
+    <div>
+      <div class="shop p2" id="shop2"></div>
+      <div class="ctrls">P2 &nbsp; U I O P [ ] \ buy &nbsp;·&nbsp; BACKSPACE refund &nbsp;·&nbsp; RIGHT SHIFT = ready</div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   UNIT TYPES  —  cls drives the counter matrix
+   ============================================================ */
+const UNITS = [
+  { id:"peasant",  name:"Peasant",  cls:"inf",    cost:60,  hp:60,   atk:7,   rng:22,  spd:44, cd:0.7,  size:9,  col:"#b8b2a0" },
+  { id:"spearman", name:"Spearman", cls:"pike",   cost:130, hp:130,  atk:15,  rng:40,  spd:38, cd:0.85, size:10, col:"#c9a86a" },
+  { id:"sword",    name:"Swordsman",cls:"inf",    cost:190, hp:200,  atk:22,  rng:26,  spd:46, cd:0.7,  size:11, col:"#d9d9e2" },
+  { id:"archer",   name:"Archer",   cls:"ranged", cost:230, hp:95,   atk:24,  rng:210, spd:36, cd:1.05, size:9,  col:"#8fd98f" },
+  { id:"knight",   name:"Knight",   cls:"cav",    cost:350, hp:300,  atk:36,  rng:30,  spd:82, cd:0.8,  size:14, col:"#e0c25a", splash:26 },
+  { id:"mage",     name:"Mage",     cls:"mage",   cost:490, hp:120,  atk:44,  rng:165, spd:32, cd:1.5,  size:10, col:"#c78fe0", splash:52 },
+  { id:"giant",    name:"Giant",    cls:"tank",   cost:720, hp:1500, atk:70,  rng:44,  spd:26, cd:1.3,  size:20, col:"#9c7b5a", splash:50 },
+];
+
+// attacker class -> defender class -> damage multiplier
+const COUNTER = {
+  inf:    { pike:1.6, mage:1.4 },
+  pike:   { cav:2.4, tank:1.4 },
+  cav:    { ranged:2.6, mage:2.6, pike:0.5 },
+  ranged: { inf:1.7, pike:1.5, tank:0.6 },
+  mage:   { tank:2.6, inf:1.6, cav:0.7 },
+  tank:   { inf:1.4, pike:0.7 },
+};
+const mult = (a, d) => (COUNTER[a] && COUNTER[a][d]) || 1;
+
+const P1_KEYS = ["Digit1","Digit2","Digit3","Digit4","Digit5","Digit6","Digit7"];
+const P2_KEYS = ["KeyU","KeyI","KeyO","KeyP","BracketLeft","BracketRight","Backslash"];
+const P1_LBL  = ["1","2","3","4","5","6","7"];
+const P2_LBL  = ["U","I","O","P","[","]","\\"];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const BASE_HP   = 2200;
+const START_GOLD= 1400;
+const DEPLOY_T  = 25;      // seconds of deploy phase before auto-start
+const BATTLE_T  = 60;      // hard cap on a battle
+
+const G = {
+  phase: "menu",           // menu | deploy | battle | over
+  round: 1,
+  t: 0,
+  units: [],
+  shots: [],
+  fx: [],
+  W: 100, H: 100,
+  shake: 0,
+};
+
+function mkPlayer(team) {
+  return { team, gold: START_GOLD, hp: BASE_HP, ready: false, queue: [] };
+}
+let P = [mkPlayer(0), mkPlayer(1)];
+
+/* ============================================================
+   CANVAS
+   ============================================================ */
+const cv  = document.getElementById("cv");
+let ctx   = cv.getContext("2d");   // swapped temporarily when drawing shop icons
+let DPR = 1;
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const r = cv.getBoundingClientRect();
+  G.W = Math.max(320, r.width);
+  G.H = Math.max(200, r.height);
+  cv.width  = Math.round(G.W * DPR);
+  cv.height = Math.round(G.H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  buildTerrain();
+}
+window.addEventListener("resize", resize);
+
+/* decorative grass tufts / rocks, regenerated on resize */
+let terrain = [];
+function buildTerrain() {
+  terrain = [];
+  const n = Math.round(G.W * G.H / 5200);
+  for (let i = 0; i < n; i++) {
+    terrain.push({
+      x: Math.random() * G.W, y: Math.random() * G.H,
+      s: 2 + Math.random() * 4,
+      k: Math.random() < 0.12 ? "rock" : "grass",
+      c: Math.random(),
+    });
+  }
+}
+
+const GROUND_TOP = () => 92;                 // keep units clear of the HUD
+const GROUND_BOT = () => G.H - 14;
+const baseX = (team) => (team === 0 ? 46 : G.W - 46);
+
+/* ============================================================
+   SOUND — a few oscillator blips, no assets. M mutes.
+   ============================================================ */
+let AC = null, muted = false;
+function tone(freq, dur, type, vol, slideTo) {
+  if (muted) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "square";
+    o.frequency.setValueAtTime(freq, AC.currentTime);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, AC.currentTime + dur);
+    g.gain.setValueAtTime(vol || 0.05, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + dur);
+  } catch (e) { /* audio is a nicety — never break the game over it */ }
+}
+const sfxBuy   = () => tone(560, 0.07, "square", 0.045, 840);
+const sfxDeny  = () => tone(150, 0.09, "sawtooth", 0.04, 90);
+const sfxReady = () => tone(700, 0.12, "triangle", 0.06, 1050);
+const sfxHorn  = () => { tone(220, 0.35, "sawtooth", 0.05, 330); setTimeout(() => tone(330, 0.4, "sawtooth", 0.05, 440), 130); };
+const sfxThud  = () => tone(90, 0.16, "sawtooth", 0.07, 45);
+
+/* ============================================================
+   DEPLOY / BUY
+   ============================================================ */
+function buy(team, idx) {
+  if (G.phase !== "deploy") return false;
+  const p = P[team], u = UNITS[idx];
+  if (p.ready || p.gold < u.cost) { sfxDeny(); return false; }
+  p.gold -= u.cost;
+  p.queue.push(idx);
+  flashCard(team, idx);
+  sfxBuy();
+  return true;
+}
+function refund(team) {
+  if (G.phase !== "deploy") return;
+  const p = P[team];
+  if (p.ready || !p.queue.length) return;
+  p.gold += UNITS[p.queue.pop()].cost;
+  tone(400, 0.06, "square", 0.04, 260);
+}
+function setReady(team) {
+  if (G.phase !== "deploy") return;
+  P[team].ready = !P[team].ready;
+  sfxReady();
+  if (P[0].ready && P[1].ready) startBattle();
+}
+
+/* formation: melee up front, ranged behind, packed into a block that stays
+   centred on the field no matter how big the army gets */
+function formation(queue, team) {
+  const order = queue.slice().sort((a, b) => UNITS[a].rng - UNITS[b].rng);
+  const top = GROUND_TOP() + 16, bot = GROUND_BOT() - 16;
+  const gapY = 32, gapX = 30;
+  const maxRows = Math.max(3, Math.floor((bot - top) / gapY));
+  const rows = Math.max(1, Math.min(maxRows, Math.ceil(Math.sqrt(order.length * 3.5))));
+  const cy = (top + bot) / 2;
+  const y0 = cy - (rows - 1) * gapY / 2;
+  const front = team === 0 ? 250 : G.W - 250;
+  const dir = team === 0 ? -1 : 1;      // deeper columns sit further back
+  return order.map((idx, i) => ({
+    idx,
+    x: front + dir * Math.floor(i / rows) * gapX,
+    y: y0 + (i % rows) * gapY,
+  }));
+}
+
+function deploy() {
+  for (const p of P) {
+    for (const s of formation(p.queue, p.team)) {
+      G.units.push(spawn(s.idx, p.team,
+        s.x + (Math.random() * 7 - 3.5),
+        Math.max(GROUND_TOP(), Math.min(GROUND_BOT(), s.y + (Math.random() * 7 - 3.5)))));
+    }
+    p.queue = [];
+  }
+}
+
+let UID = 0;
+function spawn(idx, team, x, y) {
+  const u = UNITS[idx];
+  return {
+    uid: ++UID, idx, team, x, y, u,
+    hp: u.hp, maxhp: u.hp,
+    cool: Math.random() * u.cd,
+    tgt: null, swing: 0, hurt: 0, step: Math.random() * 6.28,
+    dead: false,
+  };
+}
+
+/* ============================================================
+   BATTLE
+   ============================================================ */
+function startBattle() {
+  G.phase = "battle";
+  G.t = 0;
+  deploy();
+  banner("CHARGE!", 900);
+  sfxHorn();
+}
+
+function findTarget(a) {
+  let best = null, bd = 1e12;
+  for (const b of G.units) {
+    if (b.dead || b.team === a.team) continue;
+    const d = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+    // prefer whatever this unit counters, slightly
+    const w = d / mult(a.u.cls, b.u.cls);
+    if (w < bd) { bd = w; best = b; }
+  }
+  return best;
+}
+
+function damage(target, amt, srcCls) {
+  const m = mult(srcCls, target.u.cls);
+  target.hp -= amt * m;
+  target.hurt = 0.18;
+  if (target.hp <= 0 && !target.dead) {
+    target.dead = true;
+    puff(target.x, target.y, target.team, target.u.size);
+  }
+}
+
+let lastThud = -9;
+function hitBase(team, amt) {          // team = the side taking damage
+  const p = P[team];
+  p.hp = Math.max(0, p.hp - amt);
+  G.shake = Math.min(9, G.shake + amt * 0.05);
+  if (G.t - lastThud > 0.15) { lastThud = G.t; sfxThud(); }
+  for (let i = 0; i < 4; i++) {
+    G.fx.push({ x: baseX(team) + (Math.random()*30-15), y: G.H*0.55 + (Math.random()*60-30),
+                vx: (Math.random()-0.5)*70, vy: -30 - Math.random()*60,
+                life: 0.6, max: 0.6, c: "#ffb648", r: 3 + Math.random()*3 });
+  }
+  if (p.hp <= 0) endGame(1 - team);
+}
+
+function stepBattle(dt) {
+  for (const a of G.units) {
+    if (a.dead) continue;
+    a.cool -= dt;
+    a.swing = Math.max(0, a.swing - dt * 4);
+    a.hurt  = Math.max(0, a.hurt - dt);
+
+    if (!a.tgt || a.tgt.dead) a.tgt = findTarget(a);
+    const enemyBase = baseX(1 - a.team);
+
+    let tx, ty, reach, isBase = false;
+    if (a.tgt) {
+      tx = a.tgt.x; ty = a.tgt.y;
+      reach = a.u.rng + a.u.size + a.tgt.u.size;
+    } else {
+      tx = enemyBase; ty = a.y; reach = a.u.rng + a.u.size + 26; isBase = true;
+    }
+
+    const dx = tx - a.x, dy = ty - a.y;
+    const dist = Math.hypot(dx, dy) || 1;
+
+    if (dist > reach) {
+      const sp = a.u.spd * dt;
+      a.x += (dx / dist) * sp;
+      a.y += (dy / dist) * sp;
+      a.step += dt * a.u.spd * 0.22;
+      // soft separation so blobs don't fully overlap
+      a.y = Math.max(GROUND_TOP(), Math.min(GROUND_BOT(), a.y));
+    } else if (a.cool <= 0) {
+      a.cool = a.u.cd;
+      a.swing = 1;
+      if (isBase) {
+        hitBase(1 - a.team, a.u.atk * 1.6);
+      } else if (a.u.rng > 60) {
+        G.shots.push({ x: a.x, y: a.y - 6, tx: a.tgt.x, ty: a.tgt.y - 6, t: 0,
+                       sp: a.u.cls === "mage" ? 320 : 480, dmg: a.u.atk, cls: a.u.cls,
+                       team: a.team, splash: a.u.splash || 0, tgt: a.tgt,
+                       col: a.u.cls === "mage" ? "#e08fff" : "#f5e6b0" });
+      } else if (a.u.splash) {
+        // heavy melee cleaves through everything in the swing arc
+        for (const b of G.units) {
+          if (b.dead || b.team === a.team) continue;
+          if (Math.hypot(b.x - a.tgt.x, b.y - a.tgt.y) < a.u.splash) {
+            damage(b, a.u.atk, a.u.cls);
+            spark(b.x, b.y, b.team);
+          }
+        }
+      } else {
+        damage(a.tgt, a.u.atk, a.u.cls);
+        spark(a.tgt.x, a.tgt.y, a.tgt.team);
+      }
+    }
+  }
+
+  // separation pass — cheap O(n^2) but n stays modest
+  const us = G.units;
+  for (let i = 0; i < us.length; i++) {
+    const a = us[i]; if (a.dead) continue;
+    for (let j = i + 1; j < us.length; j++) {
+      const b = us[j]; if (b.dead) continue;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const md = (a.u.size + b.u.size) * 0.85;
+      const d2 = dx*dx + dy*dy;
+      if (d2 < md*md && d2 > 0.01) {
+        const d = Math.sqrt(d2), push = (md - d) * 0.5;
+        const nx = dx / d * push, ny = dy / d * push;
+        a.x -= nx; a.y -= ny; b.x += nx; b.y += ny;
+      }
+    }
+  }
+
+  // projectiles
+  for (const s of G.shots) {
+    s.t += dt;
+    const dx = s.tx - s.x, dy = s.ty - s.y, d = Math.hypot(dx, dy);
+    const step = s.sp * dt;
+    if (s.tgt && !s.tgt.dead) { s.tx = s.tgt.x; s.ty = s.tgt.y - 6; }
+    if (d <= step || s.t > 3) {
+      s.done = true;
+      if (s.splash) {
+        for (const b of G.units) {
+          if (b.dead || b.team === s.team) continue;
+          if (Math.hypot(b.x - s.tx, b.y - s.ty) < s.splash) damage(b, s.dmg, s.cls);
+        }
+        boom(s.tx, s.ty, s.splash);
+      } else if (s.tgt && !s.tgt.dead) {
+        damage(s.tgt, s.dmg, s.cls);
+        spark(s.tx, s.ty, s.tgt.team);
+      }
+    } else {
+      s.x += dx / d * step; s.y += dy / d * step;
+    }
+  }
+  G.shots = G.shots.filter(s => !s.done);
+
+  // fx
+  for (const f of G.fx) {
+    f.life -= dt;
+    f.x += f.vx * dt; f.y += f.vy * dt;
+    f.vy += 220 * dt;
+  }
+  G.fx = G.fx.filter(f => f.life > 0);
+
+  G.units = G.units.filter(u => !u.dead || (u.fade = (u.fade ?? 0.5) - dt) > 0);
+
+  // round over?
+  const now = [0, 0];
+  for (const a of G.units) if (!a.dead) now[a.team]++;
+  if (G.phase === "battle" && (now[0] === 0 || now[1] === 0 || G.t > BATTLE_T)) endRound();
+}
+
+function endRound() {
+  if (G.phase !== "battle") return;
+  // whoever still holds the field marches on the enemy castle.
+  // capped per round so no single blowout ends the war outright.
+  const CAP = BASE_HP * 0.34;
+  const surv = [0, 0];
+  for (const a of G.units) if (!a.dead) surv[a.team] += UNITS[a.idx].cost;
+  // holding the field is worth a flat siege hit; the size of what's left does the rest
+  let dmg = [0, 0];
+  for (const t of [0, 1]) if (surv[t] > 0) dmg[1 - t] = Math.min(CAP, 150 + surv[t] * 0.35);
+  if (dmg[0] > dmg[1]) banner("RED HOLDS THE FIELD", 1400);
+  else if (dmg[1] > dmg[0]) banner("BLUE HOLDS THE FIELD", 1400);
+  else banner("STALEMATE", 1200);
+  if (dmg[0]) hitBase(0, dmg[0]);
+  if (dmg[1]) hitBase(1, dmg[1]);
+  if (G.phase === "over") return;
+
+  G.units = []; G.shots = []; G.fx = [];
+  G.round++;
+  const income = 400 + 120 * G.round;
+  for (const p of P) {
+    p.gold += income + Math.floor(p.gold * 0.08);   // small interest on savings
+    p.ready = false;
+  }
+  G.phase = "deploy";
+  G.t = 0;
+}
+
+function endGame(winner) {
+  G.phase = "over";
+  const ov = document.getElementById("overlay");
+  ov.querySelector("h1").textContent = (winner === 0 ? "BLUE" : "RED") + " WINS!";
+  ov.querySelector("h1").style.color = winner === 0 ? "#7fc4ff" : "#ffb27f";
+  ov.querySelector("p").textContent = "Castle destroyed on round " + G.round + ".";
+  document.getElementById("startBtn").textContent = "REMATCH";
+  ov.classList.remove("hide");
+}
+
+/* ============================================================
+   FX helpers
+   ============================================================ */
+function spark(x, y, team) {
+  for (let i = 0; i < 4; i++)
+    G.fx.push({ x, y, vx: (Math.random()-0.5)*90, vy: -Math.random()*70,
+                life: 0.3, max: 0.3, c: "#ff6b5e", r: 1.6 + Math.random()*1.6 });
+}
+function puff(x, y, team, size) {
+  const c = team === 0 ? "#7fc4ff" : "#ff9a7f";
+  for (let i = 0; i < 8; i++)
+    G.fx.push({ x, y, vx: (Math.random()-0.5)*130, vy: -Math.random()*120,
+                life: 0.5, max: 0.5, c, r: 1.5 + Math.random() * size * 0.35 });
+}
+function boom(x, y, r) {
+  for (let i = 0; i < 16; i++) {
+    const a = Math.random() * 6.28, s = Math.random() * r * 3;
+    G.fx.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s - 40,
+                life: 0.45, max: 0.45, c: "#e08fff", r: 2 + Math.random()*3 });
+  }
+}
+let bannerT = 0;
+function banner(text, ms) {
+  const el = document.getElementById("banner");
+  el.textContent = text;
+  el.classList.add("show");
+  bannerT = performance.now() + ms;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function draw() {
+  const W = G.W, H = G.H;
+  ctx.save();
+  if (G.shake > 0.2) ctx.translate((Math.random()-0.5)*G.shake, (Math.random()-0.5)*G.shake);
+
+  // field
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#7fa93c"); g.addColorStop(0.5, "#8dbb43"); g.addColorStop(1, "#6d9633");
+  ctx.fillStyle = g; ctx.fillRect(-12, -12, W + 24, H + 24);
+
+  for (const t of terrain) {
+    if (t.k === "rock") {
+      ctx.fillStyle = "rgba(90,90,80,.45)";
+      ctx.beginPath(); ctx.ellipse(t.x, t.y, t.s, t.s * 0.7, 0, 0, 6.29); ctx.fill();
+    } else {
+      ctx.strokeStyle = t.c > 0.5 ? "rgba(60,110,30,.5)" : "rgba(160,200,90,.45)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y); ctx.lineTo(t.x - t.s*0.5, t.y - t.s*1.6);
+      ctx.moveTo(t.x, t.y); ctx.lineTo(t.x + t.s*0.6, t.y - t.s*1.3);
+      ctx.stroke();
+    }
+  }
+
+  drawCastle(0); drawCastle(1);
+
+  if (G.phase === "deploy") drawGhostArmies();
+
+  // depth sort
+  const list = G.units.slice().sort((a, b) => a.y - b.y);
+  for (const a of list) drawUnit(a);
+
+  for (const s of G.shots) {
+    ctx.strokeStyle = s.col; ctx.lineWidth = s.splash ? 4 : 2;
+    ctx.lineCap = "round";
+    const dx = s.tx - s.x, dy = s.ty - s.y, d = Math.hypot(dx, dy) || 1;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(s.x - dx/d * (s.splash ? 8 : 13), s.y - dy/d * (s.splash ? 8 : 13));
+    ctx.stroke();
+  }
+
+  for (const f of G.fx) {
+    ctx.globalAlpha = Math.max(0, f.life / f.max);
+    ctx.fillStyle = f.c;
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.29); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // deploy-phase line markers
+  if (G.phase === "deploy") {
+    ctx.setLineDash([7, 7]); ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,.28)";
+    ctx.beginPath(); ctx.moveTo(W/2, GROUND_TOP()); ctx.lineTo(W/2, GROUND_BOT()+10); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+
+function drawCastle(team) {
+  const x = baseX(team), cy = G.H * 0.55;
+  const w = 42, h = 120;
+  const dir = team === 0 ? 1 : -1;
+  const dark = team === 0 ? "#2b4a80" : "#7a2f22";
+  const lite = team === 0 ? "#4d7fc4" : "#c25b40";
+  ctx.fillStyle = "rgba(0,0,0,.22)";
+  ctx.beginPath(); ctx.ellipse(x, cy + h/2 + 6, w*0.9, 12, 0, 0, 6.29); ctx.fill();
+  ctx.fillStyle = dark;
+  ctx.fillRect(x - w/2, cy - h/2, w, h);
+  ctx.fillStyle = lite;
+  ctx.fillRect(x - w/2, cy - h/2, w * 0.5, h);
+  // battlements
+  ctx.fillStyle = dark;
+  for (let i = 0; i < 4; i++) ctx.fillRect(x - w/2 + i * (w/4), cy - h/2 - 10, w/8, 10);
+  // gate facing the field
+  ctx.fillStyle = "#2a1b12";
+  ctx.beginPath();
+  ctx.moveTo(x + dir*w/2, cy + 26);
+  ctx.lineTo(x + dir*w/2, cy - 6);
+  ctx.quadraticCurveTo(x + dir*(w/2 - 14), cy - 24, x + dir*(w/2 - 26), cy - 6);
+  ctx.lineTo(x + dir*(w/2 - 26), cy + 26);
+  ctx.closePath(); ctx.fill();
+  // banner pole
+  ctx.strokeStyle = "#3a2c18"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x, cy - h/2 - 10); ctx.lineTo(x, cy - h/2 - 40); ctx.stroke();
+  ctx.fillStyle = lite;
+  const fl = Math.sin(performance.now()/240) * 3;
+  ctx.beginPath();
+  ctx.moveTo(x, cy - h/2 - 40);
+  ctx.lineTo(x + dir*24, cy - h/2 - 34 + fl);
+  ctx.lineTo(x, cy - h/2 - 26);
+  ctx.closePath(); ctx.fill();
+}
+
+/* faint preview of what you've bought, during deploy */
+function drawGhostArmies() {
+  ctx.globalAlpha = 0.6;
+  for (const p of P) {
+    for (const s of formation(p.queue, p.team)) {
+      drawUnit({ idx: s.idx, team: p.team, u: UNITS[s.idx], x: s.x, y: s.y,
+                 hp: 1, maxhp: 1, swing: 0, hurt: 0, step: 0, dead: false, ghost: true });
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawUnit(a) {
+  const s = a.u.size;
+  const face = a.team === 0 ? 1 : -1;
+  const teamCol = a.team === 0 ? "#3f7fd6" : "#d64b2b";
+  const bob = a.dead ? 0 : Math.sin(a.step) * 1.4;
+  const x = a.x, y = a.y + bob;
+  const alpha0 = ctx.globalAlpha;
+
+  if (a.dead) { ctx.globalAlpha = alpha0 * Math.max(0, (a.fade ?? 0) / 0.5) * 0.7; }
+
+  // shadow
+  ctx.fillStyle = "rgba(0,0,0,.22)";
+  ctx.beginPath(); ctx.ellipse(a.x, a.y + s * 0.9, s * 0.85, s * 0.35, 0, 0, 6.29); ctx.fill();
+
+  if (a.dead) {
+    ctx.fillStyle = teamCol;
+    ctx.beginPath(); ctx.ellipse(a.x, a.y + s*0.6, s*0.9, s*0.4, 0, 0, 6.29); ctx.fill();
+    ctx.globalAlpha = alpha0;
+    return;
+  }
+
+  const hurt = a.hurt > 0;
+  // legs
+  ctx.strokeStyle = "#3a2c1c"; ctx.lineWidth = Math.max(1.6, s * 0.22);
+  const sw = Math.sin(a.step) * s * 0.45;
+  ctx.beginPath();
+  ctx.moveTo(x, y + s*0.5); ctx.lineTo(x - sw, y + s*1.0);
+  ctx.moveTo(x, y + s*0.5); ctx.lineTo(x + sw, y + s*1.0);
+  ctx.stroke();
+
+  // body
+  ctx.fillStyle = hurt ? "#fff" : teamCol;
+  ctx.fillRect(x - s*0.5, y - s*0.5, s, s * 1.05);
+  // armour trim in the unit colour
+  ctx.fillStyle = hurt ? "#fff" : a.u.col;
+  ctx.fillRect(x - s*0.5, y - s*0.5, s, s * 0.4);
+
+  // head
+  ctx.fillStyle = hurt ? "#fff" : "#e8c9a0";
+  ctx.beginPath(); ctx.arc(x, y - s*0.85, s*0.42, 0, 6.29); ctx.fill();
+  ctx.fillStyle = hurt ? "#fff" : a.u.col;
+  ctx.beginPath(); ctx.arc(x, y - s*0.95, s*0.45, Math.PI, 6.29); ctx.fill();
+
+  // weapon
+  const sg = a.swing;
+  ctx.strokeStyle = "#efe6cf"; ctx.lineWidth = Math.max(1.6, s*0.2); ctx.lineCap = "round";
+  const hx = x + face * s*0.55, hy = y - s*0.1;
+  ctx.beginPath();
+  switch (a.u.cls) {
+    case "pike":
+      ctx.strokeStyle = "#c9a86a";
+      ctx.moveTo(hx - face*s*0.6, hy + s*0.4);
+      ctx.lineTo(hx + face*(s*1.9 + sg*s), hy - s*0.5);
+      break;
+    case "ranged": {
+      ctx.strokeStyle = "#6b4a26"; ctx.lineWidth = Math.max(1.4, s*0.18);
+      ctx.arc(hx, hy, s*0.75, -1.1 + (face<0?Math.PI:0), 1.1 + (face<0?Math.PI:0));
+      break;
+    }
+    case "mage":
+      ctx.strokeStyle = "#7a5aa0";
+      ctx.moveTo(hx, hy + s*0.7); ctx.lineTo(hx + face*s*0.2, hy - s*1.2);
+      break;
+    case "cav":
+      ctx.strokeStyle = "#efe6cf";
+      ctx.moveTo(hx, hy + s*0.2);
+      ctx.lineTo(hx + face*(s*1.5 + sg*s*0.6), hy - s*0.9 - sg*s*0.4);
+      break;
+    case "tank":
+      ctx.strokeStyle = "#8a8378"; ctx.lineWidth = Math.max(3, s*0.3);
+      ctx.moveTo(hx, hy + s*0.3);
+      ctx.lineTo(hx + face*(s*0.9 + sg*s*0.5), hy - s*0.8 - sg*s*0.5);
+      break;
+    default:
+      ctx.moveTo(hx, hy + s*0.3);
+      ctx.lineTo(hx + face*(s*0.9 + sg*s*0.7), hy - s*0.7 - sg*s*0.5);
+  }
+  ctx.stroke();
+
+  if (a.u.cls === "cav") {   // simple mount under the rider
+    ctx.fillStyle = "#5a3f28";
+    ctx.fillRect(x - s*0.9, y + s*0.55, s*1.8, s*0.42);
+    ctx.fillRect(x + face*s*0.85, y + s*0.25, s*0.4, s*0.4);
+  }
+  if (a.u.cls === "mage" && !a.ghost) {   // orb glow
+    ctx.fillStyle = "rgba(200,120,255,.85)";
+    ctx.beginPath(); ctx.arc(hx + face*s*0.2, hy - s*1.25, s*0.28, 0, 6.29); ctx.fill();
+  }
+
+  // hp pip
+  if (!a.ghost && a.hp < a.maxhp) {
+    const w = s * 1.8, f = Math.max(0, a.hp / a.maxhp);
+    ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(x - w/2, y - s*1.7, w, 3);
+    ctx.fillStyle = f > 0.5 ? "#6de06d" : f > 0.25 ? "#ffd75e" : "#ff5e5e";
+    ctx.fillRect(x - w/2, y - s*1.7, w * f, 3);
+  }
+  ctx.globalAlpha = alpha0;
+}
+
+/* ============================================================
+   SHOP UI
+   ============================================================ */
+const cards = [[], []];
+function buildShops() {
+  [0, 1].forEach(team => {
+    const host = document.getElementById(team === 0 ? "shop1" : "shop2");
+    host.innerHTML = "";
+    UNITS.forEach((u, i) => {
+      const el = document.createElement("div");
+      el.className = "card";
+      el.innerHTML =
+        '<div class="key">' + (team === 0 ? P1_LBL[i] : P2_LBL[i]) + '</div>' +
+        '<div class="cnt"></div>' +
+        '<canvas width="80" height="46"></canvas>' +
+        '<div class="nm">' + u.name + '</div>' +
+        '<div class="cost">◆' + u.cost + '</div>';
+      el.title = u.name + " — " + counterText(u);
+      el.addEventListener("pointerdown", e => { e.preventDefault(); buy(team, i); });
+      host.appendChild(el);
+      drawIcon(el.querySelector("canvas"), i, team);
+      cards[team].push(el);
+    });
+  });
+}
+function counterText(u) {
+  const m = COUNTER[u.cls] || {};
+  const strong = Object.keys(m).filter(k => m[k] > 1.2);
+  const weak   = Object.keys(m).filter(k => m[k] < 0.9);
+  const nm = { inf:"infantry", pike:"spears", cav:"cavalry", ranged:"archers", mage:"mages", tank:"giants" };
+  let s = u.cls.toUpperCase();
+  if (strong.length) s += " · strong vs " + strong.map(k => nm[k]).join(", ");
+  if (weak.length)   s += " · weak vs " + weak.map(k => nm[k]).join(", ");
+  return s;
+}
+function drawIcon(c, i, team) {
+  const g = c.getContext("2d");
+  g.clearRect(0, 0, c.width, c.height);
+  const real = ctx;
+  ctx = g;                       // drawUnit renders through the module-level ctx
+  drawUnit({ idx: i, team, u: UNITS[i], x: 40, y: 28, hp: 1, maxhp: 1,
+             swing: 0, hurt: 0, step: 0.6, dead: false, ghost: true });
+  ctx = real;
+}
+
+function flashCard(team, idx) {
+  const el = cards[team][idx];
+  if (!el) return;
+  el.classList.add("hit");
+  setTimeout(() => el.classList.remove("hit"), 90);
+}
+
+/* ============================================================
+   HUD
+   ============================================================ */
+function updateHUD() {
+  for (const t of [0, 1]) {
+    const p = P[t], n = t + 1;
+    const f = Math.max(0, p.hp / BASE_HP);
+    document.getElementById("hp" + n).style.width = (f * 100) + "%";
+    document.getElementById("hpt" + n).textContent = Math.ceil(p.hp) + " / " + BASE_HP;
+    document.getElementById("g" + n).textContent = Math.floor(p.gold);
+    const live = G.units.filter(u => !u.dead && u.team === t).length;
+    document.getElementById("a" + n).textContent = G.phase === "deploy" ? p.queue.length : live;
+    document.getElementById("r" + n).textContent =
+      G.phase === "deploy" ? (p.ready ? "READY ✔" : "") : "";
+    // affordability
+    UNITS.forEach((u, i) => {
+      const el = cards[t][i];
+      el.classList.toggle("poor", G.phase !== "deploy" || p.ready || p.gold < u.cost);
+      const c = p.queue.reduce((s, q) => s + (q === i ? 1 : 0), 0);
+      el.querySelector(".cnt").textContent = c || "";
+    });
+  }
+  document.getElementById("round").textContent = "ROUND " + G.round;
+  document.getElementById("phase").textContent =
+    G.phase === "deploy" ? "DEPLOY  " + Math.max(0, Math.ceil(DEPLOY_T - G.t)) + "s"
+    : G.phase === "battle" ? "BATTLE"
+    : G.phase === "over" ? "GAME OVER" : "";
+}
+
+/* ============================================================
+   INPUT
+   ============================================================ */
+window.addEventListener("keydown", e => {
+  if (e.code === "KeyM") { muted = !muted; banner(muted ? "SOUND OFF" : "SOUND ON", 700); return; }
+  if (G.phase === "menu" || G.phase === "over") {
+    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); newGame(); }
+    return;
+  }
+  let i = P1_KEYS.indexOf(e.code);
+  if (i >= 0) { e.preventDefault(); buy(0, i); return; }
+  i = P2_KEYS.indexOf(e.code);
+  if (i >= 0) { e.preventDefault(); buy(1, i); return; }
+  if (e.code === "Backquote")  { e.preventDefault(); refund(0); return; }
+  if (e.code === "Backspace")  { e.preventDefault(); refund(1); return; }
+  if (e.code === "ShiftLeft")  { e.preventDefault(); setReady(0); return; }
+  if (e.code === "ShiftRight") { e.preventDefault(); setReady(1); return; }
+});
+
+document.getElementById("startBtn").addEventListener("click", newGame);
+
+function newGame() {
+  P = [mkPlayer(0), mkPlayer(1)];
+  G.units = []; G.shots = []; G.fx = [];
+  G.round = 1; G.t = 0; G.phase = "deploy"; G.shake = 0;
+  const ov = document.getElementById("overlay");
+  ov.classList.add("hide");
+  banner("ROUND 1", 900);
+}
+
+/* ============================================================
+   LOOP
+   ============================================================ */
+let last = performance.now();
+function frame(now) {
+  let dt = (now - last) / 1000;
+  last = now;
+  if (dt > 0.05) dt = 0.05;
+
+  if (G.phase === "deploy") {
+    G.t += dt;
+    if (G.t >= DEPLOY_T) startBattle();
+  } else if (G.phase === "battle") {
+    G.t += dt;
+    stepBattle(dt);
+  }
+  G.shake *= 0.88;
+
+  if (bannerT && now > bannerT) {
+    document.getElementById("banner").classList.remove("show");
+    bannerT = 0;
+  }
+
+  draw();
+  updateHUD();
+  requestAnimationFrame(frame);
+}
+
+buildShops();
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
