@@ -219,7 +219,8 @@ const P2_LBL  = ["U","I","O","P","[","]","\\"];
 const BASE_HP   = 2200;
 const START_GOLD= 1400;
 const DEPLOY_T  = 25;      // seconds of deploy phase before auto-start
-const BATTLE_T  = 60;      // hard cap on a battle
+const BATTLE_T  = 40;      // hard cap on a battle
+const FATIGUE_T = 16;      // after this, everyone starts bleeding out so no fight stalls
 
 const G = {
   phase: "menu",           // menu | deploy | battle | over
@@ -375,6 +376,7 @@ function spawn(idx, team, x, y) {
 function startBattle() {
   G.phase = "battle";
   G.t = 0;
+  G.fatigued = false;
   deploy();
   banner("CHARGE!", 900);
   sfxHorn();
@@ -417,6 +419,18 @@ function hitBase(team, amt) {          // team = the side taking damage
 }
 
 function stepBattle(dt) {
+  // fatigue: once a battle drags on, every soldier starts bleeding out, harder
+  // and harder. Guarantees a round resolves instead of grinding to the timer.
+  if (G.t > FATIGUE_T) {
+    if (!G.fatigued) { G.fatigued = true; banner("EXHAUSTION", 1100); }
+    const bleed = (G.t - FATIGUE_T) * 9 * dt;
+    for (const a of G.units) {
+      if (a.dead) continue;
+      a.hp -= bleed;
+      if (a.hp <= 0) { a.dead = true; puff(a.x, a.y, a.team, a.u.size); }
+    }
+  }
+
   for (const a of G.units) {
     if (a.dead) continue;
     a.cool -= dt;
@@ -879,7 +893,7 @@ function updateHUD() {
   document.getElementById("round").textContent = "ROUND " + G.round;
   document.getElementById("phase").textContent =
     G.phase === "deploy" ? "DEPLOY  " + Math.max(0, Math.ceil(DEPLOY_T - G.t)) + "s"
-    : G.phase === "battle" ? "BATTLE"
+    : G.phase === "battle" ? "BATTLE  " + Math.max(0, Math.ceil(BATTLE_T - G.t)) + "s"
     : G.phase === "over" ? "GAME OVER" : "";
 }
 
@@ -887,6 +901,9 @@ function updateHUD() {
    INPUT
    ============================================================ */
 window.addEventListener("keydown", e => {
+  // a held key auto-repeats — without this it drains your whole treasury the
+  // instant the deploy phase opens
+  if (e.repeat) { e.preventDefault(); return; }
   if (e.code === "KeyM") { muted = !muted; banner(muted ? "SOUND OFF" : "SOUND ON", 700); return; }
   if (G.phase === "menu" || G.phase === "over") {
     if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); newGame(); }
