@@ -5,8 +5,12 @@ The dev entry point (index.html) loads src/*.js as ES modules, which is pleasant
 on but cannot be handed to anyone as a single file. This inlines the CSS and concatenates
 the modules in dependency order, stripping the import/export plumbing. Stdlib only.
 
-    python3 build.py            # writes dist/hustle-lite.html
+    python3 build.py            # writes dist/hustle-lite.html (+ the standalone copy)
     python3 build.py --check    # build, then assert the output is actually self-contained
+
+Two files come out. `hustle-lite.html` is a fragment for hosts that supply their own
+document wrapper; `hustle-lite-standalone.html` adds the wrapper so it opens by
+double-clicking it.
 """
 from __future__ import annotations
 
@@ -17,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src"
 OUT = ROOT / "dist" / "hustle-lite.html"
+OUT_STANDALONE = ROOT / "dist" / "hustle-lite-standalone.html"
 
 # Dependency order matters: concatenation puts everything in one scope, so a module must
 # appear after the things it references at load time.
@@ -80,11 +85,31 @@ def check(out: str) -> None:
     print(f"  ok   self-contained, {len(out) / 1024:.0f} KB, no external references")
 
 
+def standalone(fragment: str) -> str:
+    """The same page with a document wrapper, so it opens straight from the filesystem.
+
+    The fragment leads with <title> and <style>, so closing </head> and opening <body>
+    right after the stylesheet puts every tag where it belongs.
+    """
+    head = (
+        '<!doctype html>\n<html lang="en">\n<head>\n'
+        '<meta charset="utf-8">\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    )
+    body = fragment.replace("</style>", "</style>\n</head>\n<body>", 1)
+    return f"{head}{body}\n</body>\n</html>\n"
+
+
 def main() -> None:
     out = build()
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(out, encoding="utf-8")
     print(f"wrote {OUT.relative_to(ROOT)} ({len(out) / 1024:.0f} KB)")
+
+    solo = standalone(out)
+    OUT_STANDALONE.write_text(solo, encoding="utf-8")
+    print(f"wrote {OUT_STANDALONE.relative_to(ROOT)} ({len(solo) / 1024:.0f} KB)")
+
     if "--check" in sys.argv:
         check(out)
 
