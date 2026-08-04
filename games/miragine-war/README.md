@@ -20,7 +20,7 @@ That's the whole rock-paper-scissors:
 
 - A **Ninja** does 98 to light and 9 to armoured — it butchers cheap infantry and cannot dent plate.
 - A **Monk** is the reverse (26 / 152) — it exists to delete armoured units.
-- An **Iron Knight** has 20 armour, so a Newbie's 5 damage lands as the minimum chip of 2. Swarms
+- An **Iron Knight** has 14 armour, so a Newbie's 5 damage lands as the minimum chip of 2. Swarms
   literally cannot kill it — but a **Vampire** hits it for 150 and heals 75% of that back.
 - The **Dread Lord** is deliberately LIGHT. If the whole top of the ladder were armoured, every
   anti-light unit would be dead weight late game, so the second-most-expensive unit is a fast
@@ -28,7 +28,9 @@ That's the whole rock-paper-scissors:
 
 Press <kbd>H</kbd> in game for the counter chart.
 
-Hover any shop card for the full stat line.
+Hover any shop card for the full stat line. The bar under each card is a **live counter advisor** —
+it scores that unit against the enemy's army as it stands right now, green for a strong pick and red
+for a wasted one, so you can read the matchup without memorising the table.
 
 ### The shrine
 
@@ -57,9 +59,12 @@ you the fight and the bank at once.
 | Buy row 2 | `A` `S` `D` `F` `Z` `X` `C` `V` | `J` `K` `L` `;` `M` `,` `.` `/` |
 | Spawn lane | `Left Shift` | `Right Shift` |
 | Mend crystal | `5` | `6` |
+| Stance | `T` | `'` |
 
-Lane cycles SPREAD → TOP → MID → BOT, so you can mass on a flank instead of feeding the meat
-grinder in the middle. Mending costs ◆450 for 700 crystal HP — a gold sink that buys you a comeback
+Lane cycles SPREAD → HIGH → MID → LOW, so you can mass on a flank instead of feeding the meat
+grinder in the middle. Stance toggles ADVANCE / HOLD — on HOLD your troops fall back to your own
+half and fight under your crystal's guns instead of marching out, which is how you survive a bad
+patch. The cost is that your opponent takes the shrine while you sit. Mending costs ◆450 for 700 crystal HP — a gold sink that buys you a comeback
 if you can hold the field. `Space` pauses, `-`/`=` set game speed (1–3×), `H` shows the counter
 chart, `` ` `` mutes. Clicking a card buys it; hovering one picks that unit type out of the melee.
 
@@ -109,8 +114,8 @@ in are two different jobs.
   unit by damage-after-their-armour against how long it would survive their damage output.
   What separates the difficulties is *awareness*, not reaction speed: easy fights blind (it assumes
   a 50/50 enemy composition and caps itself at cheap units), normal reads the enemy through noise,
-  hard reads it exactly. Measured over repeated games against a competent scripted opponent, easy
-  wins 1/5, normal 4/5, hard 5/5.
+  hard reads it exactly. Benchmarked against a *strong* scripted player — one that counter-picks by
+  value every 0.4s — easy wins 0/6, normal 3/6, hard 5/6.
 - **Balance is simulated, not guessed.** A headless harness runs round-robin duels between
   strategies — blind teching, counter-picking, tech-rushing, cheap swarming — and reports win/loss.
   It has caught three real design faults so far: teching beating counter-play every time (the roster
@@ -119,3 +124,8 @@ in are two different jobs.
   screen and take almost nothing back. Counter-picking now beats blind teching 5-1, and picking the
   *wrong* counter loses 6-0, which is the shape you want.
 - **Colour is never the only cue.** Blue rings are solid, red rings are dashed.
+- **Rendering.** Sprites are baked at three quantised perspective scales and blitted at native size
+  on integer origins, which is far cheaper than scaled draws: a 680-unit battle draws in ~13 ms in
+  software rendering, down from ~41 ms, and simulates in ~3.6 ms.
+- **Stances are checked for dominance too.** A permanent turtle loses 0-5 to a pusher, which is the
+  intent — HOLD is for surviving a bad patch, not a way to win by waiting.

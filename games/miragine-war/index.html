@@ -53,6 +53,8 @@
   .card .key { position: absolute; top: 0; left: 2px; font-size: 9px; color: #b09a6c; font-weight: bold; }
   .card .arm { position: absolute; top: 0; right: 2px; font-size: 9px; font-weight: bold; }
   .card .arm.a { color: #9fd0ff; } .card .arm.l { color: #ffd0a0; }
+  .card .advbg { height: 3px; background: #16110a; border-radius: 2px; margin: 1px 2px 0; overflow: hidden; }
+  .card .adv { height: 100%; width: 0; background: #6de06d; transition: width .25s linear, background .25s linear; }
   #vs { flex: 0 0 auto; align-self: center; font-size: 20px; font-weight: bold;
         color: #ffd75e; text-shadow: 0 2px 0 #000; padding: 0 4px; }
   .ctrls { font-size: 10px; color: #9e8b63; text-align: center; padding: 2px 0 0; }
@@ -132,15 +134,16 @@
         <div><b style="color:#bfe6ff">PLAYER 1 — left</b><br>
           <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><br>
           <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd><kbd>V</kbd><br>
-          lane: <kbd>Left Shift</kbd>
+          lane: <kbd>Left Shift</kbd> &nbsp; stance: <kbd>T</kbd>
         </div>
         <div><b style="color:#ffd0b0">PLAYER 2 — right</b><br>
           <kbd>7</kbd><kbd>8</kbd><kbd>9</kbd><kbd>0</kbd><kbd>U</kbd><kbd>I</kbd><kbd>O</kbd><kbd>P</kbd><br>
           <kbd>J</kbd><kbd>K</kbd><kbd>L</kbd><kbd>;</kbd><kbd>M</kbd><kbd>,</kbd><kbd>.</kbd><kbd>/</kbd><br>
-          lane: <kbd>Right Shift</kbd>
+          lane: <kbd>Right Shift</kbd> &nbsp; stance: <kbd>'</kbd>
         </div>
       </div>
-      <p style="font-size:12px;color:#9e8b63"><kbd>5</kbd><kbd>6</kbd> mend crystal &nbsp; <kbd>H</kbd> counters &nbsp; <kbd>Space</kbd> pause &nbsp; <kbd>-</kbd><kbd>=</kbd> game speed
+      <p style="font-size:12px;color:#9e8b63">The bar under each card rates that unit against the enemy's current army. &nbsp;
+      <kbd>5</kbd><kbd>6</kbd> mend crystal &nbsp; <kbd>H</kbd> counters &nbsp; <kbd>Space</kbd> pause &nbsp; <kbd>-</kbd><kbd>=</kbd> game speed
         &nbsp; <kbd>`</kbd> mute &nbsp; click a card to buy &nbsp; hover a card for full stats</p>
       <button class="big" id="startBtn">FIGHT</button>
     </div>
@@ -149,12 +152,12 @@
   <div id="shops">
     <div class="half">
       <div class="grid" id="shop1"></div>
-      <div class="ctrls">P1 &nbsp; 1 2 3 4 Q W E R &nbsp;/&nbsp; A S D F Z X C V &nbsp;·&nbsp; L-SHIFT lane</div>
+      <div class="ctrls">P1 &nbsp; 1 2 3 4 Q W E R &nbsp;/&nbsp; A S D F Z X C V &nbsp;·&nbsp; L-SHIFT lane &nbsp;·&nbsp; T stance &nbsp;·&nbsp; 5 mend</div>
     </div>
     <div id="vs">VS</div>
     <div class="half">
       <div class="grid" id="shop2"></div>
-      <div class="ctrls">P2 &nbsp; 7 8 9 0 U I O P &nbsp;/&nbsp; J K L ; M , . / &nbsp;·&nbsp; R-SHIFT lane</div>
+      <div class="ctrls">P2 &nbsp; 7 8 9 0 U I O P &nbsp;/&nbsp; J K L ; M , . / &nbsp;·&nbsp; R-SHIFT lane &nbsp;·&nbsp; ' stance &nbsp;·&nbsp; 6 mend</div>
     </div>
   </div>
 </div>
@@ -214,7 +217,9 @@ const P2_KEYS = ["Digit7","Digit8","Digit9","Digit0","KeyU","KeyI","KeyO","KeyP"
                  "KeyJ","KeyK","KeyL","Semicolon","KeyM","Comma","Period","Slash"];
 const P1_LBL = ["1","2","3","4","Q","W","E","R","A","S","D","F","Z","X","C","V"];
 const P2_LBL = ["7","8","9","0","U","I","O","P","J","K","L",";","M",",",".","/"];
-const LANES = ["SPREAD", "TOP", "MID", "BOT"];
+const LANES = ["SPREAD", "HIGH", "MID", "LOW"];
+const STANCES = ["ADVANCE", "HOLD"];
+const holdX = t => crystalX(t) + (t === 0 ? 1 : -1) * G.W * 0.3;
 
 /* ============================================================
    STATE
@@ -235,7 +240,7 @@ const SHRINE_R = 135, SHRINE_GOLD = 240, SUDDEN_ROUND = 28;
 const shrineX = () => G.W/2, shrineY = () => crystalY();
 function mkPlayer(team) {
   return { team, gold: START_GOLD, hp: CRYSTAL_HP, cool: 0, kills: 0, lane: 0, spent: 0,
-           built: {}, mend: 0 };
+           built: {}, mend: 0, stance: 0 };
 }
 function repair(team) {
   if (!G.running || G.over || G.paused) return;
@@ -523,6 +528,10 @@ function cpuThink(dt) {
     }
   }
   if (cfg.mend && me.hp < CRYSTAL_HP*0.6 && me.gold > REPAIR_COST*2.5) repair(CPU.team);
+  if (cfg.mend) {                       // easy never bothers with stances either
+    if (theirs > mine + 5 && me.hp < CRYSTAL_HP*0.75) me.stance = 1;
+    else if (mine >= theirs) me.stance = 0;
+  }
   if (Math.random() < 0.05) me.lane = Math.floor(Math.random()*4);
 }
 
@@ -576,11 +585,20 @@ function step(dt) {
 
     if (a.retarget <= 0 || !a.tgt || a.tgt.dead) {
       a.tgt = findTarget(a); a.retarget = .2 + Math.random()*.2;
+      // HOLD means decline anything past your own line: fight what comes to you
+      if (a.tgt && P[a.team].stance === 1) {
+        const line = holdX(a.team), reach = a.u.rng + a.u.size + 20;
+        if (a.team === 0 ? a.tgt.x > line + reach : a.tgt.x < line - reach) a.tgt = null;
+      }
     }
-    const ecx = crystalX(1-a.team);
-    let tx, ty, reach, isCrystal = false;
-    if (a.tgt) { tx=a.tgt.x; ty=a.tgt.y; reach=a.u.rng + a.u.size + a.tgt.u.size; }
-    else { tx=ecx; ty=crystalY(); reach=a.u.rng + a.u.size + 32; isCrystal = true; }
+    let tx, ty, reach, isCrystal = false, idle = false;
+    if (a.tgt) {
+      tx=a.tgt.x; ty=a.tgt.y; reach=a.u.rng + a.u.size + a.tgt.u.size;
+    } else if (P[a.team].stance === 1) {                 // HOLD: fall back to your own half
+      tx = holdX(a.team); ty = a.y; reach = 6; idle = true;
+    } else {
+      tx = crystalX(1-a.team); ty = crystalY(); reach = a.u.rng + a.u.size + 32; isCrystal = true;
+    }
 
     const dx=tx-a.x, dy=ty-a.y, dist=Math.hypot(dx,dy)||1;
 
@@ -596,7 +614,7 @@ function step(dt) {
                     vx:(Math.random()-.5)*18, vy:-8-Math.random()*12,
                     life:.45, max:.45, c:"rgba(214,206,170,.75)", r:1.5+Math.random()*2.5, nog:true });
       }
-    } else if (a.cool <= 0) {
+    } else if (a.cool <= 0 && !idle) {                  // nothing to swing at while holding
       a.cool = a.u.ws; a.swing = 1;
       if (isCrystal) {
         hitCrystal(1-a.team, 42 + Math.max(a.u.dL, a.u.dA)*0.55);
@@ -738,6 +756,7 @@ function draw() {
   ctx.drawImage(decCv, 0, 0, W, H);
 
   drawShrine();
+  drawHoldLine(0); drawHoldLine(1);
   drawLaneMarker(0); drawLaneMarker(1);
   drawCrystal(0); drawCrystal(1);
 
@@ -787,7 +806,7 @@ function drawHelp() {
     ["", ""],
     ["Hold the shrine in the middle for +◆" + SHRINE_GOLD + " every payday.", "#e8dcb0"],
     ["", ""],
-    ["5 / 6  mend your crystal        L-SHIFT / R-SHIFT  spawn lane", "#9fffd8"],
+    ["5 / 6  mend crystal      L-SHIFT / R-SHIFT  lane      T / '  advance or hold", "#9fffd8"],
     ["SPACE pause     - / =  speed     `  mute     H  close", "#cfc6ae"],
   ];
   const w = 560, h = lines.length*22 + 28;
@@ -832,6 +851,15 @@ function drawShrine() {
     ctx.lineWidth = 4; ctx.lineCap = "butt";
     ctx.beginPath(); ctx.arc(x, y-42, 20, -Math.PI/2, -Math.PI/2 + p*6.283); ctx.stroke();
   }
+}
+
+function drawHoldLine(team) {
+  const p = P[team]; if (!p || p.stance !== 1) return;
+  const x = holdX(team);
+  ctx.strokeStyle = team===0 ? "rgba(190,230,255,.30)" : "rgba(255,208,176,.30)";
+  ctx.lineWidth = 3; ctx.setLineDash([10,8]);
+  ctx.beginPath(); ctx.moveTo(x, TOP()); ctx.lineTo(x, BOT()); ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 function drawLaneMarker(team) {
@@ -1345,7 +1373,8 @@ function buildShops() {
         '<div class="arm ' + (u.type==="armored" ? 'a">A' : 'l">L') + '</div>' +
         '<canvas width="80" height="46"></canvas>' +
         '<div class="nm">' + u.name + '</div>' +
-        '<div class="cost">◆' + u.price + '</div>';
+        '<div class="cost">◆' + u.price + '</div>' +
+        '<div class="advbg"><div class="adv"></div></div>';
       el.title = u.name + "   ◆" + u.price + "   income +" + u.income + "\n" +
         (u.type==="armored"?"ARMORED":"LIGHT") + "   hp " + u.hp + "   armour " + u.armour + "\n" +
         "damage vs light " + u.dL + "   vs armored " + u.dA + "\n" +
@@ -1376,6 +1405,45 @@ function flashCard(team, idx) {
   el.classList.add("hit"); setTimeout(() => el.classList.remove("hit"), 80);
 }
 
+/* ---------- live counter advisor ----------
+   Scores every shop unit against the enemy's *current* army the same way the CPU
+   does, and paints a bar on each card. Makes the armour system legible while
+   you're playing instead of something you have to memorise. */
+let adviceT = 0;
+function updateAdvice(dt) {
+  adviceT -= dt;
+  if (adviceT > 0) return;
+  adviceT = 0.4;
+  for (const team of [0,1]) {
+    const foe = 1 - team;
+    const prof = new Map(); let tot = 0;
+    for (const a of G.units) {
+      if (a.dead || a.team !== foe) continue;
+      prof.set(a.u.idx, (prof.get(a.u.idx)||0) + a.hp); tot += a.hp;
+    }
+    const vals = UNITS.map(u => {
+      if (!tot) return null;
+      let dps = 0, inc = 0;
+      for (const [k, hp] of prof) {
+        const e = UNITS[k], sh = hp/tot;
+        dps += sh * Math.max(2, (e.type === "light" ? u.dL : u.dA) - e.armour) / u.ws;
+        inc += sh * Math.max(2, (u.type === "light" ? e.dL : e.dA) - u.armour) / e.ws;
+      }
+      return dps * (u.hp/Math.max(1,inc)) * (1 + (u.splash ? u.splash/110 : 0)) / u.price;
+    });
+    const live = vals.filter(v => v !== null);
+    const hi = live.length ? Math.max(...live) : 0;
+    UNITS.forEach((u,i) => {
+      const bar = cards[team][i].querySelector(".adv");
+      if (!bar) return;
+      if (vals[i] === null || hi <= 0) { bar.style.width = "0%"; return; }
+      const f = Math.max(0.04, Math.min(1, vals[i]/hi));
+      bar.style.width = (f*100) + "%";
+      bar.style.background = f > .72 ? "#6de06d" : f > .4 ? "#ffd75e" : "#e06a5a";
+    });
+  }
+}
+
 /* ============================================================
    HUD
    ============================================================ */
@@ -1389,7 +1457,8 @@ function updateHUD() {
     document.getElementById("g"+n).textContent = Math.floor(p.gold);
     document.getElementById("i"+n).textContent = BASE_INCOME + 110*G.round + inc[t];
     document.getElementById("a"+n).textContent = cnt[t];
-    document.getElementById("l"+n).textContent = (CPU && CPU.team===t ? "CPU · " : "") + LANES[p.lane];
+    document.getElementById("l"+n).textContent =
+      (CPU && CPU.team===t ? "CPU · " : "") + LANES[p.lane] + " · " + STANCES[p.stance];
     UNITS.forEach((u,i) => cards[t][i].classList.toggle("poor", p.gold < u.price));
   }
   for (const t of [0,1]) {
@@ -1444,6 +1513,8 @@ window.addEventListener("keydown", e => {
   if (e.code === "Space")  { e.preventDefault(); G.paused=!G.paused; banner(G.paused?"PAUSED":"", 600); return; }
   if (e.code === "Minus")  { G.speed = Math.max(1, G.speed-1); return; }
   if (e.code === "Equal")  { G.speed = Math.min(3, G.speed+1); return; }
+  if (e.code === "KeyT")  { if (!CPU || CPU.team!==0) P[0].stance ^= 1; return; }
+  if (e.code === "Quote")  { if (!CPU || CPU.team!==1) P[1].stance ^= 1; return; }
   if (e.code === "Digit5") { if (!CPU || CPU.team!==0) repair(0); return; }
   if (e.code === "Digit6") { if (!CPU || CPU.team!==1) repair(1); return; }
   if (e.code === "KeyH") { G.help = !G.help; return; }
@@ -1497,7 +1568,7 @@ function frame(now) {
   G.shake *= .88;
   if (bannerT && now > bannerT) { document.getElementById("banner").classList.remove("show"); bannerT=0; }
   draw();
-  if (P.length) updateHUD();
+  if (P.length) { updateHUD(); updateAdvice(dt); }
   requestAnimationFrame(frame);
 }
 
