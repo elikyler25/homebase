@@ -61,6 +61,22 @@ Hover any shop card for the full stat line. The bar under each card is a **live 
 it scores that unit against the enemy's army as it stands right now, green for a strong pick and red
 for a wasted one, so you can read the matchup without memorising the table.
 
+### The ground you fight on
+
+The field is not a flat plain. Three kinds of terrain are laid out **mirrored across the centre**, so
+neither side ever gets the better ground:
+
+| Terrain | Effect |
+|---|---|
+| **Woods** (four patches, on the flanks) | Troops inside take **40% less missile damage** and move 18% slower |
+| **High ground** (the shrine hill, centre) | Troops on it deal **+14% damage** |
+| **Marsh** (two strips, mid-field) | Wading costs 38% of your speed and 10% of your damage |
+
+Nothing blocks movement — there is no pathfinding and nothing to get stuck on. Terrain changes what
+*happens* where you fight, which is enough to make position matter: artillery that dominates open
+ground is blunted the moment the enemy reaches the treeline, the shrine is worth taking twice over,
+and the marsh is somewhere to avoid rather than somewhere to hold.
+
 ### The shrine
 
 A neutral obelisk stands mid-field. Have more troops standing on it than your opponent and it
@@ -144,6 +160,9 @@ The menu is a setup sheet, not a wall of text: four labelled rows — **Opponent
 picking one previews that roster in the shop immediately. Rules and the full control map live behind
 a **How to play** disclosure so the default view stays clean, and the panel collapses gracefully on a
 phone (tagline and disclosure drop away, the panel scrolls inside itself, FIGHT stays on screen).
+
+Your opponent, battle size and both armies are **remembered between sessions**, along with the mute
+setting. <kbd>Space</kbd> brings up a proper pause card rather than a word in the corner.
 
 In battle the HUD is grouped chips over a dark ground rather than a run-on line: army tag, gold,
 income, troops, what you're recruiting, lane and stance. Shop cards carry the key, the armour type,

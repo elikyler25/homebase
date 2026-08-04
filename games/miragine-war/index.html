@@ -497,7 +497,7 @@ const BASE_INCOME = 300;
 
 const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed:1,
             units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false,
-            shrine:{ owner:-1, prog:0 }, sudden:false };
+            shrine:{ owner:-1, prog:0 }, sudden:false, zones:[] };
 let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
@@ -570,6 +570,7 @@ function resize() {
   for (const c of [bgCv, decCv]) { c.width = cv.width; c.height = cv.height; }
   bgCtx.setTransform(q,0,0,q,0,0); decCtx.setTransform(q,0,0,q,0,0);
   buildTerrain();
+  buildZones();
   paintBackground();
   if (typeof spriteCache !== "undefined") spriteCache.clear();
 }
@@ -607,6 +608,36 @@ function buildTerrain() {
                    c: Math.random() });
 }
 
+/* Battlefield terrain. Zones never block movement — no pathfinding, nothing to
+   get stuck on — they change what happens inside them, which is enough to make
+   position matter. Always mirrored, so neither side gets the better ground. */
+const ZONE = {
+  wood:  { name:"Woods",     spd:0.82, ranged:0.60, dmg:1.00, fill:"rgba(28,58,26,.34)",  edge:"rgba(30,70,28,.5)"  },
+  hill:  { name:"High ground",spd:0.94, ranged:1.00, dmg:1.14, fill:"rgba(150,132,70,.20)", edge:"rgba(180,160,90,.42)" },
+  marsh: { name:"Marsh",     spd:0.62, ranged:1.00, dmg:0.90, fill:"rgba(60,72,54,.34)",  edge:"rgba(80,96,70,.45)" },
+};
+function buildZones() {
+  const W = G.W, H = G.H, midY = crystalY(), span = BOT() - TOP();
+  const z = [];
+  const pair = (dx, y, rx, ry, type) => {           // mirrored across the centre line
+    z.push({ x: W/2 - dx, y, rx, ry, type });
+    z.push({ x: W/2 + dx, y, rx, ry, type });
+  };
+  z.push({ x: W/2, y: midY, rx: SHRINE_R*1.5, ry: span*0.26, type:"hill" });
+  pair(W*0.220, TOP() + span*0.19, W*0.085, span*0.165, "wood");
+  pair(W*0.220, BOT() - span*0.19, W*0.085, span*0.165, "wood");
+  pair(W*0.360, midY,              W*0.055, span*0.20,  "marsh");
+  G.zones = z;
+}
+function zoneAt(x, y) {
+  const z = G.zones;
+  for (let i = 0; i < z.length; i++) {
+    const a = z[i], dx = (x-a.x)/a.rx, dy = (y-a.y)/a.ry;
+    if (dx*dx + dy*dy < 1) return a.type;
+  }
+  return null;
+}
+
 function paintBackground() {
   const W=G.W, H=G.H, c=bgCtx;
   c.clearRect(0,0,W,H);
@@ -616,6 +647,36 @@ function paintBackground() {
   const mid = c.createLinearGradient(0,0,W,0);
   mid.addColorStop(0,"rgba(0,0,0,0)"); mid.addColorStop(.5,"rgba(96,78,44,.22)"); mid.addColorStop(1,"rgba(0,0,0,0)");
   c.fillStyle=mid; c.fillRect(0, 68, W, H-100);
+  for (const z of G.zones || []) {                 // terrain sits under the grass detail
+    const cfg = ZONE[z.type];
+    c.fillStyle = cfg.fill;
+    c.beginPath(); c.ellipse(z.x, z.y, z.rx, z.ry, 0, 0, 6.29); c.fill();
+    c.strokeStyle = cfg.edge; c.lineWidth = 3; c.setLineDash([14, 12]);
+    c.beginPath(); c.ellipse(z.x, z.y, z.rx, z.ry, 0, 0, 6.29); c.stroke();
+    c.setLineDash([]);
+    if (z.type === "wood") {                       // a scatter of trees to read as forest
+      for (let i = 0; i < 34; i++) {
+        const a = Math.random()*6.29, r = Math.sqrt(Math.random());
+        const tx = z.x + Math.cos(a)*z.rx*r*0.92, ty = z.y + Math.sin(a)*z.ry*r*0.92;
+        const h = 26 + Math.random()*22;
+        c.fillStyle = "rgba(30,22,12,.55)";
+        c.fillRect(tx-2, ty-h*0.28, 4, h*0.30);
+        c.fillStyle = i%3 ? "rgba(38,86,34,.85)" : "rgba(46,102,40,.85)";
+        c.beginPath();
+        c.moveTo(tx, ty-h); c.lineTo(tx+h*0.34, ty-h*0.22); c.lineTo(tx-h*0.34, ty-h*0.22);
+        c.closePath(); c.fill();
+      }
+    }
+    if (z.type === "marsh") {
+      for (let i = 0; i < 20; i++) {
+        const a = Math.random()*6.29, r = Math.sqrt(Math.random());
+        const tx = z.x + Math.cos(a)*z.rx*r*0.9, ty = z.y + Math.sin(a)*z.ry*r*0.9;
+        c.fillStyle = "rgba(74,92,68,.5)";
+        c.beginPath(); c.ellipse(tx, ty, 9+Math.random()*13, 4+Math.random()*5, 0, 0, 6.29); c.fill();
+      }
+    }
+  }
+
   for (const t of terrain) {
     if (t.k === "rock") {
       c.fillStyle="rgba(88,88,78,.38)";
@@ -700,7 +761,7 @@ function spawn(idx, team) {
     x: crystalX(team) + (team===0?70:-70) + (Math.random()*18-9),
     y: laneY(team),
     hp:u.hp, maxhp:u.hp, cool:Math.random()*u.ws, tgt:null, retarget:Math.random()*.3,
-    swing:0, hurt:0, step:Math.random()*6.28, dust:0, vet:0, dead:false };
+    swing:0, hurt:0, step:Math.random()*6.28, dust:0, vet:0, zn:null, znT:0, dead:false };
 }
 
 function select(team, idx) {
@@ -766,8 +827,13 @@ function findTarget(a) {
 }
 
 function vetBonus(a) { return 1 + Math.min(3, Math.floor((a.vet||0)/3)) * 0.12; }
-function hurt(target, amt, src) {
-  if (src) amt *= vetBonus(src) * (1 + (src.buff||0));
+function hurt(target, amt, src, ranged) {
+  if (src) {
+    amt *= vetBonus(src) * (1 + (src.buff||0));
+    if (src.zn) amt *= ZONE[src.zn].dmg;            // high ground hits harder
+  }
+  if (ranged && target.zn === "wood") amt *= ZONE.wood.ranged;   // cover from missiles
+
   target.hp -= amt; target.hurt = .16;
   if (amt >= 55) dmgText(target.x, target.y - target.u.size, Math.round(amt), src && src.team === 0);
   if (src && src.u.drain) {
@@ -963,6 +1029,9 @@ function step(dt) {
     a.cool -= dt; a.swing = Math.max(0, a.swing - dt*4);
     a.hurt = Math.max(0, a.hurt - dt); a.retarget -= dt;
 
+    a.znT -= dt;
+    if (a.znT <= 0) { a.znT = 0.2 + Math.random()*0.1; a.zn = zoneAt(a.x, a.y); }
+
     if (a.retarget <= 0 || !a.tgt || a.tgt.dead) {
       a.tgt = findTarget(a); a.retarget = .2 + Math.random()*.2;
       // HOLD means decline anything past your own line: fight what comes to you
@@ -983,7 +1052,7 @@ function step(dt) {
     const dx=tx-a.x, dy=ty-a.y, dist=Math.hypot(dx,dy)||1;
 
     if (dist > reach) {
-      const sp = a.u.spd*dt;
+      const sp = a.u.spd * dt * (a.zn ? ZONE[a.zn].spd : 1);
       a.x += dx/dist*sp; a.y += dy/dist*sp;
       a.step += dt*a.u.spd*.2;
       a.y = Math.max(TOP(), Math.min(BOT(), a.y));
@@ -1043,11 +1112,11 @@ function step(dt) {
       if (s.splash) {
         nearby(s.tx, s.ty, s.splash, b => {
           if (b.dead || b.team === s.team) return;
-          if (Math.hypot(b.x-s.tx, b.y-s.ty) < s.splash) hurt(b, dmgOf(s.src,b), s.src);
+          if (Math.hypot(b.x-s.tx, b.y-s.ty) < s.splash) hurt(b, dmgOf(s.src,b), s.src, true);
         });
         boom(s.tx, s.ty, s.splash); sfxBoom();
       } else if (s.tgt && !s.tgt.dead) {
-        hurt(s.tgt, s.crystal ? 95 : dmgOf(s.src, s.tgt), s.crystal ? null : s.src);
+        hurt(s.tgt, s.crystal ? 95 : dmgOf(s.src, s.tgt), s.crystal ? null : s.src, true);
         spark(s.tx, s.ty);
       }
       if (s.chain && s.src) {            // lightning leaps to whatever stands near
@@ -1057,7 +1126,7 @@ function step(dt) {
           if (Math.hypot(b.x-fx, b.y-fy) > 260) return;
           hops++;
           G.fx.push({ t:"bolt", x:fx, y:fy, x2:b.x, y2:b.y-7, life:.18, max:.18 });
-          hurt(b, dmgOf(s.src, b) * 0.65, s.src);
+          hurt(b, dmgOf(s.src, b) * 0.65, s.src, true);
           fx = b.x; fy = b.y-7;
         });
       }
@@ -1217,6 +1286,21 @@ function draw() {
   ctx.restore();
   drawRadar();
   if (G.help) drawHelp();
+  else if (G.paused && G.running && !G.over) drawPause();
+}
+
+function drawPause() {
+  const w = 520, h = 150, x = (G.W-w)/2, y = (G.H-h)/2 - 20;
+  ctx.fillStyle = "rgba(8,12,9,.88)"; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "#4a3c22"; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffd75e"; ctx.font = "bold 34px 'Trebuchet MS', sans-serif";
+  ctx.fillText("PAUSED", G.W/2, y + 52);
+  ctx.fillStyle = "#cfc6ae"; ctx.font = "17px 'Trebuchet MS', sans-serif";
+  ctx.fillText("SPACE resume    H counters    - / =  speed    `  mute", G.W/2, y + 92);
+  ctx.fillStyle = "#9e8b63"; ctx.font = "15px 'Trebuchet MS', sans-serif";
+  ctx.fillText("Terrain is mirrored — woods blunt missiles, the shrine hill hits harder.", G.W/2, y + 122);
+  ctx.textAlign = "left";
 }
 
 function drawHelp() {
@@ -1234,6 +1318,11 @@ function drawHelp() {
     ["Novice / Mage — hit both, from range", "#c9b6ff"],
     ["", ""],
     ["Hold the shrine in the middle for +◆" + SHRINE_GOLD*goldMul + " every payday.", "#e8dcb0"],
+    ["", ""],
+    ["TERRAIN — mirrored, so neither side gets the better ground", "#ffd75e"],
+    ["Woods: troops inside take 40% less missile damage, and move slower", "#9fd88f"],
+    ["High ground (the shrine): +14% damage dealt from on top of it", "#e8d090"],
+    ["Marsh: wades at 62% speed and hits 10% softer — a bad place to fight", "#a8b49c"],
     ["", ""],
     ["5 / 6  mend crystal      L-SHIFT / R-SHIFT  lane      T / '  advance or hold", "#9fffd8"],
     ["SPACE pause     - / =  speed     `  mute     H  close", "#cfc6ae"],
@@ -1967,6 +2056,20 @@ const MODES = [
 ];
 let modeId = "2p";
 let pick = [0, 1];
+const PREFS = "miragewar.prefs";
+function savePrefs() {
+  try { localStorage.setItem(PREFS, JSON.stringify({ modeId, sizeId, pick, muted })); } catch (e) {}
+}
+function loadPrefs() {
+  try {
+    const v = JSON.parse(localStorage.getItem(PREFS) || "null");
+    if (!v) return;
+    if (MODES.some(m => m.id === v.modeId)) modeId = v.modeId;
+    if (SIZES[v.sizeId]) sizeId = v.sizeId;
+    if (Array.isArray(v.pick) && v.pick.every(i => FACTIONS[i])) pick = v.pick.slice(0,2);
+    muted = !!v.muted;
+  } catch (e) {}
+}
 function setupNote() {
   const el = document.getElementById("setupNote");
   if (!el) return;
@@ -1998,7 +2101,7 @@ function buildArmies() {
           P[t].faction = FACTIONS[i]; P[t].roster = FACTIONS[i].units;
           P[t].sel = null; buildShops();
         }
-        buildArmies();
+        savePrefs(); buildArmies();
       });
       host.appendChild(b);
     });
@@ -2016,7 +2119,7 @@ function buildSizes() {
     b.title = id === "epic" ? "Twice the map, four times the gold, six times the recruit rate"
       : id === "chaos" ? "Ten times EPIC's gold and recruit rate, on the largest field that stays readable"
       : "The standard battlefield";
-    b.addEventListener("click", () => { sizeId = id; buildSizes(); });
+    b.addEventListener("click", () => { sizeId = id; savePrefs(); buildSizes(); });
     host.appendChild(b);
   }
   setupNote();
@@ -2029,7 +2132,7 @@ function buildModes() {
     const b = document.createElement("button");
     b.className = "mode" + (m.id===modeId ? " on" : "");
     b.textContent = m.label;
-    b.addEventListener("click", () => { modeId = m.id; buildModes(); });
+    b.addEventListener("click", () => { modeId = m.id; savePrefs(); buildModes(); });
     host.appendChild(b);
   });
 }
@@ -2039,12 +2142,12 @@ function buildModes() {
    ============================================================ */
 window.addEventListener("keydown", e => {
   if (e.repeat) { e.preventDefault(); return; }    // a held key must not drain the treasury
-  if (e.code === "Backquote") { muted = !muted; banner(muted?"SOUND OFF":"SOUND ON", 700); return; }
+  if (e.code === "Backquote") { muted = !muted; savePrefs(); banner(muted?"SOUND OFF":"SOUND ON", 700); return; }
   if (!G.running || G.over) {
     if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); newGame(); }
     return;
   }
-  if (e.code === "Space")  { e.preventDefault(); G.paused=!G.paused; banner(G.paused?"PAUSED":"", 600); return; }
+  if (e.code === "Space")  { e.preventDefault(); G.paused=!G.paused; banner(""); return; }
   if (e.code === "Minus")  { G.speed = Math.max(1, G.speed-1); return; }
   if (e.code === "Equal")  { G.speed = Math.min(3, G.speed+1); return; }
   if (e.code === "KeyT")  { if (!CPU || CPU.team!==0) P[0].stance ^= 1; return; }
@@ -2114,6 +2217,7 @@ function frame(now) {
 }
 
 P = [mkPlayer(0), mkPlayer(1)];
+loadPrefs();
 [0,1].forEach(t => { P[t].faction = FACTIONS[pick[t]]; P[t].roster = FACTIONS[pick[t]].units; });
 buildShops(); buildModes(); buildSizes(); buildArmies(); fit();
 requestAnimationFrame(frame);
