@@ -118,6 +118,7 @@
   </aside>
 
   <section class="moves">
+    <button id="lockin" class="lockin" type="button" disabled>SELECT A MOVE</button>
     <div class="assistbar" id="assistbar" hidden></div>
     <div id="moves"></div>
   </section>
@@ -156,7 +157,9 @@
 
 <dialog id="help">
   <h2>How to play</h2>
-  <p>Both fighters choose a move at the same time, then the turn plays out frame by frame.
+  <p>Pick a move, study how they can answer it, then <strong>Lock In</strong> (or press
+     <kbd>Space</kbd>) to commit. Both fighters' choices resolve at the same time and the
+     turn plays out frame by frame.
      There are no reflexes here — only the guess, and what you know about the person guessing back.
      First to two rounds wins.</p>
 
@@ -219,7 +222,7 @@
      <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> footsies and meter ·
      <kbd>Z</kbd> <kbd>X</kbd> tag · <kbd>←</kbd> <kbd>→</kbd> step a frame ·
      <kbd>C</kbd> <kbd>V</kbd> <kbd>B</kbd> assist call ·
-     <kbd>Enter</kbd> continue · <kbd>?</kbd> this panel</p>
+     <kbd>Space</kbd> lock in · <kbd>Enter</kbd> continue · <kbd>?</kbd> this panel</p>
 
   <div class="close"><button class="primary" id="helpclose" type="button">Got it</button></div>
 </dialog>

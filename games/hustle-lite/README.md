@@ -50,6 +50,14 @@ stays fixed to the bottom of the window while the rest of the page flows.
 - Frame advantage is printed next to your fighter once the exchange settles, because it is
   the single thing that decides the next turn.
 
+## Committing a move
+
+Choosing is two steps, as in the source game: **pick** a move, study how they can answer it,
+then **Lock In** (or press <kbd>Space</kbd>). One-step commit meant you could never read the
+threat board for the move you had actually settled on — hovering showed a preview and
+clicking fired immediately, so the board you were reading was never the board for your real
+choice. Picking the same move twice also commits it.
+
 ## The Oracle
 
 Four settings, in the header, from teaching tool to blindfold:
@@ -164,6 +172,15 @@ noise is added and how heavily it best-responds to a read of your recent habits.
 
 Because it solves the same matrix the threat board shows you, the board is never a cheat sheet
 against it — you both know the best answer, which is exactly the layer the original is about.
+
+**It does not see your current choice.** The read layer scores against what you did on
+*previous* turns only. An early version recorded your pick before asking the rival to decide,
+which put your actual move into the history it was reading — that is not a read, it is
+looking at your hand, and it made the rival feel like it was countering everything.
+
+Neither side gets an edge from being player one: a test resolves every pairing of moves at
+four distances in both orders and asserts the results are exact mirrors — same outcomes, same
+damage, same frame advantage.
 
 ## Balance, honestly
 

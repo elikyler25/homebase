@@ -466,6 +466,41 @@ ok('the AI can play any character',
     return availableMoves(s, 1).some((m) => m.id === id);
   }));
 
+/* -------------------------------------------------------------- symmetry */
+
+/*
+ * Neither side may get an edge from being player 0. Resolving A-vs-B must be the exact
+ * mirror of B-vs-A: same outcomes, same damage, same frame advantage, just swapped. If
+ * this ever fails, one player's attacks genuinely come out first and the game is rigged.
+ */
+{
+  const moves = ['jab', 'sweep', 'overhead', 'lunge', 'grab', 'highGuard', 'lowGuard', 'parry', 'dodge', 'hustle'];
+  let asym = null;
+  for (const a of moves) {
+    for (const b of moves) {
+      for (const d of [70, 90, 140, 220]) {
+        const ab = resolveTurn(at(d), [a, b]);
+        const ba = resolveTurn(at(d), [b, a]);
+        const same = ab.summary[0].outcome === ba.summary[1].outcome
+          && ab.summary[1].outcome === ba.summary[0].outcome
+          && ab.summary[0].dmgDealt === ba.summary[1].dmgDealt
+          && ab.summary[1].dmgDealt === ba.summary[0].dmgDealt
+          && ab.summary[0].adv === ba.summary[1].adv
+          && ab.summary[0].contactAt === ba.summary[1].contactAt;
+        if (!same && !asym) asym = `${a} vs ${b} at ${d}`;
+      }
+    }
+  }
+  ok('resolution is side-symmetric across every pairing and distance', !asym, String(asym));
+}
+{
+  const evens = ['jab', 'sweep', 'overhead', 'lunge'].every((m) => {
+    const r = resolveTurn(at(85), [m, m]);
+    return r.summary[0].adv === r.summary[1].adv && r.summary[0].dmgDealt === r.summary[1].dmgDealt;
+  });
+  ok('mirrored moves trade dead even', evens);
+}
+
 /* -------------------------------------------------------------- playback */
 
 {

@@ -215,7 +215,7 @@ function renderMoves() {
       b.addEventListener('mouseenter', () => setHover(choiceId(id)));
       b.addEventListener('focus', () => setHover(choiceId(id)));
       b.addEventListener('mouseleave', () => setHover(null));
-      b.addEventListener('click', () => commit(choiceId(id)));
+      b.addEventListener('click', () => select(choiceId(id)));
       grid.append(b);
     }
     box.append(grid);
@@ -244,8 +244,9 @@ function renderAssistBar() {
     if (sub) b.append(el('span', 'ad', sub));
     b.addEventListener('click', () => {
       game.assistPick = slot;
+      if (game.picked) game.picked = choiceId(decodeChoice(game.picked).moveId);
       refreshProfile();
-      renderMoves(); renderBoard(); paintStage();
+      renderMoves(); renderBoard(); paintStage(); renderLockIn();
     });
     return b;
   };
@@ -356,7 +357,9 @@ function renderChain(host, focusId) {
 
 function setHover(id) {
   if (game.phase !== 'choosing') return;
-  game.hovered = id;
+  // A selection outranks a hover: once you have picked, the board stays on your pick so
+  // you can study it without the mouse wandering over another button and changing it.
+  game.hovered = game.picked ? null : id;
   renderBoard();
   paintStage();
 }
@@ -389,26 +392,56 @@ function refreshTurn() {
   renderMoves();
   renderBoard();
   paintStage();
+  renderLockIn();
 }
 
-function commit(id) {
+/**
+ * Choosing is two steps, as in the source game: pick a move, then lock it in.
+ *
+ * One-step commit meant you could never study the threat board for the move you had
+ * actually settled on — hovering showed a preview and clicking fired immediately, so the
+ * board you were reading was never the board for your real choice.
+ */
+function select(id) {
   if (game.phase !== 'choosing') return;
   if (!optionsFor(game.state, ME).some((o) => o.id === id)) return;
-
+  if (game.picked === id) { lockIn(); return; }      // clicking your pick again commits it
   sfx.click();
   game.picked = id;
+  game.hovered = null;
+  renderMoves();
+  renderBoard();
+  paintStage();
+  renderLockIn();
+}
+
+function renderLockIn() {
+  const b = $('#lockin');
+  const ready = game.phase === 'choosing' && game.picked;
+  b.disabled = !ready;
+  b.textContent = ready ? `LOCK IN ▸ ${choiceLabel(game.state, ME, game.picked)}` : 'SELECT A MOVE';
+  b.classList.toggle('ready', !!ready);
+}
+
+function lockIn() {
+  if (game.phase !== 'choosing' || !game.picked) return;
+  const id = game.picked;
   game.phase = 'playing';
-  game.history.push(id);
   game.preTurn = game.state;
 
+  // The rival decides from what you did on *previous* turns. Recording this turn's pick
+  // before asking would put your actual choice into the history its read layer scores
+  // against — which is not a read, it is looking at your hand.
   const theirId = chooseAiMove(game.state, THEM, game.difficulty, game.history, game.rand)
     ?? optionsFor(game.state, THEM)[0].id;
+  game.history.push(id);
 
   const result = resolve(game.state, [id, theirId]);
   game.lastResult = result;
 
   renderMoves();
   renderBoard();
+  renderLockIn();
   $('#scrub').max = String(result.total);
   $('#scrubwrap').hidden = false;
 
@@ -702,6 +735,7 @@ export function boot() {
     stage.seek(Number(e.target.value));
     $('#scrubval').textContent = `${e.target.value}f`;
   });
+  $('#lockin').addEventListener('click', lockIn);
   $('#speed').addEventListener('change', (e) => { stage.fps = 26 * Number(e.target.value); });
   $('#boxes').addEventListener('click', (e) => {
     stage.boxes = !stage.boxes;
@@ -714,6 +748,7 @@ export function boot() {
     if (e.key === '?') { $('#help').showModal(); return; }
     if ($('#select').open) { if (e.key === 'Enter') startMatch(); return; }
     if (e.key === 'Enter' && (game.phase === 'over' || game.phase === 'roundover')) { advance(); return; }
+    if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); lockIn(); return; }
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && stage.scrubbable) {
       e.preventDefault();
       const f = stage.frame + (e.key === 'ArrowRight' ? 1 : -1);
@@ -730,12 +765,13 @@ export function boot() {
       const want = k === 'c' ? null : bench[k === 'v' ? 0 : 1]?.n ?? null;
       if (want === null || game.state.cooldown[ME][want] === 0) {
         game.assistPick = want;
-        refreshProfile(); renderMoves(); renderBoard(); paintStage();
+        if (game.picked) game.picked = choiceId(decodeChoice(game.picked).moveId);
+        refreshProfile(); renderMoves(); renderBoard(); paintStage(); renderLockIn();
       }
       return;
     }
     const hit = myMoves().find((m) => m.key === k);
-    if (hit) { e.preventDefault(); commit(choiceId(hit.id)); }
+    if (hit) { e.preventDefault(); select(choiceId(hit.id)); }
   });
 
   $('#diffnote').textContent = DIFFICULTY[game.difficulty].note;
