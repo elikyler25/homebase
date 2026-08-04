@@ -497,7 +497,7 @@ const BASE_INCOME = 300;
 
 const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed:1,
             units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false,
-            shrine:{ owner:-1, prog:0 }, sudden:false, zones:[] };
+            shrine:{ owner:-1, prog:0 }, sudden:false, zones:[], poorT:0 };
 let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
@@ -514,7 +514,7 @@ const SIZES = {
   // Gold and recruit rate go the full 10x; the map cannot, because troops have to
   // stay visible on a screen two people share - so it grows as far as legibility
   // allows and bodies scale with it.
-  chaos:  { label:"CHAOS",         world:9000, gold:40, auto:0.005, size:3.0,  spd:3.0, hp:48000, cap:3200, hero:{hp:4.5, price:14 } },
+  chaos:  { label:"CHAOS",         world:14000, gold:40, auto:0.005, size:3.4, spd:4.6, hp:48000, cap:4200, hero:{hp:4.5, price:14 } },
 };
 let sizeId = "normal";
 function applyBattleSize() {
@@ -776,7 +776,7 @@ function select(team, idx) {
   if (!p.roster[idx]) return;
   if (p.sel === idx) { p.sel = null; tone(300, .07, "square", .035, 200); return; }
   p.sel = idx; p.autoT = 0;
-  if (!buy(team, idx)) { flashCard(team, idx); }      // still selects if you cannot afford it yet
+  if (!buy(team, idx)) { flashCard(team, idx, true); } // still selects if you cannot afford it yet
   markSelection(team);
 }
 
@@ -961,6 +961,7 @@ function step(dt) {
 
   for (const p of P) {
     if (p.mend > 0) p.mend -= dt;
+    p.goldAvg = p.goldAvg === undefined ? p.gold : p.goldAvg + (p.gold - p.goldAvg) * Math.min(1, dt*1.6);
     // your crystal keeps producing whatever you last selected, as long as the
     // gold lasts - no tapping once per soldier
     if (p.sel !== null && !(CPU && CPU.team === p.team) && G.units.length < UNIT_CAP) {
@@ -1964,8 +1965,16 @@ function markSelection(team) {
   cards[team].forEach((el, i) => el.classList.toggle("sel", i === sel));
 }
 
-function flashCard(team, idx) {
+const flashAt = [{}, {}];
+function flashCard(team, idx, force) {
   const el = cards[team][idx]; if (!el) return;
+  // The selected card already wears a permanent gold outline. Pulsing it on every
+  // auto-recruit reads as a strobe rather than feedback once the cadence is quick
+  // (EPIC recruits 20x a second, CHAOS 200x), so only pulse at the slow NORMAL pace.
+  if (!force && P[team].sel === idx && AUTO_GAP < 0.25) return;
+  const now = performance.now();
+  if ((flashAt[team][idx] || 0) + 220 > now) return;
+  flashAt[team][idx] = now;
   el.classList.add("hit"); setTimeout(() => el.classList.remove("hit"), 80);
   const pip = el.querySelector(".pip");
   if (pip) { pip.classList.add("go"); setTimeout(() => pip.classList.remove("go"), 30); }
@@ -2015,6 +2024,7 @@ function updateAdvice(dt) {
    HUD
    ============================================================ */
 function updateHUD() {
+  G.poorT -= 1/60;
   const inc=[0,0], cnt=[0,0];
   for (const a of G.units) if (!a.dead) { inc[a.team]+=a.u.income; cnt[a.team]++; }
   for (const t of [0,1]) {
@@ -2032,8 +2042,20 @@ function updateHUD() {
     rec.textContent = (CPU && CPU.team===t) ? ""
       : p.sel === null ? "" : "▶ " + p.roster[p.sel].name;
     rec.style.color = p.sel === null ? "#9e8b63" : "#ffd75e";
-    p.roster.forEach((u,i) => cards[t][i].classList.toggle("poor",
-      p.gold < u.price || (u.hero && p.heroes > 0)));
+    if (G.poorT <= 0) {
+      // Hysteresis: while you are auto-recruiting, gold oscillates around the price
+      // of the thing you are buying, so a bare `gold < price` test dims and undims
+      // the card several times a second. A card only lights up once you can clearly
+      // afford it, and only dims once you clearly cannot.
+      const budget = Math.max(p.gold, p.goldAvg || 0);
+      p.roster.forEach((u,i) => {
+        const el = cards[t][i];
+        if (u.hero && p.heroes > 0) { el.classList.add("poor"); return; }
+        const was = el.classList.contains("poor");
+        const now = was ? budget < u.price * 1.15 : budget < u.price * 0.85;
+        if (now !== was) el.classList.toggle("poor", now);
+      });
+    }
   }
   for (const t of [0,1]) {
     const p = P[t], el = document.getElementById("rp"+(t+1));
@@ -2047,6 +2069,7 @@ function updateHUD() {
     : "SHRINE: neutral";
   document.getElementById("shrine").style.color =
     sh.owner === 0 ? "#bfe6ff" : sh.owner === 1 ? "#ffd0b0" : "#cfc6ae";
+  if (G.poorT <= 0) G.poorT = 0.25;
   document.getElementById("round").textContent = "ROUND " + G.round;
   document.getElementById("tick").textContent =
     G.paused ? "PAUSED" : "payday in " + Math.ceil(G.tick) + "s";

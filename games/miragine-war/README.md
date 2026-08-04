@@ -16,7 +16,7 @@ Pick one on the menu, alongside the opponent:
 |---|---|---|---|---|---|
 | **NORMAL BATTLE** | 2600 wide | ×1 | one troop / 0.30s | 6,000 | 2,600 |
 | **EPIC BATTLE** | 5200 wide (4× the area) | ×4 | one troop / 0.05s | 18,000 | 2,600 |
-| **CHAOS** | 9000 wide (12× the area) | ×40 | one troop / 0.005s | 48,000 | 3,200 |
+| **CHAOS** | 14000 wide (29× the area) | ×40 | one troop / 0.005s | 48,000 | 4,200 |
 
 EPIC is the same game at a different scale: twice the map, four times the gold and six times the
 recruit rate, so armies run into the many hundreds and the front line becomes a solid wall of bodies.
@@ -24,8 +24,8 @@ recruit rate, so armies run into the many hundreds and the front line becomes a 
 CHAOS takes EPIC's dials ten times further — forty times the gold, sixty times the recruit rate.
 Troops pour out faster than they can die, the field saturates in seconds and stays that way, and a
 match is decided by which wall of bodies grinds through first. Measured with both sides recruiting
-flat out: **~2,900 troops on the field**, both sides pinned at the ceiling, ten thousand kills in the
-first two and a half minutes and neither crystal scratched — CHAOS is decided by sudden death far
+flat out: **~3,100 troops on the field**, both sides pinned at the ceiling, eleven thousand kills in
+the first two and a half minutes and neither crystal scratched — CHAOS is decided by sudden death far
 more often than by a breakthrough.
 
 **Champions scale with the battle size.** At forty times the gold a 5,600-gold champion was
@@ -33,10 +33,17 @@ affordable in a tenth of a second and swallowed by the crowd immediately, which 
 Champion price and HP now scale with the mode: ×4 price and ×2.2 HP in EPIC, ×14 and ×4.5 in CHAOS.
 A CHAOS champion arrives around the ten-second mark and is still standing minutes later.
 
-One honest limit: **the map could not go the full ten times.** Two people share one screen with no
-scrolling, so a wider world means smaller troops, and past a point they stop being visible at all —
-at CHAOS's zoom a soldier is already under ten pixels tall. The map grows as far as legibility
-allows (12× the area of NORMAL) and bodies scale up with it; gold and recruit rate take the full 10×.
+One honest limit: **the map is capped by legibility, not by the engine.** Two people share one screen
+with no scrolling, so a wider world means smaller troops, and past a point they stop being visible at
+all — at CHAOS's zoom a rank-and-file soldier is 7 pixels tall, which is about the floor for reading
+who is who. The map is 29× the area of NORMAL and bodies scale 3.4× to stay visible inside it.
+
+Card flicker is a real hazard at this pace: at one recruit every 5 ms the "just bought" pulse fires
+200 times a second and the affordability dimming flips every time gold crosses a price. Both are
+damped — the selected card's pulse is suppressed above NORMAL's recruit rate (its permanent gold
+outline already says it is recruiting), and the dimming runs on a quarter-second cadence with a
+±15% deadband. Measured over three seconds at full CHAOS load: **0 class changes per second** on
+every card, down from 16.
 
 ## How it plays
 
@@ -222,8 +229,9 @@ underneath, so a rematch with different armies is one tap.
 - **Crowd rendering.** Past 900 troops the per-unit trimmings (hit flash, hover ring, veteran
   chevrons, full health bars) drop away, particles are capped, and separation resolves half the crowd
   per frame. Sprites for troops only a few pixels tall are baked in a cropped box, since the padding
-  that accommodates lances and capes is otherwise most of the pixels being pushed. A 2,770-troop
-  CHAOS battle draws in ~28 ms in software rendering.
+  that accommodates lances and capes is otherwise most of the pixels being pushed. A 3,100-troop
+  CHAOS battle on the 14000-wide map runs 5.9 ms of simulation and 16.0 ms of drawing — about 46 fps
+  in software rendering, and hardware compositing is well clear of 60.
 - **One virtual resolution.** The world is always 2000 units wide and the canvas scales to fit, so a
   phone in landscape sees the same proportions a desktop does rather than desktop-sized troops on a
   250-pixel strip of field. The shop collapses on short screens — smaller cards, then icons instead
