@@ -506,6 +506,7 @@ let CPU = null;                   // {team, level} or null for 2-player
 
 let REPAIR_COST = 450, REPAIR_HEAL = 700;
 let AUTO_GAP = 0.30;        // seconds between automatic recruits
+const RECRUIT_BURST = 80;   // most troops one crystal may produce in a single frame
 let goldMul = 1;            // battle-size gold multiplier
 let UNIT_CAP = 2600;        // safety valve so a runaway battle cannot stall the frame
 
@@ -518,6 +519,10 @@ const SIZES = {
   // stay visible on a screen two people share - so it grows as far as legibility
   // allows and bodies scale with it.
   chaos:  { label:"CHAOS",         world:14000, gold:40, auto:0.005, size:3.4, spd:4.6, hp:48000, cap:4200, hero:{hp:4.5, price:14 } },
+  // CHAOS x10: ten times the area, five times the gold, twice the recruit rate.
+  // A soldier here is about three pixels tall - past the point where the sprite
+  // detail means anything, which is why this size draws the simplified bodies.
+  chaos10:{ label:"CHAOS \u00d710",  world:44000, gold:200, auto:0.0025, size:4.6, spd:12, hp:200000, cap:20000, hero:{hp:9, price:70 } },
 };
 let sizeId = "normal";
 function applyBattleSize() {
@@ -806,33 +811,98 @@ function buy(team, idx) {
 }
 
 /* ---------- spatial hash ---------- */
-const CELL = 130;
-let grid = new Map();
-const gkey = (cx, cy) => cx*100000 + cy;
+/* Flat bucket grid. The old version built a fresh Map of fresh arrays every
+   frame - twenty thousand pushes and thousands of allocations, 6.5ms of it, plus
+   a Map hash on every one of the ~100 cell lookups a sight-radius query makes.
+   This counting-sorts the live units into one Int32Array and never allocates in
+   steady state, so a lookup is an array index. */
+let CELL = 130, INV_CELL = 1/130, GW = 1, GH = 1;
+let gStart = new Int32Array(2);      // per-cell start offset, GW*GH+1 entries
+let gItems = new Int32Array(0);      // unit slots, bucketed by cell
+let gUnits = [];                     // slot -> unit
+let gCur = new Int32Array(0);        // scratch write cursors
+let gN = 0;
+
+// The cell wants to be about the size of the commonest query, which is the
+// separation radius. Troops are 4.6x bigger at CHAOS x10 than at NORMAL, so a
+// fixed 130 left every query scanning far more cells than it needed.
+function sizeGrid() {
+  CELL = Math.max(130, Math.round((ALL_UNITS[0].size || 20) * 2.2));
+  INV_CELL = 1/CELL;
+  GW = Math.max(1, Math.ceil(G.W*INV_CELL) + 2);
+  GH = Math.max(1, Math.ceil(G.H*INV_CELL) + 2);
+  const need = GW*GH + 1;
+  if (gStart.length < need) gStart = new Int32Array(need);
+}
+
+const cellOf = (x, y) => {
+  let cx = (x*INV_CELL + 1) | 0, cy = (y*INV_CELL + 1) | 0;
+  if (cx < 0) cx = 0; else if (cx >= GW) cx = GW-1;
+  if (cy < 0) cy = 0; else if (cy >= GH) cy = GH-1;
+  return cy*GW + cx;
+};
+
 function rebuildGrid() {
-  grid = new Map();
-  for (const a of G.units) {
-    if (a.dead) continue;
-    const k = gkey(Math.floor(a.x/CELL), Math.floor(a.y/CELL));
-    const b = grid.get(k); if (b) b.push(a); else grid.set(k, [a]);
-  }
+  sizeGrid();                        // a few divisions; the loops below dwarf it
+  const nCell = GW*GH;
+  gStart.fill(0, 0, nCell+1);
+  const us = G.units;
+  gN = 0;
+  for (let i = 0; i < us.length; i++) if (!us[i].dead) { gUnits[gN++] = us[i]; }
+  if (gItems.length < gN) gItems = new Int32Array(Math.max(64, gN*2));
+  for (let i = 0; i < gN; i++) gStart[cellOf(gUnits[i].x, gUnits[i].y) + 1]++;
+  for (let c = 0; c < nCell; c++) gStart[c+1] += gStart[c];
+  if (gCur.length < nCell) gCur = new Int32Array(nCell*2);
+  gCur.set(gStart.subarray(0, nCell));
+  for (let i = 0; i < gN; i++) gItems[gCur[cellOf(gUnits[i].x, gUnits[i].y)]++] = i;
 }
 function nearby(x, y, r, fn) {
-  const c0=Math.floor((x-r)/CELL), c1=Math.floor((x+r)/CELL);
-  const r0=Math.floor((y-r)/CELL), r1=Math.floor((y+r)/CELL);
-  for (let cx=c0; cx<=c1; cx++) for (let cy=r0; cy<=r1; cy++) {
-    const b = grid.get(gkey(cx,cy)); if (b) for (const o of b) fn(o);
+  let c0=((x-r)*INV_CELL+1)|0, c1=((x+r)*INV_CELL+1)|0;
+  let r0=((y-r)*INV_CELL+1)|0, r1=((y+r)*INV_CELL+1)|0;
+  if (c0 < 0) c0 = 0; if (c1 >= GW) c1 = GW-1;
+  if (r0 < 0) r0 = 0; if (r1 >= GH) r1 = GH-1;
+  for (let cy=r0; cy<=r1; cy++) {
+    const row = cy*GW;
+    for (let cx=c0; cx<=c1; cx++) {
+      const e = gStart[row+cx+1];
+      for (let i = gStart[row+cx]; i < e; i++) fn(gUnits[gItems[i]]);
+    }
   }
 }
 
 const SIGHT = 560;
+/* Nearest enemy, searched as rings of cells expanding outwards instead of one
+   flat sweep of the whole sight radius. In a packed battle the answer is nearly
+   always in the first ring or two, so this stops after a handful of cells rather
+   than the ~100 a 560-unit sight radius covers - it was 3.5us a call, and this is
+   the single most expensive thing the simulation does. */
 function findTarget(a) {
-  let best=null, bd=SIGHT*SIGHT;
-  nearby(a.x, a.y, SIGHT, b => {
-    if (b.dead || b.team === a.team) return;
-    const d = (b.x-a.x)**2 + (b.y-a.y)**2;
-    if (d < bd) { bd = d; best = b; }
-  });
+  const team = a.team, ax = a.x, ay = a.y;
+  const cx = (ax*INV_CELL + 1) | 0, cy = (ay*INV_CELL + 1) | 0;
+  const maxRing = Math.ceil(SIGHT*INV_CELL);
+  let best = null, bd = SIGHT*SIGHT;
+  for (let ring = 0; ring <= maxRing; ring++) {
+    if (best) {                       // nothing further out can beat what we have
+      const safe = (ring-1)*CELL;
+      if (safe > 0 && bd <= safe*safe) break;
+    }
+    const x0 = cx-ring, x1 = cx+ring, y0 = cy-ring, y1 = cy+ring;
+    for (let gy = y0; gy <= y1; gy++) {
+      if (gy < 0 || gy >= GH) continue;
+      const row = gy*GW;
+      const stepX = (gy === y0 || gy === y1) ? 1 : (x1 - x0 || 1);
+      for (let gx = x0; gx <= x1; gx += stepX) {
+        if (gx < 0 || gx >= GW) continue;
+        const e = gStart[row+gx+1];
+        for (let i = gStart[row+gx]; i < e; i++) {
+          const b = gUnits[gItems[i]];
+          if (b.team === team || b.dead) continue;
+          const dx = b.x-ax, dy = b.y-ay, d = dx*dx + dy*dy;
+          if (d < bd) { bd = d; best = b; }
+        }
+      }
+    }
+  }
   return best;
 }
 
@@ -1007,12 +1077,19 @@ function step(dt) {
     // gold lasts - no tapping once per soldier. The CPU runs through the very same
     // loop, so a solo battle fills the field the way a two-player one does; all
     // cpuThink does is choose which card is selected.
-    if (p.sel !== null && G.units.length < capNow()) {
+    if (p.sel !== null) {
       p.autoT -= dt;
-      if (p.autoT <= 0) {
-        if (buy(p.team, p.sel)) p.autoT = AUTO_GAP * gapMul(p.team);
-        else p.autoT = 0.15;                 // broke: check again shortly
+      // This has to drain the accumulator, not buy once and reset it. Buying a
+      // single troop per frame silently clamped every rate below ~1/60s: CHAOS
+      // asks for 200 troops a second and was delivering 60, and CHAOS x10's
+      // faster gap did nothing at all. The += keeps the remainder too, which is
+      // what EPIC was losing (20/s configured, 15/s delivered).
+      let n = 0;
+      while (p.autoT <= 0 && G.units.length < capNow() && n++ < RECRUIT_BURST) {
+        if (buy(p.team, p.sel)) p.autoT += AUTO_GAP * gapMul(p.team);
+        else { p.autoT = 0.15; break; }      // broke: check again shortly
       }
+      if (p.autoT < 0) p.autoT = 0;          // hit a ceiling: never bank a debt
     }
   }
 
@@ -1082,8 +1159,13 @@ function step(dt) {
     a.znT -= dt;
     if (a.znT <= 0) { a.znT = 0.2 + Math.random()*0.1; a.zn = zoneAt(a.x, a.y); }
 
-    if (a.retarget <= 0 || !a.tgt || a.tgt.dead) {
-      a.tgt = findTarget(a); a.retarget = .2 + Math.random()*.2;
+    // Note the missing `|| !a.tgt`: with it, every troop that has nobody in sight
+    // ran a full sight-radius scan every single frame, and on a 44000-wide map
+    // most of the army is marching with no enemy in range. Finding nothing now
+    // backs off instead, which was worth more than half of step().
+    if (a.retarget <= 0 || (a.tgt && a.tgt.dead)) {
+      a.tgt = findTarget(a);
+      a.retarget = a.tgt ? .2 + Math.random()*.2 : .3 + Math.random()*.3;
       // HOLD means decline anything past your own line: fight what comes to you
       if (a.tgt && P[a.team].stance === 1) {
         const line = holdX(a.team), reach = a.u.rng + a.u.size + 20;
@@ -1184,19 +1266,38 @@ function step(dt) {
   }
   G.shots = G.shots.filter(s => !s.done);
 
-  const halfSep = G.units.length > 1200;
-  for (const a of G.units) {
+  // Inlined over the flat grid rather than through nearby(): this runs for half
+  // the army every frame, and a closure per unit was showing up as real time.
+  // Past ten thousand troops it drops to a third of them per frame - at three
+  // pixels a body nobody can see the difference, and it is the cheapest place to
+  // buy the headroom back.
+  const nSep = G.units.length > 10000 ? 3 : G.units.length > 1200 ? 2 : 1;
+  const top = TOP(), bot = BOT(), fr = G.frame;
+  for (let ui = 0; ui < G.units.length; ui++) {
+    const a = G.units[ui];
     if (a.dead) continue;
-    if (halfSep && ((a.uid + G.frame) & 1)) continue;
-    nearby(a.x, a.y, a.u.size*2, b => {
-      if (b === a || b.dead) return;
-      const dx=b.x-a.x, dy=b.y-a.y, md=(a.u.size+b.u.size)*.82, d2=dx*dx+dy*dy;
-      if (d2 < md*md && d2 > .01) {
-        const d=Math.sqrt(d2), push=(md-d)*.28, nx=dx/d*push, ny=dy/d*push;
-        a.x-=nx; a.y-=ny; b.x+=nx; b.y+=ny;
+    if (nSep > 1 && (a.uid + fr) % nSep) continue;
+    const ax = a.x, ay = a.y, asz = a.u.size, r = asz*2;
+    let c0=((ax-r)*INV_CELL+1)|0, c1=((ax+r)*INV_CELL+1)|0;
+    let r0=((ay-r)*INV_CELL+1)|0, r1=((ay+r)*INV_CELL+1)|0;
+    if (c0 < 0) c0 = 0; if (c1 >= GW) c1 = GW-1;
+    if (r0 < 0) r0 = 0; if (r1 >= GH) r1 = GH-1;
+    for (let cy=r0; cy<=r1; cy++) {
+      const row = cy*GW;
+      for (let cx=c0; cx<=c1; cx++) {
+        const e = gStart[row+cx+1];
+        for (let i = gStart[row+cx]; i < e; i++) {
+          const b = gUnits[gItems[i]];
+          if (b === a || b.dead) continue;
+          const dx=b.x-a.x, dy=b.y-a.y, md=(asz+b.u.size)*.82, d2=dx*dx+dy*dy;
+          if (d2 < md*md && d2 > .01) {
+            const d=Math.sqrt(d2), push=(md-d)*.28, nx=dx/d*push, ny=dy/d*push;
+            a.x-=nx; a.y-=ny; b.x+=nx; b.y+=ny;
+          }
+        }
       }
-    });
-    a.y = Math.max(TOP(), Math.min(BOT(), a.y));
+    }
+    a.y = a.y < top ? top : a.y > bot ? bot : a.y;
   }
 
   for (const f of G.fx) {
@@ -1266,6 +1367,29 @@ function banner(text, ms) {
 /* ============================================================
    RENDER
    ============================================================ */
+/* Painter's order by y. A comparator sort of twenty thousand objects costs ~9ms
+   a frame; bucketing them by screen row costs about one, and with bodies three
+   pixels tall nobody can see the ordering inside a bucket. Both arrays are
+   reused, so a frame allocates nothing. */
+const DS_BUCKETS = 1024;
+let dsOrder = [], dsCnt = new Int32Array(DS_BUCKETS + 1);
+function depthSorted(units) {
+  const n = units.length, top = TOP(), k = (DS_BUCKETS-1) / Math.max(1, BOT()-top);
+  dsCnt.fill(0);
+  for (let i=0;i<n;i++) {
+    let b = ((units[i].y - top) * k) | 0;
+    dsCnt[(b < 0 ? 0 : b >= DS_BUCKETS ? DS_BUCKETS-1 : b) + 1]++;
+  }
+  for (let b=0;b<DS_BUCKETS;b++) dsCnt[b+1] += dsCnt[b];
+  if (dsOrder.length !== n) dsOrder.length = n;
+  for (let i=0;i<n;i++) {
+    const u = units[i];
+    let b = ((u.y - top) * k) | 0;
+    dsOrder[dsCnt[b < 0 ? 0 : b >= DS_BUCKETS ? DS_BUCKETS-1 : b]++] = u;
+  }
+  return dsOrder;
+}
+
 function draw() {
   const W=G.W, H=G.H;
   ctx.save();
@@ -1288,7 +1412,7 @@ function draw() {
 
   // Troops are drawn in device space so each cached sprite blits 1:1 instead of
   // being rescaled - measured 9.3ms vs 22.8ms for 680 units.
-  const list = G.units.slice().sort((a,b) => a.y - b.y);
+  const list = depthSorted(G.units);
   const q = VIEW*DPR;
   G.crowd = list.length > 900;          // skip trimmings once the field is a wall of bodies
   G.dense = list.length > 1800;         // and drop health bars entirely in a grinder
@@ -1833,12 +1957,19 @@ function drawUnitVector(a) {
 /* ---------- sprite cache: bake each unit/team/frame once, then blit ----------
    300 hand-drawn sprites a frame is far too much path work for canvas, so every
    animation frame is rendered once into its own little canvas and reused.       */
-const spriteCache = new Map();
+// Keyed by a packed integer, not a string. The old "gid_team_walk_sw_ps" key meant
+// one string concatenation and one Map hash per troop per frame - twenty thousand
+// of them at CHAOS x10, inside the hottest loop in the renderer.
+const spriteSlot = [];                       // packed key -> baked canvas
+const spriteList = [];                       // every baked canvas, for the atlas
+const spriteCache = { get size() { return spriteList.length; },
+                      clear() { spriteSlot.length = 0; spriteList.length = 0; },
+                      values() { return spriteList; } };
 const PS_STEPS = [0.84, 1.0, 1.16];          // perspective, quantised so blits are 1:1
 function sprite(u, team, walk, sw, ps) {
-  const key = u.gid + "_" + team + "_" + walk + "_" + sw + "_" + ps;
-  let c = spriteCache.get(key);
-  if (c) return c;
+  const key = ((((u.gid << 1 | team) << 2) | walk) << 1 | sw) * 3 + ps;
+  let c = spriteSlot[key];
+  if (c !== undefined) return c;
   // NB: no floor on q. Clamping it up made sprites bake denser than the view,
   // and since they blit 1:1 that drew every troop oversized on the zoomed-out
   // battle sizes - and cost ~4x the pixels.
@@ -1858,7 +1989,7 @@ function sprite(u, team, walk, sw, ps) {
                    swing: sw/2, hurt:0, step: walk*Math.PI/2, dead:false, ghost:true });
   ctx = real;
   c._w = w; c._h = h; c._a = tiny ? 0.58 : 0.60;
-  spriteCache.set(key, c);
+  spriteSlot[key] = c; spriteList.push(c);
   return c;
 }
 
@@ -2015,7 +2146,7 @@ function gpuInit() {
    actually grew, which in a steady battle is never. */
 function gpuAtlas() {
   if (gpu.stamp === spriteCache.size) return true;
-  const gl = gpu.gl, all = [...spriteCache.values()];
+  const gl = gpu.gl, all = spriteList;
   const AW = Math.min(2048, gpu.max);
   let x = 0, y = 0, rowH = 0;
   gpu.uv.clear();
@@ -2402,6 +2533,7 @@ function buildSizes() {
     b.textContent = SIZES[id].label;
     b.title = id === "epic" ? "Twice the map, four times the gold, six times the recruit rate"
       : id === "chaos" ? "Ten times EPIC's gold and recruit rate, on the largest field that stays readable"
+      : id === "chaos10" ? "Ten times CHAOS's area, five times its gold, twice its recruit rate - troops become a swarm"
       : "The standard battlefield";
     b.addEventListener("click", () => { sizeId = id; savePrefs(); buildSizes(); });
     host.appendChild(b);
@@ -2494,7 +2626,10 @@ let last = performance.now();
    phone does not. Rather than guess, watch the real frame time and let the field
    find its own ceiling - shed effects first, then troops, and give them back the
    moment there is headroom again. A player who can hold 4,000 keeps 4,000.       */
-const GOV_FLOOR = 500;                 // never shrink the war below a real battle
+// Never shrink the war below a real battle - and what counts as one depends on
+// the map. Five hundred troops is a fight on the normal field and scattered dust
+// on CHAOS x10's, which is forty-four thousand units wide.
+const govFloor = () => Math.max(400, UNIT_CAP * 0.12) | 0;
 function capNow() { return Math.min(UNIT_CAP, G.budget); }
 function govern(ms) {
   // Measure our own work, not the gap between frames: a display capped at 30Hz,
@@ -2506,8 +2641,9 @@ function govern(ms) {
   G.govT = 30;                                    // re-decide about twice a second
   if (G.ft > 13) {                 // over 13ms of work leaves nothing for the browser
     FX_CAP = 300;
-    if (G.units.length > GOV_FLOOR)
-      G.budget = Math.max(GOV_FLOOR, Math.min(G.units.length, G.budget) * 0.9 | 0);
+    const floor = govFloor();
+    if (G.units.length > floor)
+      G.budget = Math.max(floor, Math.min(G.units.length, G.budget) * 0.9 | 0);
   } else if (G.ft < 8) {                          // room to spare: take it back
     FX_CAP = FX_MAX;
     if (G.budget < UNIT_CAP) G.budget = Math.min(UNIT_CAP, G.budget * 1.08 + 25 | 0);

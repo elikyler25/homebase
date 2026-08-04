@@ -19,6 +19,7 @@ Pick one on the menu, alongside the opponent:
 | **NORMAL BATTLE** | 2600 wide | ×1 | one troop / 0.30s | 6,000 | 2,600 |
 | **EPIC BATTLE** | 5200 wide (4× the area) | ×4 | one troop / 0.05s | 18,000 | 2,600 |
 | **CHAOS** | 14000 wide (29× the area) | ×40 | one troop / 0.005s | 48,000 | 4,200 |
+| **CHAOS ×10** | 44000 wide (290× the area) | ×200 | one troop / 0.0025s | 200,000 | 20,000 |
 
 EPIC is the same game at a different scale: twice the map, four times the gold and six times the
 recruit rate, so armies run into the many hundreds and the front line becomes a solid wall of bodies.
@@ -39,6 +40,17 @@ One honest limit: **the map is capped by legibility, not by the engine.** Two pe
 with no scrolling, so a wider world means smaller troops, and past a point they stop being visible at
 all — at CHAOS's zoom a rank-and-file soldier is 7 pixels tall, which is about the floor for reading
 who is who. The map is 29× the area of NORMAL and bodies scale 3.4× to stay visible inside it.
+
+**CHAOS ×10** is CHAOS again: ten times the area, five times the gold, twice the recruit rate. A
+rank-and-file soldier is three pixels tall and individual troops stop being the unit of thought —
+you are moving continents of bodies, and the front line is a churning coastline hundreds of troops
+long. Measured with both sides recruiting flat out: **~19,700 troops on the field.**
+
+Getting there needed a bug fixed first. The recruit loop bought at most one troop per frame and threw
+away the remainder, so every rate faster than about 1/60s silently clamped: CHAOS asked for 200
+troops a second and delivered 60, EPIC asked for 20 and delivered 15, and CHAOS ×10's whole point —
+a faster gap — would have done nothing at all. It drains the accumulator now, and every size hits its
+stated rate exactly. CHAOS holds 4,200 troops as a result, up from ~3,100.
 
 Every battle size also **scales itself to your device.** The ceilings above are what the game will
 use if your machine can hold them; if it cannot, the field finds its own level rather than turning
@@ -243,6 +255,33 @@ underneath, so a rematch with different armies is one tap.
   ceiling and the per-unit size and speed multipliers all come from a single table, applied at the
   start of a match and restored cleanly when you switch back. Auto-recruit pauses at the ceiling so a
   runaway battle can't stall the frame — deliberate purchases are never blocked.
+- **Twenty thousand troops needed the simulation rewritten, not the renderer.** With the army already
+  batching into one draw call, CHAOS ×10 spent 86.7 ms a frame in plain JavaScript at 19,700 troops:
+  63.3 ms of `step`, 8.8 ms sorting for draw order, 14.6 ms filling the vertex buffer. It is now
+  **11.1 ms** — about 8× — from four changes, in order of what they were worth:
+  - **`findTarget` was running every frame for every troop that had nobody in sight.** The retarget
+    condition included `|| !a.tgt`, so a unit that found nothing rescanned its whole 560-unit sight
+    radius on the very next frame — and on a 44000-wide map most of the army is marching with no
+    enemy in range. Finding nothing now backs off like finding something does. **25 ms → 6.3 ms**,
+    more than half the simulation, and the fix is one clause.
+  - **The spatial hash allocated a fresh `Map` of fresh arrays every frame** — 20,000 pushes and
+    thousands of allocations — and charged a hash on every one of the ~100 cell lookups a sight-radius
+    query makes. It counting-sorts into one reused `Int32Array` now, so a lookup is an array index and
+    a steady-state frame allocates nothing. The cell size also scales with the troops (they are 4.6×
+    bigger here than at NORMAL), and `findTarget` searches expanding rings and stops as soon as
+    nothing further out could be nearer. Grid rebuild 6.5 ms → 1.4 ms, a full targeting sweep
+    68 ms → 23 ms.
+  - **The sprite cache was keyed by a string.** `gid_team_walk_swing_perspective` meant one string
+    concatenation and one Map hash per troop per frame, 20,000 of them, inside the hottest loop in the
+    renderer. Packed into an integer index it is **14.6 ms → 4.2 ms**.
+  - **Draw order was a comparator sort** of 20,000 objects. Bucketing by screen row is O(n) and costs
+    **8.8 ms → 0.6 ms** — with bodies three pixels tall, the ordering inside a bucket is invisible.
+- **CHAOS got faster while carrying more.** The same work took it from 3,121 troops at 6.70 ms of
+  `step` to 4,200 troops at **1.60 ms** — a third more army for a quarter of the cost.
+- **Simpler sprites were the obvious idea and turned out not to be the problem.** At three pixels a
+  troop the whole atlas is 48 sprites in a 2048×10 strip, baked once; drawing was never the bottleneck
+  at this scale. The cost was all in per-troop bookkeeping — string keys, Map lookups, per-frame
+  allocation, and a targeting scan that should not have been running.
 - **The army is one draw call.** Canvas2D charges about 4 microseconds of call overhead per
   `drawImage`, so three thousand troops cost ~12 ms of CPU before a single pixel is filled — the
   frame was draw-call bound, not fill bound (the whole army is roughly one screenful of pixels, and
