@@ -234,6 +234,7 @@ const TURRET_SLOTS = [2, 2, 3, 3, 4];      // slots unlocked per age
 const SPECIAL_CD   = 50;                   // seconds
 const MAX_UNITS    = 14;                   // per side, keeps the field readable
 const BASE_DMG_MULT = 2.6;                 // siege bonus: bases fall to a real push
+const QUEUE_MAX    = 4;                    // taps you can bank per slot
 
 /* ---------------- game state ---------------- */
 
@@ -254,6 +255,7 @@ function newSide(isPlayer) {
     units: [],
     turrets: [],
     cds: [0, 0, 0],
+    qs: [0, 0, 0],              // orders waiting on each slot cooldown
     specialCd: 0,
     aiTimer: 0,
     income: 0,
@@ -280,12 +282,21 @@ const foe   = s => s === G.p ? G.e : G.p;
 
 function spec(side, slot) { return UNITS[side.age][slot]; }
 
+// A tap always registers. It pays up front and joins that slot's queue; the
+// troop marches out when the cooldown clears and the field has room. Silently
+// dropping the tap was indistinguishable from a dead button.
 function spawn(side, slot) {
   const d = spec(side, slot);
   if (side.gold < d.cost) return false;
-  if (side.cds[slot] > 0) return false;
-  if (side.units.length >= MAX_UNITS) return false;
+  if (side.qs[slot] >= QUEUE_MAX) return false;
   side.gold -= d.cost;
+  side.qs[slot]++;
+  beep(side.isPlayer ? 300 : 250, 0.03, 0.018);
+  return true;
+}
+
+function emit(side, slot) {
+  const d = spec(side, slot);
   side.cds[slot] = SPAWN_CD[slot];
   const dir = side.isPlayer ? 1 : -1;
   const pow = side.isPlayer ? 1 : aiPower;
@@ -321,6 +332,7 @@ function evolve(side) {
   const ratio = side.hp / side.maxHp;
   side.maxHp = AGES[side.age].baseHp;
   side.hp = Math.max(side.maxHp * ratio, side.maxHp * 0.5);
+  for (let i = 0; i < 3; i++) { side.gold += spec(side, i).cost * side.qs[i]; side.qs[i] = 0; }
   side.cds = [0, 0, 0];
   // turrets upgrade with the age they sit in
   side.turrets.forEach(t => { t.def = AGES[side.age].turret; t.age = side.age; });
@@ -428,7 +440,12 @@ function update(dt) {
     const inc = (13 + side.age * 9) * ramp
               * (side.isPlayer || mode === "2p" ? 1 : 1 + (difficulty - 1) * 0.5);
     side.gold += inc * dt;
-    for (let i = 0; i < 3; i++) side.cds[i] = Math.max(0, side.cds[i] - dt);
+    for (let i = 0; i < 3; i++) {
+      side.cds[i] = Math.max(0, side.cds[i] - dt);
+      if (side.qs[i] > 0 && side.cds[i] <= 0 && side.units.length < MAX_UNITS) {
+        side.qs[i]--; emit(side, i);
+      }
+    }
     side.specialCd = Math.max(0, side.specialCd - dt);
 
     // turrets
@@ -554,7 +571,7 @@ function ai(dt) {
   const outnumbered = G.p.units.length > e.units.length + 2;
   const order = outnumbered ? [0, 1, 2] : [2, 1, 0];
   for (const slot of order) {
-    if (e.cds[slot] > 0) continue;
+    if (e.qs[slot] >= 2) continue;
     const d = spec(e, slot);
     const buffer = outnumbered ? 1 : 1.15;
     if (e.gold >= d.cost * buffer) { spawn(e, slot); return; }
@@ -905,8 +922,10 @@ function syncDeck(side, d) {
   for (let i = 0; i < 3; i++) {
     const def = spec(side, i), b = d.units[i];
     b.querySelector(".n").textContent = def.n;
-    b.querySelector(".c").textContent = def.cost + "g";
-    b.disabled = side.gold < def.cost || side.cds[i] > 0 || side.units.length >= MAX_UNITS;
+    const q = side.qs[i], full = side.units.length >= MAX_UNITS;
+    b.querySelector(".c").textContent =
+      q ? def.cost + "g  x" + q : (full ? "field full" : def.cost + "g");
+    b.disabled = side.gold < def.cost || q >= QUEUE_MAX;
     b.querySelector(".cd").style.width = (side.cds[i] / SPAWN_CD[i] * 100) + "%";
   }
   const t = AGES[side.age].turret, left = TURRET_SLOTS[side.age] - side.turrets.length;
