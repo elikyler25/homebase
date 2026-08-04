@@ -137,6 +137,21 @@ champion instead.
 than per-power, so a champion is not also the best battering ram. Winning the fight and cashing it
 in are two different jobs.
 
+## Interface
+
+The menu is a setup sheet, not a wall of text: four labelled rows — **Opponent**, **Battle**,
+**Blue army**, **Red army** — then one primary action. Army chips name the champion they bring, and
+picking one previews that roster in the shop immediately. Rules and the full control map live behind
+a **How to play** disclosure so the default view stays clean, and the panel collapses gracefully on a
+phone (tagline and disclosure drop away, the panel scrolls inside itself, FIGHT stays on screen).
+
+In battle the HUD is grouped chips over a dark ground rather than a run-on line: army tag, gold,
+income, troops, what you're recruiting, lane and stance. Shop cards carry the key, the armour type,
+the sprite, the name, its **role** (fodder, shield line, light-killer, skirmisher, armour-breaker,
+flanker, artillery, wall, CHAMPION), the price and the live counter bar. The end screen is a result
+card per side with kills, spend and the army each player actually built — with the setup rows still
+underneath, so a rematch with different armies is one tap.
+
 ## Notes on the build
 
 - **Sprites are procedural.** Each unit composes a silhouette from head / body / weapon / extras

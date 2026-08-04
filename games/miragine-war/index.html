@@ -6,6 +6,10 @@
 <title>Mirage War — Crystal Battle</title>
 <style>
   * { box-sizing: border-box; }
+  :root {
+    --ink:#eae4d3; --dim:#9e8b63; --gold:#ffd75e;
+    --blue:#8fc4ff; --red:#ff9a7a; --edge:#4a3c22;
+  }
   html, body {
     margin: 0; padding: 0;
     position: fixed; inset: 0; height: 100%; width: 100%;
@@ -40,36 +44,52 @@
   .p2 .hpfill { background: linear-gradient(#ffd0b0, #d64b2b); }
   .hpbar span { position: absolute; inset: 0; text-align: center; font-size: 11px;
                 line-height: 14px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000; }
-  .stats { margin-top: 3px; font-size: 13px; font-weight: bold; text-shadow: 0 2px 3px #000;
-           white-space: nowrap; overflow: hidden; text-overflow: clip; }
-  @media (max-width: 1100px) { .stats { font-size: 11px; } }
-  @media (max-width: 820px)  { .stats { font-size: 10px; } .lane { display: none; } }
-  .gold { color: #ffd75e; } .inc { color: #8dff8d; } .army { color: #cfe8ff; } .lane { color: #ffb0e0; } .mend { color: #9fffd8; } .rec { color: #ffd75e; }
+  .stats { margin-top: 4px; display: flex; gap: 5px; align-items: center; flex-wrap: nowrap;
+           overflow: hidden; font-size: 12px; font-weight: bold; }
+  .side.right .stats { justify-content: flex-end; }
+  .stats .chip { background: rgba(8,12,9,.62); border: 1px solid rgba(255,255,255,.07);
+                 border-radius: 999px; padding: 1px 8px; white-space: nowrap;
+                 display: inline-flex; gap: 4px; align-items: baseline; }
+  .stats .chip:empty { display: none; }
+  .stats .chip b { font-size: 13px; }
+  .stats .chip i { font-style: normal; font-size: 10px; opacity: .7; }
+  .stats .tag { font-size: 12px; letter-spacing: 1.4px; font-weight: bold; text-shadow: 0 2px 3px #000; }
+  .gold { color: #ffd75e; } .inc { color: #8dff8d; } .army { color: #cfe8ff; }
+  .lane { color: #e5a8d8; } .mend { color: #9fffd8; } .rec { color: #ffd75e; }
+  @media (max-width: 1100px) { .stats { font-size: 11px; gap: 4px; } .stats .chip { padding: 1px 6px; } }
+  @media (max-width: 860px)  { .stats { font-size: 10px; } .stats .chip.lane { display: none; } }
   #centre { flex: 0 0 auto; text-align: center; pointer-events: none; padding: 0 6px; }
-  #round { background: #1c1710; border: 2px solid #4a3c22; border-radius: 5px;
-           padding: 1px 14px; font-weight: bold; font-size: 17px; color: #ffd75e; box-shadow: 0 2px 0 #0007; }
-  #tick { font-size: 11px; margin-top: 3px; color: #cfc6ae; text-shadow: 0 2px 3px #000; }
+  #centre { background: rgba(8,12,9,.62); border: 1px solid rgba(255,255,255,.07);
+            border-radius: 10px; padding: 4px 12px 6px; }
+  #round { font-weight: bold; font-size: 16px; letter-spacing: 1.4px; color: #ffd75e; }
+  #tick { font-size: 10.5px; margin-top: 2px; color: #cfc6ae; }
+  #shrine { font-size: 10.5px; margin-top: 1px; }
 
   /* ---------- shops ---------- */
-  #shops { flex: 0 0 auto; display: flex; gap: 8px; padding: 5px 6px 3px;
-           background: #14100b; border-top: 3px solid #372c19; }
+  #shops { flex: 0 0 auto; display: flex; gap: 8px; padding: 6px 8px 4px;
+           background: linear-gradient(#181309, #100d08); border-top: 2px solid #3d3018;
+           box-shadow: 0 -6px 18px rgba(0,0,0,.45); }
   .half { flex: 1 1 0; min-width: 0; }
   .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; }
   .card { cursor: pointer; position: relative; min-width: 0; touch-action: manipulation;
-          background: #241c12; border: 2px solid #4a3c22; border-radius: 4px;
-          padding: 1px 1px 2px; text-align: center; transition: transform .05s, background .1s, border-color .1s; }
+          background: linear-gradient(#282013, #1d170e); border: 1px solid #4a3c22; border-radius: 7px;
+          padding: 2px 2px 3px; text-align: center;
+          transition: transform .05s, background .1s, border-color .1s, box-shadow .1s; }
   @media (hover: hover) { .card:hover { background: #33291a; border-color: #7d6738; } }
   .card.hit { transform: translateY(2px); background: #6b5a33; }
   .card.poor { opacity: .32; }
-  .card.hero { background: #2c2113; border-color: #7a5f2a; }
+  .card.hero { background: linear-gradient(#352612, #241a0d); border-color: #7a5f2a; }
   .card .hb { position: absolute; bottom: 1px; right: 3px; font-size: 9px; color: #ffd75e; }
-  .card.sel { border-color: #ffd75e; background: #4a3c1c;
-              box-shadow: 0 0 0 2px rgba(255,215,94,.45), 0 0 12px rgba(255,215,94,.35); }
+  .card.sel { border-color: #ffd75e; background: linear-gradient(#5a4820, #3d3115);
+              box-shadow: 0 0 0 2px rgba(255,215,94,.4), 0 0 14px rgba(255,215,94,.3); }
   .card.sel .nm { color: #ffe9a8; }
   .card canvas { width: 100%; height: 32px; display: block; }
   .card .nm { font-size: 9px; font-weight: bold; line-height: 11px; white-space: nowrap;
               overflow: hidden; text-overflow: ellipsis; }
   .card .cost { font-size: 10px; color: #ffd75e; font-weight: bold; line-height: 11px; }
+  .card .rl { font-size: 8px; line-height: 9px; color: #8a7a58; letter-spacing: .3px;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card.hero .rl { color: #b99a54; }
   .card .key { position: absolute; top: 0; left: 2px; font-size: 9px; color: #b09a6c; font-weight: bold; }
   .card .arm { position: absolute; top: 0; right: 2px; font-size: 9px; font-weight: bold; }
   .card .arm.a { color: #9fd0ff; } .card .arm.l { color: #ffd0a0; }
@@ -83,31 +103,114 @@
         color: #ffd75e; text-shadow: 0 2px 0 #000; padding: 0 4px; }
   .ctrls { font-size: 10px; color: #9e8b63; text-align: center; padding: 2px 0 0; }
 
-  /* ---------- overlay ---------- */
-  #overlay { position: absolute; inset: 0; display: flex; flex-direction: column;
-             align-items: center; justify-content: center; gap: 11px;
-             background: rgba(6,10,8,.9); text-align: center; padding: 16px; overflow: auto; }
+  /* ---------- overlay / setup ---------- */
+  #overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(120% 90% at 50% 0%, rgba(60,86,42,.30), rgba(0,0,0,0) 60%),
+      rgba(6,9,7,.93);
+    padding: 14px; overflow: auto; z-index: 10;
+  }
   #overlay.hide { display: none; }
-  #overlay h1 { margin: 0; font-size: 38px; color: #ffd75e; text-shadow: 0 3px 0 #000; letter-spacing: 1px; }
-  #overlay p { margin: 0; max-width: 720px; line-height: 1.5; font-size: 14px; color: #cfc6ae; }
-  .keys { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; font-size: 13px; }
-  kbd { background: #2b2418; border: 1px solid #5a4930; border-bottom-width: 3px;
-        border-radius: 3px; padding: 0 5px; font-family: inherit; font-size: 12px; color: #ffe9a8; }
-  .modes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-  .armies { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center; font-size: 12px; }
-  .armies span { display: flex; gap: 6px; flex-wrap: wrap; }
-  button.army { font: inherit; font-size: 12px; font-weight: bold; cursor: pointer;
-                background: #241c12; color: #cfc6ae; border: 2px solid #4a3c22;
-                border-bottom-width: 3px; border-radius: 5px; padding: 4px 10px; }
-  button.army.on { background: #6b5a33; color: #ffe9a8; border-color: #b09a5a; }
-  button.mode { font: inherit; font-size: 13px; font-weight: bold; cursor: pointer;
-                background: #241c12; color: #cfc6ae; border: 2px solid #4a3c22;
-                border-bottom-width: 4px; border-radius: 6px; padding: 6px 14px; }
-  button.mode.on { background: #3c5f8f; color: #eaf4ff; border-color: #79a6dd; }
-  button.big { font: inherit; font-size: 19px; font-weight: bold; cursor: pointer;
-               background: #3f6b2c; color: #eaffdf; border: 2px solid #6fae4d;
-               border-bottom-width: 5px; border-radius: 7px; padding: 9px 32px; }
-  button.big:active { border-bottom-width: 2px; transform: translateY(3px); }
+  .panel {
+    width: min(880px, 100%); max-height: 100%; overflow-y: auto;
+    background: linear-gradient(#1a1e16, #12150f);
+    border: 2px solid #3f3a26; border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05);
+    padding: 18px 22px 20px; text-align: center;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .ttl h1 {
+    margin: 0; font-size: 40px; line-height: 1; letter-spacing: 3px; color: var(--gold);
+    text-shadow: 0 3px 0 #000, 0 0 26px rgba(255,190,60,.28);
+  }
+  .ttl .tag { margin: 8px 0 0; font-size: 14px; color: #b9b09a; }
+
+  .setup { display: flex; flex-direction: column; gap: 8px; }
+  .row { display: grid; grid-template-columns: 108px 1fr; align-items: center; gap: 12px; text-align: left; }
+  .lbl {
+    font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase;
+    color: #8d8674; text-align: right; font-weight: bold;
+  }
+  .lbl.blue { color: var(--blue); } .lbl.red { color: var(--red); }
+  .opts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  button.mode, button.army {
+    font: inherit; cursor: pointer; color: #cfc6ae;
+    background: #241d13; border: 1px solid #4a3c22; border-radius: 8px;
+    padding: 7px 13px; font-size: 13px; font-weight: bold; line-height: 1.15;
+    transition: background .12s, border-color .12s, color .12s, transform .06s;
+  }
+  @media (hover: hover) {
+    button.mode:hover, button.army:hover { background: #33291a; border-color: #7d6738; color: #f0e6cf; }
+  }
+  button.mode:active, button.army:active { transform: translateY(1px); }
+  button.mode.on { background: #2f4a70; border-color: #7fb0e8; color: #eaf4ff; }
+  button.army { text-align: left; padding: 6px 12px; }
+  button.army .an { display: block; font-size: 13px; letter-spacing: .6px; }
+  button.army .ac { display: block; font-size: 10px; color: #8d8674; font-weight: normal; margin-top: 1px; }
+  button.army.on { background: #3a3118; border-color: var(--gold); }
+  button.army.on .ac { color: #c7b98f; }
+
+  .note { margin: 0; font-size: 12px; color: #9e8b63; line-height: 1.5; min-height: 1em; }
+
+  button.big {
+    align-self: center; font: inherit; font-size: 20px; font-weight: bold; letter-spacing: 2px;
+    cursor: pointer; color: #eaffdf;
+    background: linear-gradient(#4e8536, #3a6427);
+    border: 1px solid #7cc054; border-radius: 10px;
+    box-shadow: 0 4px 0 #26411a, 0 8px 18px rgba(0,0,0,.45);
+    padding: 11px 44px; transition: transform .06s, box-shadow .06s;
+  }
+  button.big:active { transform: translateY(3px); box-shadow: 0 1px 0 #26411a; }
+
+  .result { display: none; }
+  .result.show { display: block; }
+  .result .rt { font-size: 26px; font-weight: bold; letter-spacing: 2px; margin-bottom: 8px; }
+  .result .rg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; }
+  .result .rc { background: #191d15; border: 1px solid #33291a; border-radius: 9px; padding: 9px 12px; }
+  .result .rc h4 { margin: 0 0 4px; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; }
+  .result .rc p { margin: 0; font-size: 12px; color: #b9b09a; line-height: 1.5; }
+
+  .howto { text-align: left; border-top: 1px solid #2c2519; padding-top: 10px; }
+  .howto summary {
+    cursor: pointer; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase;
+    color: #9e8b63; font-weight: bold; list-style: none; text-align: center;
+  }
+  .howto summary::-webkit-details-marker { display: none; }
+  .howto summary::after { content: " ▾"; }
+  .howto[open] summary::after { content: " ▴"; }
+  .howbody { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 12px; }
+  .howbody h3 { margin: 0 0 4px; font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--gold); }
+  .howbody h3 + p { margin: 0 0 12px; }
+  .howbody p { font-size: 12.5px; line-height: 1.55; color: #b9b09a; margin: 0 0 10px; }
+  .howbody .lt { color: #ffd0a0; } .howbody .ar { color: #9fd0ff; }
+  table.keys2 { border-collapse: collapse; width: 100%; font-size: 12px; margin-bottom: 12px; }
+  table.keys2 th, table.keys2 td { padding: 3px 4px; text-align: left; vertical-align: middle; }
+  table.keys2 th { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  table.keys2 th.blue { color: var(--blue); } table.keys2 th.red { color: var(--red); }
+  table.keys2 td:first-child { color: #9e8b63; white-space: nowrap; }
+
+  @media (max-height: 400px) {
+    .ttl .tag { display: none; }
+    .ttl h1 { font-size: 22px; }
+    .panel { gap: 7px; padding: 9px 12px 10px; }
+    .note { font-size: 10px; max-height: 2.6em; overflow: hidden; }
+    .howto { display: none; }
+  }
+  @media (max-height: 620px), (max-width: 720px) {
+    .panel { padding: 12px 14px 14px; gap: 10px; border-radius: 10px; }
+    .ttl h1 { font-size: 27px; letter-spacing: 2px; }
+    .ttl .tag { font-size: 12px; margin-top: 5px; }
+    .row { grid-template-columns: 84px 1fr; gap: 8px; }
+    .lbl { font-size: 10px; }
+    button.mode, button.army { padding: 5px 9px; font-size: 11.5px; }
+    button.army .an { font-size: 11.5px; } button.army .ac { font-size: 9px; }
+    button.big { font-size: 16px; padding: 9px 30px; }
+    .howbody { grid-template-columns: 1fr; gap: 10px; }
+    .note { font-size: 11px; }
+  }
+
   .banner { position: absolute; left: 0; right: 0; top: 26%; text-align: center;
             font-size: 42px; font-weight: bold; color: #ffd75e;
             text-shadow: 0 4px 0 #000, 0 0 22px #ffae00; pointer-events: none;
@@ -117,6 +220,7 @@
   /* ---------- small screens: the battlefield always keeps the room ---------- */
   @media (max-height: 620px) {
     #shops { padding: 3px 4px 1px; gap: 5px; }
+    .card .rl { display: none; }
     .card canvas { height: 22px; }
     .banner { font-size: 30px; top: 22%; }
     .card .nm { font-size: 8px; line-height: 9px; }
@@ -166,27 +270,29 @@
       <div class="side p1">
         <div class="hpbar"><div class="hpfill" id="hp1"></div><span id="hpt1"></span></div>
         <div class="stats">
-          <span class="gold">◆<span id="g1">0</span></span> &nbsp;
-          <span class="inc">+<span id="i1">0</span></span> &nbsp;
-          <span class="army"><span id="a1">0</span> troops</span> &nbsp;
-          <span class="lane" id="l1"></span> &nbsp;
-          <span class="rec" id="rc1"></span> &nbsp;
-          <span class="mend" id="rp1"></span>
+          <span class="tag" id="f1"></span>
+          <span class="chip gold">◆<b id="g1">0</b></span>
+          <span class="chip inc">+<b id="i1">0</b></span>
+          <span class="chip army"><b id="a1">0</b><i>troops</i></span>
+          <span class="chip rec" id="rc1"></span>
+          <span class="chip lane" id="l1"></span>
+          <span class="chip mend" id="rp1"></span>
         </div>
       </div>
       <div id="centre">
         <div id="round">ROUND 1</div>
         <div id="tick">payday in 10s</div>
-        <div id="shrine" style="font-size:11px;margin-top:2px;text-shadow:0 2px 3px #000"></div>
+        <div id="shrine"></div>
       </div>
       <div class="side right p2">
         <div class="stats" style="margin:0 0 3px">
-          <span class="mend" id="rp2"></span> &nbsp;
-          <span class="rec" id="rc2"></span> &nbsp;
-          <span class="lane" id="l2"></span> &nbsp;
-          <span class="army"><span id="a2">0</span> troops</span> &nbsp;
-          <span class="inc">+<span id="i2">0</span></span> &nbsp;
-          <span class="gold">◆<span id="g2">0</span></span>
+          <span class="chip mend" id="rp2"></span>
+          <span class="chip lane" id="l2"></span>
+          <span class="chip rec" id="rc2"></span>
+          <span class="chip army"><b id="a2">0</b><i>troops</i></span>
+          <span class="chip inc">+<b id="i2">0</b></span>
+          <span class="chip gold">◆<b id="g2">0</b></span>
+          <span class="tag" id="f2"></span>
         </div>
         <div class="hpbar"><div class="hpfill" id="hp2"></div><span id="hpt2"></span></div>
       </div>
@@ -195,37 +301,60 @@
     <div class="banner" id="banner"></div>
 
     <div id="overlay">
-      <h1>MIRAGE WAR</h1>
-      <p><b>Pick a troop and your crystal keeps making it</b> — one tap or one key, and they march out
-      continuously for as long as your gold holds. Pick a different troop to switch, or press the same
-      one again to stop and save up. No turns, no waiting. Shatter the enemy crystal to win.</p>
-      <p><b>Armour is the counter system.</b> Every unit is <span style="color:#ffd0a0">LIGHT</span> or
-      <span style="color:#9fd0ff">ARMORED</span> and has separate damage against each, and armour
-      subtracts flat damage on top. A Ninja butchers light troops and cannot dent plate; a Monk is the
-      reverse. Cheap swarms literally cannot hurt an Iron Knight — a Vampire drains it dry.
-      <b>Your standing army is your economy:</b> every living unit pays income at each payday.</p>
-      <div class="modes" id="modes"></div>
-      <div class="modes" id="sizes"></div>
-      <div class="armies"><b style="color:#bfe6ff">P1 ARMY</b><span id="army1"></span></div>
-      <div class="armies"><b style="color:#ffd0b0">P2 ARMY</b><span id="army2"></span></div>
-      <p id="armyNote" style="font-size:12px;color:#9e8b63;margin:0"></p>
-      <div class="keys">
-        <div><b style="color:#bfe6ff">PLAYER 1 — left</b><br>
-          <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><br>
-          <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd><kbd>V</kbd><br>
-          lane: <kbd>Left Shift</kbd> &nbsp; stance: <kbd>T</kbd>
-        </div>
-        <div><b style="color:#ffd0b0">PLAYER 2 — right</b><br>
-          <kbd>7</kbd><kbd>8</kbd><kbd>9</kbd><kbd>0</kbd><kbd>U</kbd><kbd>I</kbd><kbd>O</kbd><kbd>P</kbd><br>
-          <kbd>J</kbd><kbd>K</kbd><kbd>L</kbd><kbd>;</kbd><kbd>M</kbd><kbd>,</kbd><kbd>.</kbd><kbd>/</kbd><br>
-          lane: <kbd>Right Shift</kbd> &nbsp; stance: <kbd>'</kbd>
-        </div>
-      </div>
-      <p style="font-size:12px;color:#9e8b63" id="sizeNote"></p>
-      <p style="font-size:12px;color:#9e8b63">The bar under each card rates that unit against the enemy's current army. &nbsp;
-      <kbd>5</kbd><kbd>6</kbd> mend crystal &nbsp; <kbd>H</kbd> counters &nbsp; <kbd>Space</kbd> pause &nbsp; <kbd>-</kbd><kbd>=</kbd> game speed
-        &nbsp; <kbd>`</kbd> mute &nbsp; click a card to buy &nbsp; hover a card for full stats</p>
+     <div class="panel">
+      <header class="ttl">
+        <h1>MIRAGE WAR</h1>
+        <p class="tag">Two armies, one screen. Pick a troop and your crystal keeps making it.</p>
+      </header>
+
+      <div id="resultBox" class="result"></div>
+
+      <section class="setup">
+        <div class="row"><span class="lbl">Opponent</span><div class="opts" id="modes"></div></div>
+        <div class="row"><span class="lbl">Battle</span><div class="opts" id="sizes"></div></div>
+        <div class="row"><span class="lbl blue">Blue army</span><div class="opts" id="army1"></div></div>
+        <div class="row"><span class="lbl red">Red army</span><div class="opts" id="army2"></div></div>
+      </section>
+
       <button class="big" id="startBtn">FIGHT</button>
+
+      <p class="note" id="setupNote"></p>
+
+      <details class="howto">
+        <summary>How to play &amp; controls</summary>
+        <div class="howbody">
+          <div class="hcol">
+            <h3>The loop</h3>
+            <p>Pick a troop once — your crystal keeps recruiting it until the gold runs out. Press it
+            again to stop and bank, or pick another to switch. Shatter the enemy crystal to win.</p>
+            <h3>Armour is the counter system</h3>
+            <p>Every troop is <b class="lt">LIGHT</b> or <b class="ar">ARMORED</b> and carries separate
+            damage against each; armour subtracts flat damage on top. Light-killers butcher fodder and
+            cannot dent plate. Armour-breakers are the reverse. The bar under each card scores that
+            troop against the enemy's army <i>right now</i>.</p>
+            <h3>Your army is your economy</h3>
+            <p>Every living troop pays income at each payday. Hold the shrine mid-field for a bonus.
+            Champions are limited to one on the field at a time.</p>
+          </div>
+          <div class="hcol">
+            <h3>Controls</h3>
+            <table class="keys2">
+              <tr><th></th><th class="blue">Blue</th><th class="red">Red</th></tr>
+              <tr><td>Troops</td>
+                  <td><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><kbd>A</kbd></td>
+                  <td><kbd>7</kbd><kbd>8</kbd><kbd>9</kbd><kbd>0</kbd><kbd>U</kbd><kbd>I</kbd><kbd>O</kbd><kbd>P</kbd><kbd>J</kbd></td></tr>
+              <tr><td>Spawn lane</td><td><kbd>L-Shift</kbd></td><td><kbd>R-Shift</kbd></td></tr>
+              <tr><td>Stance</td><td><kbd>T</kbd></td><td><kbd>'</kbd></td></tr>
+              <tr><td>Mend crystal</td><td><kbd>5</kbd></td><td><kbd>6</kbd></td></tr>
+            </table>
+            <h3>Both players</h3>
+            <p><kbd>Space</kbd> pause &nbsp; <kbd>-</kbd><kbd>=</kbd> game speed &nbsp;
+               <kbd>H</kbd> counter chart &nbsp; <kbd>`</kbd> mute<br>
+               Tap a card to select it, tap again to stop. Hover a card to pick that troop out of the melee.</p>
+          </div>
+        </div>
+      </details>
+     </div>
     </div>
   </div>
 
@@ -577,6 +706,7 @@ function spawn(idx, team) {
 function select(team, idx) {
   if (!G.running || G.over) return;
   const p = P[team];
+  if (!p.roster[idx]) return;
   if (p.sel === idx) { p.sel = null; tone(300, .07, "square", .035, 200); return; }
   p.sel = idx; p.autoT = 0;
   if (!buy(team, idx)) { flashCard(team, idx); }      // still selects if you cannot afford it yet
@@ -586,6 +716,7 @@ function select(team, idx) {
 function buy(team, idx) {
   if (!G.running || G.over || G.paused) return false;
   const p = P[team], u = p.roster[idx];
+  if (!u) return false;                     // roster sizes differ between armies
   if (p.gold < u.price || (u.hero && p.heroes > 0)) {
     if (!CPU || CPU.team !== team) sfxDeny();
     return false;
@@ -1691,6 +1822,7 @@ function buildShops() {
         '<div class="arm ' + (u.type==="armored" ? 'a">A' : 'l">L') + '</div>' +
         '<canvas width="80" height="46"></canvas>' +
         '<div class="nm">' + u.name + '</div>' +
+        '<div class="rl">' + ROLE_LABEL[u.role] + '</div>' +
         '<div class="cost">◆' + u.price + '</div>' +
         '<div class="advbg"><div class="adv"></div></div>' +
         '<div class="pip">+1</div>';
@@ -1796,11 +1928,13 @@ function updateHUD() {
     document.getElementById("g"+n).textContent = Math.floor(p.gold);
     document.getElementById("i"+n).textContent = Math.round((BASE_INCOME + 170*G.round + inc[t]) * goldMul);
     document.getElementById("a"+n).textContent = cnt[t];
-    document.getElementById("l"+n).textContent =
-      (CPU && CPU.team===t ? "CPU · " : "") + p.faction.name + " · " + LANES[p.lane] + " · " + STANCES[p.stance];
+    const tag = document.getElementById("f"+n);
+    tag.textContent = (CPU && CPU.team===t ? "CPU " : "") + p.faction.name;
+    tag.style.color = p.faction.tint;
+    document.getElementById("l"+n).textContent = LANES[p.lane] + " · " + STANCES[p.stance];
     const rec = document.getElementById("rc"+n);
     rec.textContent = (CPU && CPU.team===t) ? ""
-      : p.sel === null ? "▶ none" : "▶ " + p.roster[p.sel].name;
+      : p.sel === null ? "" : "▶ " + p.roster[p.sel].name;
     rec.style.color = p.sel === null ? "#9e8b63" : "#ffd75e";
     p.roster.forEach((u,i) => cards[t][i].classList.toggle("poor",
       p.gold < u.price || (u.hero && p.heroes > 0)));
@@ -1833,6 +1967,20 @@ const MODES = [
 ];
 let modeId = "2p";
 let pick = [0, 1];
+function setupNote() {
+  const el = document.getElementById("setupNote");
+  if (!el) return;
+  const size = sizeId === "epic"
+      ? "EPIC — twice the map, four times the gold, six times the recruit rate."
+    : sizeId === "chaos"
+      ? "CHAOS — forty times the gold and sixty times the recruit rate; troops pour out faster than they can die."
+      : "";
+  const f0 = FACTIONS[pick[0]], f1 = FACTIONS[pick[1]];
+  el.innerHTML = (size ? size + "<br>" : "") +
+    "<b style='color:" + f0.tint + "'>" + f0.name + "</b> " + f0.blurb + " <i>" + f0.perk + "</i>" +
+    " &nbsp;·&nbsp; " +
+    "<b style='color:" + f1.tint + "'>" + f1.name + "</b> " + f1.blurb + " <i>" + f1.perk + "</i>";
+}
 function buildArmies() {
   [0,1].forEach(t => {
     const host = document.getElementById("army" + (t+1));
@@ -1840,9 +1988,10 @@ function buildArmies() {
     FACTIONS.forEach((f, i) => {
       const b = document.createElement("button");
       b.className = "army" + (i === pick[t] ? " on" : "");
-      b.textContent = f.name;
-      b.style.color = i === pick[t] ? "#fff" : f.tint;
-      b.title = f.blurb;
+      b.innerHTML = '<span class="an">' + f.name + '</span>' +
+                    '<span class="ac">' + f.units[8].name + '</span>';
+      b.querySelector(".an").style.color = f.tint;
+      b.title = f.blurb + "  ·  " + f.perk;
       b.addEventListener("click", () => {
         pick[t] = i;
         if (!G.running) {                    // preview the army you just picked
@@ -1854,12 +2003,7 @@ function buildArmies() {
       host.appendChild(b);
     });
   });
-  const note = document.getElementById("armyNote");
-  if (note) note.innerHTML =
-    "<b style='color:" + FACTIONS[pick[0]].tint + "'>" + FACTIONS[pick[0]].name + "</b> " +
-      FACTIONS[pick[0]].blurb + " <i>(" + FACTIONS[pick[0]].perk + ")</i><br>" +
-    "<b style='color:" + FACTIONS[pick[1]].tint + "'>" + FACTIONS[pick[1]].name + "</b> " +
-      FACTIONS[pick[1]].blurb + " <i>(" + FACTIONS[pick[1]].perk + ")</i>";
+  setupNote();
 }
 
 function buildSizes() {
@@ -1875,11 +2019,7 @@ function buildSizes() {
     b.addEventListener("click", () => { sizeId = id; buildSizes(); });
     host.appendChild(b);
   }
-  const note = document.getElementById("sizeNote");
-  if (note) note.textContent =
-    sizeId === "epic"  ? "EPIC: twice the map, four times the gold, six times the recruit rate."
-  : sizeId === "chaos" ? "CHAOS: forty times the gold and sixty times the recruit rate — troops pour out faster than they can die."
-  : "";
+  setupNote();
 }
 
 function buildModes() {
@@ -1933,23 +2073,26 @@ function newGame() {
   cards.forEach(row => row.forEach(el => el.classList.remove("sel")));
   G.running=true; G.over=false; G.paused=false;
   document.getElementById("overlay").classList.add("hide");
+  document.getElementById("resultBox").classList.remove("show");
   banner("FIGHT!", 900);
 }
 
 function endGame(winner) {
   G.over = true; G.running = false;
-  const ov = document.getElementById("overlay");
-  const title = CPU ? (winner === CPU.team ? "CPU WINS" : "YOU WIN") : (winner===0 ? "BLUE WINS" : "RED WINS");
-  ov.querySelector("h1").textContent = title;
-  ov.querySelector("h1").style.color = winner===0 ? "#bfe6ff" : "#ffd0b0";
+  const ov = document.getElementById("overlay"), box = document.getElementById("resultBox");
+  const title = CPU ? (winner === CPU.team ? "CPU WINS" : "YOU WIN")
+                    : (winner === 0 ? "BLUE WINS" : "RED WINS");
   const army = t => Object.entries(P[t].built).sort((a,b) => b[1]-a[1])
-    .slice(0,6).map(([k,v]) => k+" ×"+v).join(", ") || "nothing";
-  ov.querySelectorAll("p")[0].innerHTML =
-    "Crystal shattered on round <b>"+G.round+"</b>.<br>" +
-    "<span style='color:#bfe6ff'>Blue</span> — <b>"+P[0].kills+"</b> kills, <b>◆"+P[0].spent+
-    "</b> spent · "+army(0)+"<br>" +
-    "<span style='color:#ffd0b0'>Red</span> — <b>"+P[1].kills+"</b> kills, <b>◆"+P[1].spent+
-    "</b> spent · "+army(1);
+    .slice(0,5).map(([k,v]) => k+" ×"+v).join(", ") || "nothing";
+  const side = (t, col) =>
+    '<div class="rc"><h4 style="color:' + col + '">' + (t===0?"Blue":"Red") + " · " + P[t].faction.name +
+    '</h4><p><b>' + P[t].kills + '</b> kills &nbsp;·&nbsp; <b>◆' + P[t].spent + '</b> spent<br>' +
+    army(t) + '</p></div>';
+  box.innerHTML =
+    '<div class="rt" style="color:' + (winner===0 ? "#bfe6ff" : "#ffd0b0") + '">' + title + '</div>' +
+    '<p class="note" style="margin-bottom:10px">Crystal shattered on round <b>' + G.round + '</b>.</p>' +
+    '<div class="rg">' + side(0, "#bfe6ff") + side(1, "#ffd0b0") + '</div>';
+  box.classList.add("show");
   document.getElementById("startBtn").textContent = "REMATCH";
   ov.classList.remove("hide");
 }
