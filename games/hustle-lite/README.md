@@ -16,6 +16,24 @@ two of your fighters in the same turn so they combo together).
 
 Open `index.html` in a browser, or `dist/hustle-lite-standalone.html` for the single file.
 
+## The screen
+
+The whole game fits the viewport and nothing scrolls — the move strip is pinned along the
+bottom and every button is reachable without hunting for it. On narrow screens the strip
+stays fixed to the bottom of the window while the rest of the page flows.
+
+- **A camera that follows.** It centres between the fighters and zooms to the distance
+  between them, so a close exchange fills the screen instead of playing out as two small
+  figures at the bottom of an empty stage. The backdrop parallaxes at a third of camera
+  speed, which is what makes the movement game legible.
+- **Every exchange is kept.** Drag the frame slider or press <kbd>←</kbd>/<kbd>→</kbd> to
+  walk it a frame at a time; **Replay** re-runs it at speed.
+- **Boxes** overlays hurtboxes in blue and live hitboxes in red, plus dashed outlines for
+  invulnerability and parry windows. It is the quickest way to see why something whiffed.
+- **After-images** ghost the frames just gone, so a swing reads as a swing.
+- Frame advantage is printed next to your fighter once the exchange settles, because it is
+  the single thing that decides the next turn.
+
 ## The Oracle
 
 Four settings, in the header, from teaching tool to blindfold:

@@ -7,14 +7,15 @@
  */
 import { RULES, CHARS, pointOf } from './engine.js';
 
-const W = 1000, H = 300;
-const GROUND = 246;
+const W = 1000, H = 340;
+const GROUND = 282;
+const S = 1.28;          // fighter scale — YOMIH reads big and bold, not dainty
 const COL = { ink: '#e9eef4', dim: '#3a4653', floor: '#131a22' };
 
 // Player one always reads cool, player two always reads warm, whichever characters are
 // picked — you should never have to work out which fighter is yours.
 const SIDE_TINT = ['#3fe0cf', '#ff5f78'];
-const sideColour = (state, i) => (state ? mixHex(CHARS[pointOf(state, i).char].accent, SIDE_TINT[i], 0.55) : SIDE_TINT[i]);
+const sideColour = (state, i) => (state ? mixHex(CHARS[pointOf(state, i).char].accent, SIDE_TINT[i], 0.72) : SIDE_TINT[i]);
 
 function mixHex(a, b, t) {
   const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -55,8 +56,8 @@ const armAngle = (m) => (m.level === 'low' ? 0.95 : m.level === 'high' ? -1.35 :
 function drawFighter(g, x, facing, pose, colour, opts = {}) {
   const { ghost = 0, flash = 0, down = false } = opts;
   const lean = pose.lean * facing;
-  const hipY = GROUND - 46 + pose.crouch * 24;
-  const headY = hipY - 46 + pose.crouch * 12;
+  const hipY = GROUND - 46 * S + pose.crouch * 24 * S;
+  const headY = hipY - 46 * S + pose.crouch * 12 * S;
 
   g.save();
   g.globalAlpha = 1 - ghost;
@@ -64,54 +65,54 @@ function drawFighter(g, x, facing, pose, colour, opts = {}) {
   // shadow
   g.fillStyle = '#00000066';
   g.beginPath();
-  g.ellipse(x, GROUND + 2, 20 - pose.crouch * 4, 4.5, 0, 0, Math.PI * 2);
+  g.ellipse(x, GROUND + 2, (20 - pose.crouch * 4) * S, 4.5, 0, 0, Math.PI * 2);
   g.fill();
 
   if (down) {
     // flat on the floor: a body lying along the ground, head toward the opponent
-    g.strokeStyle = colour; g.lineWidth = 5; g.lineCap = 'round';
+    g.strokeStyle = colour; g.lineWidth = 6; g.lineCap = 'round';
     g.beginPath();
-    g.moveTo(x - 22 * facing, GROUND - 7);
-    g.lineTo(x + 16 * facing, GROUND - 10);
+    g.moveTo(x - 26 * facing, GROUND - 8);
+    g.lineTo(x + 19 * facing, GROUND - 12);
     g.stroke();
     g.fillStyle = colour;
-    g.beginPath(); g.arc(x + 24 * facing, GROUND - 12, 8, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(x + 29 * facing, GROUND - 14, 10, 0, Math.PI * 2); g.fill();
     g.restore();
     return;
   }
 
-  const shoulderX = x + lean * 16;
-  const shoulderY = hipY - 34;
+  const shoulderX = x + lean * 16 * S;
+  const shoulderY = hipY - 34 * S;
 
   // legs
-  g.strokeStyle = colour; g.lineWidth = 4.5; g.lineCap = 'round'; g.lineJoin = 'round';
+  g.strokeStyle = colour; g.lineWidth = 5.5; g.lineCap = 'round'; g.lineJoin = 'round';
   g.beginPath();
-  g.moveTo(x + lean * 5, hipY);
-  g.lineTo(x - 12 * facing - lean * 4, GROUND);
-  g.moveTo(x + lean * 5, hipY);
-  g.lineTo(x + 13 * facing + lean * 12, GROUND);
+  g.moveTo(x + lean * 5 * S, hipY);
+  g.lineTo(x - 12 * S * facing - lean * 4, GROUND);
+  g.moveTo(x + lean * 5 * S, hipY);
+  g.lineTo(x + 13 * S * facing + lean * 12, GROUND);
   g.stroke();
 
   // torso
-  g.lineWidth = 6;
+  g.lineWidth = 7.5;
   g.beginPath();
-  g.moveTo(x + lean * 5, hipY);
+  g.moveTo(x + lean * 5 * S, hipY);
   g.lineTo(shoulderX, shoulderY);
   g.stroke();
 
   // head
   g.fillStyle = colour;
   g.beginPath();
-  g.arc(shoulderX + lean * 5, headY, 9, 0, Math.PI * 2);
+  g.arc(shoulderX + lean * 5, headY, 11, 0, Math.PI * 2);
   g.fill();
 
   // weapon arm — the reach of this line is what the range arc is telling you about
   const a = pose.arm * facing;
-  const len = 20 + pose.reach * 34;
+  const len = (20 + pose.reach * 34) * S;
   const hx = shoulderX + Math.cos(a) * len * facing;
   const hy = shoulderY + Math.sin(a) * len;
   g.strokeStyle = flash ? '#ffffff' : colour;
-  g.lineWidth = flash ? 5 : 4;
+  g.lineWidth = flash ? 6.5 : 5;
   g.beginPath();
   g.moveTo(shoulderX, shoulderY);
   g.lineTo(hx, hy);
@@ -119,10 +120,10 @@ function drawFighter(g, x, facing, pose, colour, opts = {}) {
 
   // off arm
   g.globalAlpha = (1 - ghost) * 0.6;
-  g.lineWidth = 3.5;
+  g.lineWidth = 4.5;
   g.beginPath();
   g.moveTo(shoulderX, shoulderY + 3);
-  g.lineTo(shoulderX - 15 * facing, shoulderY + 15);
+  g.lineTo(shoulderX - 15 * S * facing, shoulderY + 15 * S);
   g.stroke();
 
   g.restore();
@@ -130,36 +131,45 @@ function drawFighter(g, x, facing, pose, colour, opts = {}) {
 
 /* ---------------------------------------------------------------- arena */
 
-function drawArena(g, shake) {
-  g.clearRect(0, 0, W, H);
+function drawArena(g, shake, top, bot, left, right) {
   g.save();
   g.translate(shake.x, shake.y);
+  const L = left - 80, R = right + 80, wide = R - L;
 
-  const sky = g.createLinearGradient(0, 0, 0, GROUND);
-  sky.addColorStop(0, '#0c1119');
-  sky.addColorStop(1, '#0a0f15');
+  const sky = g.createLinearGradient(0, top, 0, GROUND);
+  sky.addColorStop(0, '#070c12');
+  sky.addColorStop(1, '#0c131c');
   g.fillStyle = sky;
-  g.fillRect(-20, -20, W + 40, GROUND + 20);
+  g.fillRect(L, top - 80, wide, GROUND - top + 80);
+
+  // A far backdrop of vertical bars. Parallax at a third of camera speed, which is what
+  // makes the movement game legible: you can see yourself crossing the stage.
+  g.strokeStyle = '#111a24'; g.lineWidth = 6;
+  for (let x = Math.floor(L / 120) * 120; x < R; x += 120) {
+    const px = x + (x - (L + R) / 2) * -0.66;
+    g.beginPath(); g.moveTo(px, GROUND - 250); g.lineTo(px, GROUND - 30); g.stroke();
+  }
 
   // distance ticks — a quiet ruler so spacing is readable at a glance
-  g.strokeStyle = '#141c25'; g.lineWidth = 1;
-  for (let x = RULES.ARENA_MIN; x <= RULES.ARENA_MAX; x += 50) {
-    g.beginPath(); g.moveTo(x, GROUND - 12); g.lineTo(x, GROUND); g.stroke();
+  g.strokeStyle = '#18222d'; g.lineWidth = 1.5;
+  for (let x = Math.ceil(L / 50) * 50; x < R; x += 50) {
+    const tall = x % 250 === 0;
+    g.beginPath(); g.moveTo(x, GROUND - (tall ? 22 : 11)); g.lineTo(x, GROUND); g.stroke();
   }
 
   g.fillStyle = COL.floor;
-  g.fillRect(-20, GROUND, W + 40, H - GROUND + 20);
-  g.strokeStyle = '#243040'; g.lineWidth = 2;
-  g.beginPath(); g.moveTo(-20, GROUND); g.lineTo(W + 20, GROUND); g.stroke();
+  g.fillRect(L, GROUND, wide, bot - GROUND + 80);
+  g.strokeStyle = '#2b3949'; g.lineWidth = 2.5;
+  g.beginPath(); g.moveTo(L, GROUND); g.lineTo(R, GROUND); g.stroke();
 
   // the walls you can be cornered against
-  g.fillStyle = '#0e141c';
-  g.fillRect(-20, 0, RULES.ARENA_MIN + 20, GROUND);
-  g.fillRect(RULES.ARENA_MAX, 0, W - RULES.ARENA_MAX + 20, GROUND);
-  g.strokeStyle = '#1d2734';
+  g.fillStyle = '#090f16';
+  if (L < RULES.ARENA_MIN) g.fillRect(L, top - 80, RULES.ARENA_MIN - L, GROUND - top + 80);
+  if (R > RULES.ARENA_MAX) g.fillRect(RULES.ARENA_MAX, top - 80, R - RULES.ARENA_MAX, GROUND - top + 80);
+  g.strokeStyle = '#26333f'; g.lineWidth = 2;
   g.beginPath();
-  g.moveTo(RULES.ARENA_MIN, 0); g.lineTo(RULES.ARENA_MIN, GROUND);
-  g.moveTo(RULES.ARENA_MAX, 0); g.lineTo(RULES.ARENA_MAX, GROUND);
+  g.moveTo(RULES.ARENA_MIN, top); g.lineTo(RULES.ARENA_MIN, GROUND);
+  g.moveTo(RULES.ARENA_MAX, top); g.lineTo(RULES.ARENA_MAX, GROUND);
   g.stroke();
   g.restore();
 }
@@ -196,8 +206,10 @@ function drawRange(g, x, facing, range, colour, dashed, label) {
 export class Stage {
   constructor(canvas) {
     this.c = canvas;
-    this.c.width = W; this.c.height = H;
     this.g = canvas.getContext('2d');
+    this.vw = W; this.vh = H;         // world units currently visible
+    this.resize();
+    new ResizeObserver(() => { this.resize(); this.draw(); }).observe(canvas);
     this.shake = { x: 0, y: 0, mag: 0 };
     this.sparks = [];
     this.trails = [];
@@ -212,21 +224,77 @@ export class Stage {
     this.preview = null;      // { x:[..], phases, ranges } for the idle/planning view
     this.floats = [];
     this.state = null;        // whose colours to draw with
+    this.mode = 'preview';    // 'preview' | 'playback'
+    this.boxes = false;       // hitbox / hurtbox overlay
+    this.adv = null;          // frame advantage to print once the exchange settles
+  }
+
+  /**
+   * Match the backing bitmap to the element and work out the world-to-screen transform.
+   *
+   * The arena is always as wide as the world (so spacing reads the same at any size) and
+   * the ground is pinned near the bottom, with whatever vertical room is left becoming sky.
+   * Drawing at a fixed aspect instead leaves dead bands above and below on tall screens.
+   */
+  resize() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(320, this.c.clientWidth || W);
+    const h = Math.max(180, this.c.clientHeight || H);
+    this.c.width = Math.round(w * dpr);
+    this.c.height = Math.round(h * dpr);
+    this.dpr = dpr;
+    this.cssW = w;
+    this.cssH = h;
+    this.groundPx = h * 0.88;   // thin floor strip; the room belongs to the fighters
+  }
+
+  /**
+   * A camera, the way a fighting game has one: centred between the fighters and zoomed to
+   * the distance between them. Drawing the whole 1000-unit arena at a fixed scale instead
+   * leaves the fighters tiny at the bottom of an empty screen on any tall display.
+   */
+  aimCamera(x0, x1, snap = false) {
+    const gap = Math.abs(x0 - x1);
+    const visW = Math.min(W, Math.max(540, gap + 470));
+    const target = {
+      scale: Math.min(this.cssW / visW, this.cssH / 300),
+      x: Math.max(RULES.ARENA_MIN - 30, Math.min(RULES.ARENA_MAX + 30, (x0 + x1) / 2)),
+    };
+    if (!this.cam || snap) this.cam = { ...target };
+    else {
+      this.cam.scale += (target.scale - this.cam.scale) * 0.18;
+      this.cam.x += (target.x - this.cam.x) * 0.18;
+    }
+    const s = this.cam.scale;
+    this.scale = s;
+    this.topWorld = GROUND - this.groundPx / s;
+    this.botWorld = this.topWorld + this.cssH / s;
+    this.leftWorld = this.cam.x - this.cssW / (2 * s);
+    this.rightWorld = this.leftWorld + this.cssW / s;
+  }
+
+  /** Put the canvas into world coordinates for the rest of the drawing code. */
+  applyTransform() {
+    const k = this.dpr * this.scale;
+    this.g.setTransform(k, 0, 0, k, this.dpr * (this.cssW / 2 - this.cam.x * this.scale),
+      this.dpr * (this.groundPx - GROUND * this.scale));
   }
 
   /** Show a static neutral pose — used between turns while you are choosing. */
   setPreview(state, myMove, theirBestMove, showThreat) {
-    this.result = null;
     this.playing = false;
+    this.mode = 'preview';
     this.state = state;
     this.preview = { state, myMove, theirBestMove, showThreat };
     this.draw();
   }
 
-  play(result, state) {
+  play(result, state, adv = null) {
     if (state) this.state = state;
+    this.snapCam = true;
     this.result = result;
-    this.preview = null;
+    this.adv = adv;
+    this.mode = 'playback';
     this.frame = 0;
     this.acc = 0;
     this.hitstop = 0;
@@ -236,13 +304,16 @@ export class Stage {
     this.playing = true;
   }
 
+  /** Scrubbing works whenever an exchange has been resolved, playing or not. */
   seek(f) {
     if (!this.result) return;
     this.playing = false;
+    this.mode = 'playback';
     this.frame = Math.max(0, Math.min(this.result.total, f));
     this.trails.length = 0;
     this.draw();
   }
+  get scrubbable() { return !!this.result; }
 
   update(dt) {
     // decay shake and particles even while paused, so a scrubbed frame settles cleanly
@@ -277,8 +348,13 @@ export class Stage {
     if (!tl) return;
     this.onFrame?.(f);
     for (let i = 0; i < 2; i++) {
-      if (tl.phase[i] === 'active') {
-        this.trails.push({ x: tl.x[i], colour: sideColour(this.state, i), life: 0.22 });
+      if (tl.phase[i] === 'active' || tl.phase[i] === 'startup') {
+        const m = this.result.summary[i].move;
+        this.trails.push({
+          x: tl.x[i], colour: sideColour(this.state, i), life: 0.3,
+          facing: (tl.x[0] <= tl.x[1] ? 1 : -1) * (i === 0 ? 1 : -1),
+          pose: poseFor(tl.phase[i], m, f / 10),
+        });
       }
     }
     for (const e of tl.events) {
@@ -325,17 +401,26 @@ export class Stage {
 
   draw() {
     const g = this.g;
-    drawArena(g, this.shake);
+    const pos = this.mode === 'playback' && this.result
+      ? (this.result.timeline[this.frame]?.x ?? [400, 600])
+      : (this.preview ? [pointOf(this.preview.state, 0).x, pointOf(this.preview.state, 1).x] : [400, 600]);
+    this.aimCamera(pos[0], pos[1], this.snapCam);
+    this.snapCam = false;
+
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, this.c.width, this.c.height);
+    this.applyTransform();
+    drawArena(g, this.shake, this.topWorld, this.botWorld, this.leftWorld, this.rightWorld);
     g.save();
     g.translate(this.shake.x, this.shake.y);
 
-    if (this.preview) this.drawPreview(g);
-    else if (this.result) this.drawFrame(g);
+    if (this.mode === 'playback' && this.result) this.drawFrame(g);
+    else if (this.preview) this.drawPreview(g);
 
-    for (const t of this.trails) {
-      g.globalAlpha = Math.max(0, t.life / 0.22) * 0.35;
-      g.strokeStyle = t.colour; g.lineWidth = 3;
-      g.beginPath(); g.moveTo(t.x, GROUND - 90); g.lineTo(t.x, GROUND - 10); g.stroke();
+    // After-images. Ghosts of the frames just gone, which is how you read a swing.
+    for (const tr of this.trails) {
+      const a = Math.max(0, tr.life / 0.3);
+      drawFighter(g, tr.x, tr.facing, tr.pose, tr.colour, { ghost: 1 - a * 0.3 });
     }
     g.globalAlpha = 1;
 
@@ -387,6 +472,8 @@ export class Stage {
     if (!tl) return;
     const facing = tl.x[0] <= tl.x[1] ? 1 : -1;
 
+    if (this.boxes) this.drawBoxes(g, tl, facing);
+
     for (let i = 0; i < 2; i++) {
       const m = r.summary[i].move;
       const ph = tl.phase[i];
@@ -432,10 +519,63 @@ export class Stage {
       g.globalAlpha = 1;
     }
 
-    g.fillStyle = '#33404f';
-    g.font = '600 11px ui-monospace, monospace';
+    g.fillStyle = '#3b4a5c';
+    g.font = '700 12px ui-monospace, monospace';
     g.textAlign = 'left';
-    g.fillText(`FRAME ${String(this.frame).padStart(2, '0')} / ${r.total}`, 16, 24);
+    g.fillText(`FRAME ${String(this.frame).padStart(2, '0')} / ${r.total}`, this.leftWorld + 16, this.topWorld + 26);
+
+    // Frame advantage, printed once the exchange has settled. YOMIH puts this number
+    // right next to the fighters because it is the single thing that decides the next turn.
+    if (this.adv != null && this.frame >= r.total) {
+      const good = this.adv > 0;
+      g.font = '800 26px ui-monospace, monospace';
+      g.textAlign = 'center';
+      g.fillStyle = this.adv === 0 ? '#9aa7b6' : good ? '#5ef2a0' : '#ff7a8a';
+      const label = this.adv > 0 ? `+${this.adv}` : `${this.adv}`;
+      g.fillText(label, tl.x[0], GROUND - 150);
+      g.font = '700 9px ui-monospace, monospace';
+      g.fillStyle = '#5b6876';
+      g.fillText(this.adv === 0 ? 'EVEN' : good ? 'YOU ACT FIRST' : 'THEY ACT FIRST', tl.x[0], GROUND - 136);
+    }
+  }
+
+  /**
+   * Hitbox / hurtbox overlay, the way the source game shows it: a blue box for what can be
+   * hit and a red one for what is hitting. Turning this on is the fastest way to understand
+   * why a move whiffed — the reach is drawn, not described.
+   */
+  drawBoxes(g, tl, facing) {
+    const r = this.result;
+    const bodyW = 46, bodyH = 112;
+    for (let i = 0; i < 2; i++) {
+      const x = tl.x[i];
+      g.strokeStyle = '#4aa8ff'; g.lineWidth = 1.5; g.globalAlpha = 0.55;
+      g.strokeRect(x - bodyW / 2, GROUND - bodyH, bodyW, bodyH);
+      g.fillStyle = '#4aa8ff14';
+      g.fillRect(x - bodyW / 2, GROUND - bodyH, bodyW, bodyH);
+
+      const m = r.summary[i].move;
+      if (tl.phase[i] === 'active' && m.range) {
+        const face = i === 0 ? facing : -facing;
+        const top = m.level === 'high' ? GROUND - bodyH - 6
+          : m.level === 'low' ? GROUND - 40 : GROUND - 86;
+        const h = m.level === 'low' ? 40 : 46;
+        const w = m.range;
+        g.globalAlpha = 0.9;
+        g.strokeStyle = '#ff4d63'; g.lineWidth = 2;
+        g.strokeRect(face > 0 ? x : x - w, top, w, h);
+        g.fillStyle = '#ff4d6322';
+        g.fillRect(face > 0 ? x : x - w, top, w, h);
+      }
+      if (tl.phase[i] === 'invuln' || tl.phase[i] === 'parryWindow') {
+        g.globalAlpha = 0.8;
+        g.strokeStyle = tl.phase[i] === 'invuln' ? '#9aa7b6' : '#7cc4ff';
+        g.setLineDash([4, 4]); g.lineWidth = 2;
+        g.strokeRect(x - bodyW / 2 - 3, GROUND - bodyH - 3, bodyW + 6, bodyH + 6);
+        g.setLineDash([]);
+      }
+    }
+    g.globalAlpha = 1;
   }
 }
 

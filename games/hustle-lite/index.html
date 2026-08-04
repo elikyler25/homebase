@@ -34,6 +34,7 @@
       </select>
       <span id="diffnote" class="note"></span>
     </div>
+    <button id="boxes" class="toggle" type="button" title="Show hitboxes and hurtboxes during playback">Boxes</button>
     <button id="sound" type="button">Sound on</button>
     <button id="helpbtn" type="button">How to play</button>
     <button id="restart" type="button">New match</button>
@@ -81,15 +82,14 @@
       </div>
     </div>
 
-    <div class="coach" id="coach" hidden></div>
-
-    <div class="scrub" id="scrubwrap" hidden>
-      <button id="replay" type="button">Replay</button>
-      <input id="scrub" type="range" min="0" max="40" value="0" aria-label="Scrub the exchange frame by frame">
-      <span>frame</span>
+    <div class="underbar">
+      <div class="coach" id="coach" hidden></div>
+      <div class="scrub" id="scrubwrap" hidden>
+        <button id="replay" type="button">▶ Replay</button>
+        <input id="scrub" type="range" min="0" max="40" value="0" aria-label="Scrub the exchange frame by frame">
+        <span id="scrubval">0f</span>
+      </div>
     </div>
-
-    <div class="log" id="log"></div>
   </section>
 
   <aside class="board">
@@ -102,6 +102,7 @@
       <div class="b"><i id="riskfill" style="width:0%"></i></div>
     </div>
     <div class="rows" id="rows"></div>
+    <div class="log" id="log"></div>
   </aside>
 
   <section class="moves">
@@ -181,6 +182,12 @@
     <li>At turn 70 it is time over, and whoever leads on health takes the round.</li>
   </ul>
 
+  <h3>Reading the exchange</h3>
+  <p>Every exchange is kept after it resolves. Drag the frame slider or use <kbd>←</kbd> and
+     <kbd>→</kbd> to walk it a frame at a time, and hit <strong>Replay</strong> to watch it
+     again at speed. Turn on <strong>Boxes</strong> in the header to see hurtboxes in blue
+     and live hitboxes in red — it is the quickest way to understand why something whiffed.</p>
+
   <h3>Squad mode</h3>
   <p>Three fighters a side, one on point and two on the bench. Every turn you order your
      point fighter <em>and</em> may call one benched teammate, who runs in ahead of you and
@@ -198,7 +205,7 @@
   <h3>Keys</h3>
   <p><kbd>1</kbd>–<kbd>5</kbd> strikes · <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> defence ·
      <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> footsies and meter ·
-     <kbd>Z</kbd> <kbd>X</kbd> tag ·
+     <kbd>Z</kbd> <kbd>X</kbd> tag · <kbd>←</kbd> <kbd>→</kbd> step a frame ·
      <kbd>C</kbd> <kbd>V</kbd> <kbd>B</kbd> assist call ·
      <kbd>Enter</kbd> continue · <kbd>?</kbd> this panel</p>
 

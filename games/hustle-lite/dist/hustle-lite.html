@@ -1,17 +1,22 @@
 <title>Hustle Lite — simultaneous-turn duelling, with the counters shown</title>
 <style>
 /* HUSTLE LITE — presentation layer.
-   Dark by default; the whole palette is driven by the custom properties below. */
+ *
+ * One rule shapes everything here: the whole game fits the viewport and nothing scrolls.
+ * You should never have to hunt for a move button. The page is a fixed grid — header,
+ * arena, move strip — with the threat board as a column that scrolls inside itself.
+ */
 
 :root {
-  --bg: #0a0c10;
-  --bg-2: #10141a;
-  --panel: #151a21;
-  --panel-2: #1b222b;
-  --line: #262f3a;
-  --ink: #e9eef4;
-  --ink-2: #9aa7b6;
-  --ink-3: #66727f;
+  --bg: #06080b;
+  --bg-2: #0b0f14;
+  --panel: #11161d;
+  --panel-2: #182029;
+  --line: #232d38;
+  --line-2: #2f3b48;
+  --ink: #eef3f8;
+  --ink-2: #97a5b4;
+  --ink-3: #5f6c7a;
 
   --you: #3fe0cf;
   --them: #ff5f78;
@@ -22,360 +27,362 @@
 
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --r: 10px;
+  --r: 8px;
 }
 
 * { box-sizing: border-box; }
 
+html, body { height: 100%; }
 body {
   margin: 0;
-  background:
-    radial-gradient(1100px 520px at 50% -10%, #17202b 0%, transparent 70%),
-    var(--bg);
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
+  overflow: hidden;                 /* the shell never scrolls; panels scroll internally */
 }
 
 .wrap {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 18px 18px 40px;
+  height: 100dvh;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  grid-template-areas: "top top" "stage board" "moves board";
-  gap: 14px;
-  align-items: start;
-}
-
-@media (max-width: 1080px) {
-  .wrap { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "stage" "board" "moves"; }
+  grid-template-columns: minmax(0, 1fr) 328px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "top board" "stage board" "moves board";
+  gap: 8px;
+  padding: 8px;
 }
 
 /* ------------------------------------------------------------------ header */
 
-.top { grid-area: top; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-
-.brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
+.top { grid-area: top; display: flex; align-items: center; gap: 9px; flex-wrap: nowrap; padding: 0 2px; overflow-x: auto; }
+.top::-webkit-scrollbar { height: 0; }
+.brand { display: flex; align-items: baseline; gap: 9px; margin-right: auto; min-width: 0; }
 .brand h1 {
-  margin: 0; font-size: 19px; letter-spacing: .16em; font-weight: 800;
-  text-transform: uppercase;
+  margin: 0; font-size: 15px; letter-spacing: .22em; font-weight: 800; text-transform: uppercase;
   background: linear-gradient(92deg, var(--you), #9d8bff 60%, var(--them));
   -webkit-background-clip: text; background-clip: text; color: transparent;
+  white-space: nowrap;
 }
-.brand span { font-size: 11px; color: var(--ink-3); letter-spacing: .08em; }
+.brand span { font-size: 10px; color: var(--ink-3); letter-spacing: .06em; white-space: nowrap; }
 
-.ctl { display: flex; align-items: center; gap: 6px; }
-.ctl label { font-size: 10px; letter-spacing: .12em; color: var(--ink-3); text-transform: uppercase; }
+.ctl { display: flex; align-items: center; gap: 5px; }
+.ctl label { font-size: 9px; letter-spacing: .14em; color: var(--ink-3); text-transform: uppercase; }
+.note { font-size: 10px; color: var(--ink-3); max-width: 118px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1500px) { .note { display: none; } }
 
 select, button {
-  font-family: inherit; font-size: 12px; color: var(--ink);
+  font-family: inherit; font-size: 11.5px; white-space: nowrap; color: var(--ink);
   background: var(--panel-2); border: 1px solid var(--line);
-  border-radius: 8px; padding: 6px 10px; cursor: pointer;
+  border-radius: 7px; padding: 5px 9px; cursor: pointer;
   transition: border-color .12s, background .12s, color .12s;
 }
-select:hover, button:hover { border-color: #3b4a5a; background: #212a35; }
+select:hover, button:hover { border-color: var(--line-2); background: #1f2833; }
 button:active { transform: translateY(1px); }
 button.primary {
   background: linear-gradient(180deg, #2ec6b6, #1ba193);
   border-color: #34d6c4; color: #04231f; font-weight: 700; letter-spacing: .04em;
 }
 button.primary:hover { background: linear-gradient(180deg, #3ad9c8, #21b3a3); }
-button:disabled { opacity: .4; cursor: not-allowed; }
+button.toggle.on { border-color: var(--gold); color: var(--gold); background: #241f12; }
+button:disabled { opacity: .38; cursor: not-allowed; }
 
 /* ------------------------------------------------------------------- stage */
 
-.stage { grid-area: stage; display: grid; gap: 10px; }
+.stage { grid-area: stage; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 6px; }
 
 .hud {
-  display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center;
-  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px;
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 7px 12px;
 }
-
-.side { display: grid; gap: 6px; min-width: 0; }
+.side { display: grid; gap: 4px; min-width: 0; }
 .side.rt { justify-items: end; }
 .side .who {
-  font-size: 10px; letter-spacing: .16em; text-transform: uppercase; font-weight: 700;
+  font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700;
   display: flex; align-items: center; gap: 6px;
 }
 .side.lt .who { color: var(--you); }
 .side.rt .who { color: var(--them); }
+.side .nm { font-weight: 800; }
 
-.hp { height: 12px; background: #0b0f14; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; width: 100%; position: relative; }
-.hp i { display: block; height: 100%; transition: width .35s cubic-bezier(.2,.8,.2,1); }
-.side.lt .hp i { background: linear-gradient(90deg, #1c9f92, var(--you)); }
-.side.rt .hp i { background: linear-gradient(270deg, #c73a52, var(--them)); margin-left: auto; }
-.hp b { /* the slow-draining "recent damage" ghost */
-  position: absolute; top: 0; height: 100%; background: #ffffff2e; transition: width .7s ease .25s, left .7s ease .25s;
-}
+.hp { height: 11px; background: #05080b; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; width: 100%; }
+.hp i { display: block; height: 100%; transition: width .3s cubic-bezier(.2,.8,.2,1); }
+.side.lt .hp i { background: linear-gradient(90deg, #17867c, var(--you)); }
+.side.rt .hp i { background: linear-gradient(270deg, #b53347, var(--them)); margin-left: auto; }
 
 .pips { display: flex; gap: 3px; align-items: center; font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
-.pip { width: 15px; height: 5px; border-radius: 2px; background: #222a34; }
-.pip.on { background: var(--gold); box-shadow: 0 0 7px #ffd16688; }
-.burst { width: 46px; height: 5px; border-radius: 2px; background: #222a34; overflow: hidden; }
+.pip { width: 13px; height: 4px; border-radius: 2px; background: #1d252e; }
+.pip.on { background: var(--gold); box-shadow: 0 0 6px #ffd16688; }
+.burst { width: 40px; height: 4px; border-radius: 2px; background: #1d252e; overflow: hidden; }
 .burst i { display: block; height: 100%; background: #7c8cff; }
-.burst.ready i { background: #b0b9ff; box-shadow: 0 0 8px #7c8cff; }
+.burst.ready i { background: #b0b9ff; box-shadow: 0 0 7px #7c8cff; }
 
 .clock { text-align: center; font-family: var(--mono); }
-.clock .t { font-size: 22px; font-weight: 700; letter-spacing: .02em; }
-.clock .l { font-size: 9px; letter-spacing: .14em; color: var(--ink-3); text-transform: uppercase; }
+.clock .t { font-size: 19px; font-weight: 800; }
+.clock .l { font-size: 8px; letter-spacing: .12em; color: var(--ink-3); text-transform: uppercase; }
 .clock.low .t { color: var(--warn); }
 
-.arena { position: relative; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: #080b0f; }
-.arena canvas { display: block; width: 100%; height: auto; }
+.rounds { display: inline-flex; gap: 3px; }
+.rd { width: 6px; height: 6px; border-radius: 50%; background: #232b35; display: inline-block; }
+.side.lt .rd.won { background: var(--you); box-shadow: 0 0 6px var(--you); }
+.side.rt .rd.won { background: var(--them); box-shadow: 0 0 6px var(--them); }
+
+.arena {
+  position: relative; min-height: 0;
+  border: 1px solid var(--line); border-radius: var(--r); overflow: hidden;
+  background: #04060a; display: grid; place-items: center;
+}
+.arena { display: block; }
+.arena canvas { display: block; width: 100%; height: 100%; }
 
 .banner {
-  position: absolute; inset: auto 0 14px; text-align: center; pointer-events: none;
-  font-family: var(--mono); font-size: 13px; letter-spacing: .1em; text-transform: uppercase;
+  position: absolute; inset: auto 0 10px; text-align: center; pointer-events: none;
+  font-family: var(--mono); font-size: 12px; letter-spacing: .09em; text-transform: uppercase;
   opacity: 0; transition: opacity .2s;
 }
 .banner.show { opacity: 1; }
-.banner span { background: #060a0ee0; border: 1px solid var(--line); padding: 5px 12px; border-radius: 999px; }
+.banner span { background: #04070ae8; border: 1px solid var(--line); padding: 4px 11px; border-radius: 999px; }
 
 .overlay {
-  position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center;
-  background: #060a0ed9; backdrop-filter: blur(3px); z-index: 3;
+  position: absolute; inset: 0; display: grid; place-content: center; gap: 9px; text-align: center;
+  background: #04070ae0; backdrop-filter: blur(3px); z-index: 3;
 }
 .overlay[hidden] { display: none; }
-.overlay h2 { margin: 0; font-size: 30px; letter-spacing: .18em; text-transform: uppercase; }
-.overlay p { margin: 0; color: var(--ink-2); max-width: 380px; }
+.overlay h2 { margin: 0; font-size: 27px; letter-spacing: .18em; text-transform: uppercase; }
+.overlay p { margin: 0; color: var(--ink-2); max-width: 360px; font-size: 13px; }
 
-.scrub { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
-.scrub[hidden], .riskbar[hidden] { display: none; }
-.scrub input { flex: 1; accent-color: var(--you); }
-
-/* ------------------------------------------------------------------- moves */
-
-/* Heights are pinned so the page does not jump when the move menu shrinks to the
-   three escape options mid-combo, or when the log fills up. */
-.moves { grid-area: moves; display: grid; gap: 10px; align-content: start; min-height: 270px; }
-.movegroup { display: grid; gap: 6px; }
-.movegroup h3 {
-  margin: 0; font-size: 9px; letter-spacing: .18em; color: var(--ink-3);
-  text-transform: uppercase; font-weight: 700;
+.underbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.coach {
+  font-size: 11.5px; line-height: 1.4; color: var(--ink-2); min-width: 0;
+  background: var(--panel); border: 1px solid var(--line);
+  border-left: 3px solid var(--warn); border-radius: 7px; padding: 6px 10px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 7px; }
+.coach[hidden] { visibility: hidden; }
+.coach.good { border-left-color: var(--good); }
+.coach b { color: var(--ink); font-weight: 700; }
+
+.scrub { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.scrub[hidden] { visibility: hidden; }
+.scrub input { width: 180px; accent-color: var(--you); }
+
+/* --------------------------------------------------------------- move strip */
+
+/*
+ * Always on screen, never scrolled to. Groups sit side by side and the buttons shrink
+ * before the strip ever grows — a small button beats a button you have to go looking for.
+ */
+.moves {
+  /* Wraps rather than scrolling sideways: a clipped button is a button you have to hunt
+     for, which is the one thing this strip exists to prevent. */
+  grid-area: moves; display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 7px 8px;
+}
+.moves::-webkit-scrollbar { height: 5px; }
+.moves::-webkit-scrollbar-thumb { background: #27313d; border-radius: 3px; }
+
+.assistbar { display: flex; align-items: center; gap: 5px; padding-right: 8px; border-right: 1px solid var(--line); flex: 0 0 auto; }
+.assistbar[hidden] { display: none; }
+.assistbar .lbl {
+  font-size: 8px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+  font-weight: 800; writing-mode: vertical-rl; transform: rotate(180deg);
+}
+.as {
+  display: grid; gap: 0; text-align: left; padding: 5px 9px; border-radius: 7px;
+  background: var(--bg-2); border: 1px solid var(--line); flex: 0 0 auto;
+}
+.as.on { border-color: var(--gold); background: #241f12; box-shadow: 0 0 0 1px var(--gold) inset; }
+.as .an { font-size: 11.5px; font-weight: 700; }
+.as .ad { font-family: var(--mono); font-size: 8.5px; color: var(--ink-3); }
+
+#moves { display: flex; gap: 8px; flex: 1 1 auto; min-width: 0; flex-wrap: wrap; }
+.movegroup { display: grid; grid-template-rows: auto 1fr; gap: 4px; min-width: 0; flex: 1 1 auto; }
+.movegroup + .movegroup { padding-left: 8px; border-left: 1px solid var(--line); }
+.movegroup h3 { margin: 0; font-size: 8px; letter-spacing: .16em; color: var(--ink-3); text-transform: uppercase; font-weight: 800; }
+.grid { display: flex; gap: 5px; min-width: 0; flex-wrap: wrap; }
 
 .mv {
-  position: relative; text-align: left; padding: 8px 9px 9px; border-radius: 9px;
-  background: var(--panel); border: 1px solid var(--line); display: grid; gap: 3px;
-  cursor: pointer; overflow: hidden;
+  position: relative; text-align: left; padding: 5px 7px 7px; border-radius: 7px;
+  background: var(--bg-2); border: 1px solid var(--line); display: grid; gap: 1px;
+  cursor: pointer; overflow: hidden; min-width: 88px; flex: 1 1 88px;
 }
-.mv:hover, .mv:focus-visible { border-color: #45596d; background: var(--panel-2); outline: none; }
-.mv[aria-pressed="true"] { border-color: var(--you); background: #12292c; box-shadow: 0 0 0 1px var(--you) inset; }
-.mv:disabled { opacity: .32; cursor: not-allowed; }
-.mv .n { font-size: 12.5px; font-weight: 650; display: flex; align-items: center; gap: 6px; }
+.mv:hover, .mv:focus-visible { border-color: var(--line-2); background: #1d2630; outline: none; }
+.mv[aria-pressed="true"] { border-color: var(--you); background: #0f2a2c; box-shadow: 0 0 0 1px var(--you) inset; }
+.mv:disabled { opacity: .3; cursor: not-allowed; }
+.mv .n { font-size: 11.5px; font-weight: 700; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .mv .k {
-  font-family: var(--mono); font-size: 9px; color: var(--ink-3);
-  border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: auto;
+  font-family: var(--mono); font-size: 8px; color: var(--ink-3);
+  border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; margin-left: auto;
 }
-.mv .d { font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: .02em; }
-.mv .risk { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: #1c242e; }
+.mv .d { font-family: var(--mono); font-size: 8.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv .risk { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: #171e26; }
 .mv .risk i { display: block; height: 100%; transition: width .2s; }
 
 /* ------------------------------------------------------------ threat board */
 
 .board {
   grid-area: board; background: var(--panel); border: 1px solid var(--line);
-  border-radius: var(--r); padding: 12px; display: grid; gap: 10px;
-  position: sticky; top: 14px;
+  border-radius: var(--r); padding: 10px; min-height: 0;
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 8px;
 }
-.board header { display: grid; gap: 3px; }
-.board h2 {
-  margin: 0; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink);
-  display: flex; align-items: center; gap: 7px;
-}
-.board h2::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--them); box-shadow: 0 0 8px var(--them); }
-.board .sub { font-size: 11px; color: var(--ink-3); }
-.board .sub b { color: var(--you); font-weight: 600; }
+.board header { display: grid; gap: 2px; }
+.board h2 { margin: 0; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+.board h2::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--them); box-shadow: 0 0 7px var(--them); }
+.board .sub { font-size: 10.5px; color: var(--ink-3); line-height: 1.35; }
+.board .sub b { color: var(--you); font-weight: 700; }
 
-.rows { display: grid; gap: 4px; align-content: start; min-height: 340px; max-height: 62vh; overflow-y: auto; padding-right: 2px; }
-.rows::-webkit-scrollbar { width: 6px; }
-.rows::-webkit-scrollbar-thumb { background: #29323d; border-radius: 3px; }
+.rows { display: grid; gap: 3px; align-content: start; overflow-y: auto; padding-right: 2px; min-height: 0; }
+.rows::-webkit-scrollbar { width: 5px; }
+.rows::-webkit-scrollbar-thumb { background: #27313d; border-radius: 3px; }
 
 .row {
-  display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center;
-  padding: 6px 8px; border-radius: 7px; background: var(--panel-2);
-  border-left: 3px solid transparent; position: relative;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 7px; align-items: center;
+  padding: 5px 7px; border-radius: 6px; background: var(--bg-2); border-left: 3px solid transparent;
 }
-.row.best { background: #2a1620; border-left-color: var(--them); }
-.row .nm { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
-.row .crown { font-size: 9px; color: var(--gold); letter-spacing: .1em; }
-.row .meta { grid-column: 1 / -1; font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
-.row .vd {
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; padding: 2px 6px;
-  border-radius: 4px; white-space: nowrap; font-weight: 600;
-}
-.vd.lose, .vd.parried { background: #40151d; color: #ff9aa8; }
-.vd.win, .vd.plus { background: #123326; color: #6ee7a8; }
-.vd.trade, .vd.clash { background: #3a3115; color: var(--warn); }
-.vd.guard, .vd.blocked, .vd.neutral { background: #1e2732; color: var(--ink-2); }
-.vd.parry { background: #16304a; color: #7cc4ff; }
-.vd.minus { background: #3a2113; color: #ffab7a; }
+.row.best { background: #26141c; border-left-color: var(--them); }
+.row .nm { font-size: 11.5px; font-weight: 700; display: flex; align-items: center; gap: 5px; min-width: 0; }
+.row .nm > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .crown { font-size: 8px; color: var(--gold); letter-spacing: .08em; flex: 0 0 auto; }
+.row .meta { grid-column: 1 / -1; font-family: var(--mono); font-size: 9px; color: var(--ink-3); }
+.row .vd { font-family: var(--mono); font-size: 9px; letter-spacing: .04em; padding: 2px 5px; border-radius: 3px; white-space: nowrap; font-weight: 700; }
+.vd.lose, .vd.parried { background: #3b131b; color: #ff9aa8; }
+.vd.win, .vd.plus { background: #0f2e22; color: #6ee7a8; }
+.vd.trade, .vd.clash { background: #342c12; color: var(--warn); }
+.vd.guard, .vd.blocked, .vd.neutral { background: #1b232d; color: var(--ink-2); }
+.vd.parry { background: #132a41; color: #7cc4ff; }
+.vd.minus { background: #341d11; color: #ffab7a; }
 
-.verdictline { font-size: 11px; color: var(--ink-2); }
-.verdictline b { color: var(--them); }
-
-.riskbar { display: grid; gap: 4px; }
-.riskbar .t { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
-.riskbar .b { height: 5px; border-radius: 3px; background: #1c242e; overflow: hidden; }
+.riskbar { display: grid; gap: 3px; }
+.riskbar[hidden] { display: none; }
+.riskbar .t { display: flex; justify-content: space-between; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.riskbar .b { height: 4px; border-radius: 2px; background: #171e26; overflow: hidden; }
 .riskbar .b i { display: block; height: 100%; transition: width .2s, background .2s; }
 
-.empty { color: var(--ink-3); font-size: 12px; text-align: center; padding: 22px 8px; }
-
-/* --------------------------------------------------------------- log/help */
+.empty { color: var(--ink-3); font-size: 11px; text-align: center; padding: 18px 8px; line-height: 1.45; }
 
 .log {
-  font-family: var(--mono); font-size: 10.5px; color: var(--ink-3);
-  display: grid; gap: 2px; align-content: start; height: 94px; overflow-y: auto;
-  border-top: 1px solid var(--line); padding-top: 8px;
+  font-family: var(--mono); font-size: 9px; color: var(--ink-3);
+  display: grid; gap: 1px; align-content: start; height: 58px; overflow-y: auto;
+  border-top: 1px solid var(--line); padding-top: 6px;
 }
-.log b { color: var(--ink-2); font-weight: 500; }
+.log::-webkit-scrollbar { width: 5px; }
+.log::-webkit-scrollbar-thumb { background: #27313d; border-radius: 3px; }
 
-dialog {
-  border: 1px solid var(--line); border-radius: 14px; background: var(--panel);
-  color: var(--ink); max-width: 620px; padding: 22px 24px; font-size: 13px;
-}
-dialog::backdrop { background: #04070ad0; }
-dialog h2 { margin: 0 0 4px; font-size: 15px; letter-spacing: .1em; text-transform: uppercase; }
-dialog h3 { margin: 16px 0 4px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--you); }
-dialog p, dialog li { color: var(--ink-2); }
-dialog ul { margin: 4px 0; padding-left: 18px; }
-dialog kbd {
-  font-family: var(--mono); font-size: 10px; background: var(--panel-2);
-  border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--ink);
-}
-dialog .close { margin-top: 18px; }
-
-@media (prefers-reduced-motion: reduce) {
-  * { transition-duration: .01ms !important; }
-}
-
-.note { font-size: 11px; color: var(--ink-3); max-width: 190px; }
-@media (max-width: 720px) { .note { display: none; } }
-
-/* ------------------------------------------------------- rounds & coach */
-
-.rounds { display: inline-flex; gap: 3px; }
-.rd { width: 7px; height: 7px; border-radius: 50%; background: #2a333e; display: inline-block; }
-.side.lt .rd.won { background: var(--you); box-shadow: 0 0 7px var(--you); }
-.side.rt .rd.won { background: var(--them); box-shadow: 0 0 7px var(--them); }
-.side .nm { font-weight: 700; }
-
-.coach {
-  font-size: 12px; line-height: 1.5; color: var(--ink-2);
-  background: var(--panel); border: 1px solid var(--line);
-  border-left: 3px solid var(--warn); border-radius: 8px; padding: 8px 12px;
-}
-.coach[hidden] { display: none; }
-.coach.good { border-left-color: var(--good); }
-.coach b { color: var(--ink); font-weight: 650; }
-
-/* ---------------------------------------------------------- yomi chain */
+/* --------------------------------------------------------------- yomi chain */
 
 .chain { display: grid; gap: 2px; }
-.link {
-  background: var(--panel-2); border-radius: 8px; padding: 7px 10px;
-  border-left: 3px solid var(--line); display: grid; gap: 2px;
-}
+.link { background: var(--bg-2); border-radius: 7px; padding: 6px 9px; border-left: 3px solid var(--line); display: grid; gap: 1px; }
 .link.mine { border-left-color: var(--you); }
 .link.theirs { border-left-color: var(--them); }
-.link.loops { opacity: .72; border-left-style: dashed; }
-.link .depth { font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--ink-3); }
-.link .nm { font-size: 13px; font-weight: 650; }
-.link .who { font-size: 10px; color: var(--ink-3); }
+.link.loops { opacity: .7; border-left-style: dashed; }
+.link .depth { font-family: var(--mono); font-size: 8px; letter-spacing: .14em; color: var(--ink-3); }
+.link .nm { font-size: 12px; font-weight: 700; }
+.link .who { font-size: 9.5px; color: var(--ink-3); }
 .link .vd { justify-self: start; margin-top: 2px; }
-.link .meta { font-size: 10px; color: var(--warn); font-family: var(--mono); }
-.chain .arrow { text-align: center; color: var(--ink-3); font-size: 11px; line-height: 1; }
+.link .meta { font-size: 9px; color: var(--warn); font-family: var(--mono); }
+.chain .arrow { text-align: center; color: var(--ink-3); font-size: 10px; line-height: 1; }
 
-/* ----------------------------------------------------- character select */
+/* ------------------------------------------------------------- squad extras */
 
-dialog#select { max-width: 760px; }
-dialog .lead { margin: 0 0 16px; }
-.roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
-.card {
-  text-align: left; padding: 12px 13px; border-radius: 11px; display: grid; gap: 7px;
-  background: var(--panel-2); border: 1px solid var(--line); cursor: pointer;
+.squadbars { display: grid; gap: 2px; width: 100%; }
+.squadbars[hidden] { display: none; }
+.sq { display: grid; grid-template-columns: 52px 1fr 20px; gap: 5px; align-items: center; opacity: .5; }
+.sq.point { opacity: 1; }
+.sq.out { opacity: .25; }
+.sq .sqn { font-size: 8px; letter-spacing: .08em; text-transform: uppercase; font-weight: 800; }
+.sq .sqb { height: 3px; border-radius: 2px; background: #05080b; overflow: hidden; }
+.sq .sqb i { display: block; height: 100%; transition: width .3s; }
+.sq .sqc { font-family: var(--mono); font-size: 7.5px; color: var(--ink-3); text-align: right; }
+.sq.point .sqc { color: var(--ink); }
+.side.rt .sq { grid-template-columns: 20px 1fr 52px; }
+.side.rt .sq .sqn { text-align: right; }
+.side.rt .sq .sqc { text-align: left; }
+
+/* ------------------------------------------------------------------ dialogs */
+
+dialog {
+  border: 1px solid var(--line); border-radius: 13px; background: var(--panel);
+  color: var(--ink); max-width: 640px; padding: 20px 22px; font-size: 13px;
+  max-height: 88dvh; overflow-y: auto;
 }
-.card:hover { border-color: #46596c; }
-.card.picked { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink) inset; background: #202834; }
-.card h3 { margin: 0; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; }
-.card p { margin: 0; font-size: 11.5px; line-height: 1.45; min-height: 50px; }
-.stats { display: grid; gap: 3px; }
-.stat { display: grid; grid-template-columns: 62px 1fr 34px; gap: 6px; align-items: center; }
-.stat .k { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
-.stat .b { height: 4px; border-radius: 2px; background: #10161d; overflow: hidden; }
-.stat .b i { display: block; height: 100%; }
-.stat .v { font-family: var(--mono); font-size: 10px; color: var(--ink-2); text-align: right; }
-.selfoot { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
-.selfoot .primary { margin-left: auto; padding: 8px 22px; }
+dialog::backdrop { background: #030508bb; backdrop-filter: blur(2px); }
+dialog h2 { margin: 0 0 4px; font-size: 14px; letter-spacing: .12em; text-transform: uppercase; }
+dialog h3 { margin: 15px 0 4px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--you); }
+dialog p, dialog li { color: var(--ink-2); font-size: 12.5px; }
+dialog ul { margin: 4px 0; padding-left: 17px; }
+dialog kbd { font-family: var(--mono); font-size: 9.5px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; padding: 1px 4px; color: var(--ink); }
+dialog .close { margin-top: 16px; }
 
-/* The HUD's two stat blocks plus the clock cannot sit side by side on a phone —
-   the meter pips alone are wider than the viewport. Stack the clock underneath. */
+dialog#select { max-width: 780px; }
+.lead { margin: 0 0 13px; }
+.modes { display: flex; gap: 6px; margin: 0 0 12px; }
+.modes button { flex: 1; padding: 8px; font-size: 12px; }
+.modes button.on { border-color: var(--you); background: #0f2a2c; box-shadow: 0 0 0 1px var(--you) inset; }
+
+.roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 9px; }
+.card { text-align: left; padding: 11px 12px; border-radius: 10px; display: grid; gap: 6px; background: var(--bg-2); border: 1px solid var(--line); cursor: pointer; }
+.card:hover { border-color: var(--line-2); }
+.card.picked { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink) inset; background: #1c242e; }
+.card h3 { margin: 0; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
+.card p { margin: 0; font-size: 11px; line-height: 1.4; min-height: 46px; }
+.stats { display: grid; gap: 3px; }
+.stat { display: grid; grid-template-columns: 58px 1fr 32px; gap: 6px; align-items: center; }
+.stat .k { font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.stat .b { height: 4px; border-radius: 2px; background: #05080b; overflow: hidden; }
+.stat .b i { display: block; height: 100%; }
+.stat .v { font-family: var(--mono); font-size: 9.5px; color: var(--ink-2); text-align: right; }
+
+.lh { margin: 16px 0 7px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--you); }
+.lineup { display: grid; gap: 5px; }
+.lrow { display: grid; grid-template-columns: 16px 1fr 46px 1.4fr; gap: 7px; align-items: center; }
+.lrow .ln { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.lrow .lrole { font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.lrow select { width: 100%; }
+.lnote { font-size: 10.5px; color: var(--ink-3); margin: 7px 0 0; }
+.selfoot { display: flex; align-items: center; gap: 11px; margin-top: 16px; }
+.selfoot .primary { margin-left: auto; padding: 8px 20px; }
+
+/* ---------------------------------------------------------------- responsive */
+
+/* Below this the board cannot hold its own column, so it folds under the arena and the
+   page becomes one sheet — but the move strip stays pinned to the bottom of the viewport,
+   because needing to scroll to pick a move is the one thing this layout must never do. */
+@media (max-width: 1000px) {
+  body { overflow: auto; }
+  .wrap {
+    height: auto; min-height: 100dvh;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "top" "stage" "board" "moves";
+    padding-bottom: 132px;
+  }
+  .arena canvas { max-height: none; }
+  .rows { max-height: 44vh; }
+  .moves {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0;
+    background: #0b0f14f2; backdrop-filter: blur(8px);
+  }
+}
+
 @media (max-width: 620px) {
-  .hud { grid-template-columns: 1fr 1fr; grid-template-areas: "lt rt" "clk clk"; row-gap: 8px; }
+  .hud { grid-template-columns: 1fr 1fr; grid-template-areas: "lt rt" "clk clk"; row-gap: 6px; }
   .side.lt { grid-area: lt; }
   .side.rt { grid-area: rt; }
   .clock { grid-area: clk; }
   .pips { flex-wrap: wrap; gap: 2px; }
-  .pip { width: 9px; }
-  .burst { width: 30px; }
-  .side .who { font-size: 9px; letter-spacing: .08em; }
-  .stat { grid-template-columns: 54px 1fr 30px; }
+  .pip { width: 8px; }
+  .burst { width: 28px; }
+  .brand span, .note { display: none; }
+  .lrow { grid-template-columns: 14px 1fr; }
+  .lrow .lrole, .lrow .lmove { grid-column: 2; }
+  .sq { grid-template-columns: 42px 1fr 16px; }
+  .side.rt .sq { grid-template-columns: 16px 1fr 42px; }
 }
 
-
-/* ------------------------------------------------------------ squad mode */
-
-.squadbars { display: grid; gap: 2px; width: 100%; }
-.squadbars[hidden] { display: none; }
-.sq { display: grid; grid-template-columns: 58px 1fr 22px; gap: 5px; align-items: center; opacity: .55; }
-.sq.point { opacity: 1; }
-.sq.out { opacity: .28; }
-.sq .sqn { font-size: 8.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; }
-.sq .sqb { height: 4px; border-radius: 2px; background: #0b0f14; overflow: hidden; }
-.sq .sqb i { display: block; height: 100%; transition: width .3s; }
-.sq .sqc { font-family: var(--mono); font-size: 8px; color: var(--ink-3); text-align: right; }
-.sq.point .sqc { color: var(--ink); }
-.side.rt .sq { grid-template-columns: 22px 1fr 58px; }
-.side.rt .sq .sqn { text-align: right; }
-.side.rt .sq .sqc { text-align: left; }
-
-.assistbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.assistbar[hidden] { display: none; }
-.assistbar .lbl {
-  font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3);
-  font-weight: 700; margin-right: 2px;
-}
-.as {
-  display: grid; gap: 1px; text-align: left; padding: 5px 10px; border-radius: 8px;
-  background: var(--panel); border: 1px solid var(--line);
-}
-.as.on { border-color: var(--gold); background: #2a2416; box-shadow: 0 0 0 1px var(--gold) inset; }
-.as .an { font-size: 12px; font-weight: 650; }
-.as .ad { font-family: var(--mono); font-size: 9px; color: var(--ink-3); }
-
-.modes { display: flex; gap: 6px; margin: 0 0 14px; }
-.modes button { flex: 1; padding: 9px; font-size: 12.5px; }
-.modes button.on { border-color: var(--you); background: #12292c; box-shadow: 0 0 0 1px var(--you) inset; }
-
-.lh { margin: 18px 0 8px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--you); }
-.lineup { display: grid; gap: 6px; }
-.lrow { display: grid; grid-template-columns: 18px 1fr 52px 1.4fr; gap: 8px; align-items: center; }
-.lrow .ln { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
-.lrow .lrole { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
-.lrow select { width: 100%; }
-.lnote { font-size: 11px; color: var(--ink-3); margin: 8px 0 0; }
-
-@media (max-width: 620px) {
-  .lrow { grid-template-columns: 16px 1fr; grid-auto-rows: auto; }
-  .lrow .lrole { grid-column: 2; }
-  .lrow .lmove { grid-column: 2; }
-  .sq { grid-template-columns: 46px 1fr 18px; }
-  .side.rt .sq { grid-template-columns: 18px 1fr 46px; }
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: .01ms !important; }
 }
 
 </style>
@@ -407,6 +414,7 @@ dialog .lead { margin: 0 0 16px; }
       </select>
       <span id="diffnote" class="note"></span>
     </div>
+    <button id="boxes" class="toggle" type="button" title="Show hitboxes and hurtboxes during playback">Boxes</button>
     <button id="sound" type="button">Sound on</button>
     <button id="helpbtn" type="button">How to play</button>
     <button id="restart" type="button">New match</button>
@@ -454,15 +462,14 @@ dialog .lead { margin: 0 0 16px; }
       </div>
     </div>
 
-    <div class="coach" id="coach" hidden></div>
-
-    <div class="scrub" id="scrubwrap" hidden>
-      <button id="replay" type="button">Replay</button>
-      <input id="scrub" type="range" min="0" max="40" value="0" aria-label="Scrub the exchange frame by frame">
-      <span>frame</span>
+    <div class="underbar">
+      <div class="coach" id="coach" hidden></div>
+      <div class="scrub" id="scrubwrap" hidden>
+        <button id="replay" type="button">▶ Replay</button>
+        <input id="scrub" type="range" min="0" max="40" value="0" aria-label="Scrub the exchange frame by frame">
+        <span id="scrubval">0f</span>
+      </div>
     </div>
-
-    <div class="log" id="log"></div>
   </section>
 
   <aside class="board">
@@ -475,6 +482,7 @@ dialog .lead { margin: 0 0 16px; }
       <div class="b"><i id="riskfill" style="width:0%"></i></div>
     </div>
     <div class="rows" id="rows"></div>
+    <div class="log" id="log"></div>
   </aside>
 
   <section class="moves">
@@ -554,6 +562,12 @@ dialog .lead { margin: 0 0 16px; }
     <li>At turn 70 it is time over, and whoever leads on health takes the round.</li>
   </ul>
 
+  <h3>Reading the exchange</h3>
+  <p>Every exchange is kept after it resolves. Drag the frame slider or use <kbd>←</kbd> and
+     <kbd>→</kbd> to walk it a frame at a time, and hit <strong>Replay</strong> to watch it
+     again at speed. Turn on <strong>Boxes</strong> in the header to see hurtboxes in blue
+     and live hitboxes in red — it is the quickest way to understand why something whiffed.</p>
+
   <h3>Squad mode</h3>
   <p>Three fighters a side, one on point and two on the bench. Every turn you order your
      point fighter <em>and</em> may call one benched teammate, who runs in ahead of you and
@@ -571,7 +585,7 @@ dialog .lead { margin: 0 0 16px; }
   <h3>Keys</h3>
   <p><kbd>1</kbd>–<kbd>5</kbd> strikes · <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> defence ·
      <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> footsies and meter ·
-     <kbd>Z</kbd> <kbd>X</kbd> tag ·
+     <kbd>Z</kbd> <kbd>X</kbd> tag · <kbd>←</kbd> <kbd>→</kbd> step a frame ·
      <kbd>C</kbd> <kbd>V</kbd> <kbd>B</kbd> assist call ·
      <kbd>Enter</kbd> continue · <kbd>?</kbd> this panel</p>
 
@@ -1930,14 +1944,15 @@ function chooseAiMove(state, aiIdx, difficulty, history, rand) {
  * the simulation, so what you watch is exactly what was scored.
  */
 
-const W = 1000, H = 300;
-const GROUND = 246;
+const W = 1000, H = 340;
+const GROUND = 282;
+const S = 1.28;          // fighter scale — YOMIH reads big and bold, not dainty
 const COL = { ink: '#e9eef4', dim: '#3a4653', floor: '#131a22' };
 
 // Player one always reads cool, player two always reads warm, whichever characters are
 // picked — you should never have to work out which fighter is yours.
 const SIDE_TINT = ['#3fe0cf', '#ff5f78'];
-const sideColour = (state, i) => (state ? mixHex(CHARS[pointOf(state, i).char].accent, SIDE_TINT[i], 0.55) : SIDE_TINT[i]);
+const sideColour = (state, i) => (state ? mixHex(CHARS[pointOf(state, i).char].accent, SIDE_TINT[i], 0.72) : SIDE_TINT[i]);
 
 function mixHex(a, b, t) {
   const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -1978,8 +1993,8 @@ const armAngle = (m) => (m.level === 'low' ? 0.95 : m.level === 'high' ? -1.35 :
 function drawFighter(g, x, facing, pose, colour, opts = {}) {
   const { ghost = 0, flash = 0, down = false } = opts;
   const lean = pose.lean * facing;
-  const hipY = GROUND - 46 + pose.crouch * 24;
-  const headY = hipY - 46 + pose.crouch * 12;
+  const hipY = GROUND - 46 * S + pose.crouch * 24 * S;
+  const headY = hipY - 46 * S + pose.crouch * 12 * S;
 
   g.save();
   g.globalAlpha = 1 - ghost;
@@ -1987,54 +2002,54 @@ function drawFighter(g, x, facing, pose, colour, opts = {}) {
   // shadow
   g.fillStyle = '#00000066';
   g.beginPath();
-  g.ellipse(x, GROUND + 2, 20 - pose.crouch * 4, 4.5, 0, 0, Math.PI * 2);
+  g.ellipse(x, GROUND + 2, (20 - pose.crouch * 4) * S, 4.5, 0, 0, Math.PI * 2);
   g.fill();
 
   if (down) {
     // flat on the floor: a body lying along the ground, head toward the opponent
-    g.strokeStyle = colour; g.lineWidth = 5; g.lineCap = 'round';
+    g.strokeStyle = colour; g.lineWidth = 6; g.lineCap = 'round';
     g.beginPath();
-    g.moveTo(x - 22 * facing, GROUND - 7);
-    g.lineTo(x + 16 * facing, GROUND - 10);
+    g.moveTo(x - 26 * facing, GROUND - 8);
+    g.lineTo(x + 19 * facing, GROUND - 12);
     g.stroke();
     g.fillStyle = colour;
-    g.beginPath(); g.arc(x + 24 * facing, GROUND - 12, 8, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(x + 29 * facing, GROUND - 14, 10, 0, Math.PI * 2); g.fill();
     g.restore();
     return;
   }
 
-  const shoulderX = x + lean * 16;
-  const shoulderY = hipY - 34;
+  const shoulderX = x + lean * 16 * S;
+  const shoulderY = hipY - 34 * S;
 
   // legs
-  g.strokeStyle = colour; g.lineWidth = 4.5; g.lineCap = 'round'; g.lineJoin = 'round';
+  g.strokeStyle = colour; g.lineWidth = 5.5; g.lineCap = 'round'; g.lineJoin = 'round';
   g.beginPath();
-  g.moveTo(x + lean * 5, hipY);
-  g.lineTo(x - 12 * facing - lean * 4, GROUND);
-  g.moveTo(x + lean * 5, hipY);
-  g.lineTo(x + 13 * facing + lean * 12, GROUND);
+  g.moveTo(x + lean * 5 * S, hipY);
+  g.lineTo(x - 12 * S * facing - lean * 4, GROUND);
+  g.moveTo(x + lean * 5 * S, hipY);
+  g.lineTo(x + 13 * S * facing + lean * 12, GROUND);
   g.stroke();
 
   // torso
-  g.lineWidth = 6;
+  g.lineWidth = 7.5;
   g.beginPath();
-  g.moveTo(x + lean * 5, hipY);
+  g.moveTo(x + lean * 5 * S, hipY);
   g.lineTo(shoulderX, shoulderY);
   g.stroke();
 
   // head
   g.fillStyle = colour;
   g.beginPath();
-  g.arc(shoulderX + lean * 5, headY, 9, 0, Math.PI * 2);
+  g.arc(shoulderX + lean * 5, headY, 11, 0, Math.PI * 2);
   g.fill();
 
   // weapon arm — the reach of this line is what the range arc is telling you about
   const a = pose.arm * facing;
-  const len = 20 + pose.reach * 34;
+  const len = (20 + pose.reach * 34) * S;
   const hx = shoulderX + Math.cos(a) * len * facing;
   const hy = shoulderY + Math.sin(a) * len;
   g.strokeStyle = flash ? '#ffffff' : colour;
-  g.lineWidth = flash ? 5 : 4;
+  g.lineWidth = flash ? 6.5 : 5;
   g.beginPath();
   g.moveTo(shoulderX, shoulderY);
   g.lineTo(hx, hy);
@@ -2042,10 +2057,10 @@ function drawFighter(g, x, facing, pose, colour, opts = {}) {
 
   // off arm
   g.globalAlpha = (1 - ghost) * 0.6;
-  g.lineWidth = 3.5;
+  g.lineWidth = 4.5;
   g.beginPath();
   g.moveTo(shoulderX, shoulderY + 3);
-  g.lineTo(shoulderX - 15 * facing, shoulderY + 15);
+  g.lineTo(shoulderX - 15 * S * facing, shoulderY + 15 * S);
   g.stroke();
 
   g.restore();
@@ -2053,36 +2068,45 @@ function drawFighter(g, x, facing, pose, colour, opts = {}) {
 
 /* ---------------------------------------------------------------- arena */
 
-function drawArena(g, shake) {
-  g.clearRect(0, 0, W, H);
+function drawArena(g, shake, top, bot, left, right) {
   g.save();
   g.translate(shake.x, shake.y);
+  const L = left - 80, R = right + 80, wide = R - L;
 
-  const sky = g.createLinearGradient(0, 0, 0, GROUND);
-  sky.addColorStop(0, '#0c1119');
-  sky.addColorStop(1, '#0a0f15');
+  const sky = g.createLinearGradient(0, top, 0, GROUND);
+  sky.addColorStop(0, '#070c12');
+  sky.addColorStop(1, '#0c131c');
   g.fillStyle = sky;
-  g.fillRect(-20, -20, W + 40, GROUND + 20);
+  g.fillRect(L, top - 80, wide, GROUND - top + 80);
+
+  // A far backdrop of vertical bars. Parallax at a third of camera speed, which is what
+  // makes the movement game legible: you can see yourself crossing the stage.
+  g.strokeStyle = '#111a24'; g.lineWidth = 6;
+  for (let x = Math.floor(L / 120) * 120; x < R; x += 120) {
+    const px = x + (x - (L + R) / 2) * -0.66;
+    g.beginPath(); g.moveTo(px, GROUND - 250); g.lineTo(px, GROUND - 30); g.stroke();
+  }
 
   // distance ticks — a quiet ruler so spacing is readable at a glance
-  g.strokeStyle = '#141c25'; g.lineWidth = 1;
-  for (let x = RULES.ARENA_MIN; x <= RULES.ARENA_MAX; x += 50) {
-    g.beginPath(); g.moveTo(x, GROUND - 12); g.lineTo(x, GROUND); g.stroke();
+  g.strokeStyle = '#18222d'; g.lineWidth = 1.5;
+  for (let x = Math.ceil(L / 50) * 50; x < R; x += 50) {
+    const tall = x % 250 === 0;
+    g.beginPath(); g.moveTo(x, GROUND - (tall ? 22 : 11)); g.lineTo(x, GROUND); g.stroke();
   }
 
   g.fillStyle = COL.floor;
-  g.fillRect(-20, GROUND, W + 40, H - GROUND + 20);
-  g.strokeStyle = '#243040'; g.lineWidth = 2;
-  g.beginPath(); g.moveTo(-20, GROUND); g.lineTo(W + 20, GROUND); g.stroke();
+  g.fillRect(L, GROUND, wide, bot - GROUND + 80);
+  g.strokeStyle = '#2b3949'; g.lineWidth = 2.5;
+  g.beginPath(); g.moveTo(L, GROUND); g.lineTo(R, GROUND); g.stroke();
 
   // the walls you can be cornered against
-  g.fillStyle = '#0e141c';
-  g.fillRect(-20, 0, RULES.ARENA_MIN + 20, GROUND);
-  g.fillRect(RULES.ARENA_MAX, 0, W - RULES.ARENA_MAX + 20, GROUND);
-  g.strokeStyle = '#1d2734';
+  g.fillStyle = '#090f16';
+  if (L < RULES.ARENA_MIN) g.fillRect(L, top - 80, RULES.ARENA_MIN - L, GROUND - top + 80);
+  if (R > RULES.ARENA_MAX) g.fillRect(RULES.ARENA_MAX, top - 80, R - RULES.ARENA_MAX, GROUND - top + 80);
+  g.strokeStyle = '#26333f'; g.lineWidth = 2;
   g.beginPath();
-  g.moveTo(RULES.ARENA_MIN, 0); g.lineTo(RULES.ARENA_MIN, GROUND);
-  g.moveTo(RULES.ARENA_MAX, 0); g.lineTo(RULES.ARENA_MAX, GROUND);
+  g.moveTo(RULES.ARENA_MIN, top); g.lineTo(RULES.ARENA_MIN, GROUND);
+  g.moveTo(RULES.ARENA_MAX, top); g.lineTo(RULES.ARENA_MAX, GROUND);
   g.stroke();
   g.restore();
 }
@@ -2119,8 +2143,10 @@ function drawRange(g, x, facing, range, colour, dashed, label) {
 class Stage {
   constructor(canvas) {
     this.c = canvas;
-    this.c.width = W; this.c.height = H;
     this.g = canvas.getContext('2d');
+    this.vw = W; this.vh = H;         // world units currently visible
+    this.resize();
+    new ResizeObserver(() => { this.resize(); this.draw(); }).observe(canvas);
     this.shake = { x: 0, y: 0, mag: 0 };
     this.sparks = [];
     this.trails = [];
@@ -2135,21 +2161,77 @@ class Stage {
     this.preview = null;      // { x:[..], phases, ranges } for the idle/planning view
     this.floats = [];
     this.state = null;        // whose colours to draw with
+    this.mode = 'preview';    // 'preview' | 'playback'
+    this.boxes = false;       // hitbox / hurtbox overlay
+    this.adv = null;          // frame advantage to print once the exchange settles
+  }
+
+  /**
+   * Match the backing bitmap to the element and work out the world-to-screen transform.
+   *
+   * The arena is always as wide as the world (so spacing reads the same at any size) and
+   * the ground is pinned near the bottom, with whatever vertical room is left becoming sky.
+   * Drawing at a fixed aspect instead leaves dead bands above and below on tall screens.
+   */
+  resize() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(320, this.c.clientWidth || W);
+    const h = Math.max(180, this.c.clientHeight || H);
+    this.c.width = Math.round(w * dpr);
+    this.c.height = Math.round(h * dpr);
+    this.dpr = dpr;
+    this.cssW = w;
+    this.cssH = h;
+    this.groundPx = h * 0.88;   // thin floor strip; the room belongs to the fighters
+  }
+
+  /**
+   * A camera, the way a fighting game has one: centred between the fighters and zoomed to
+   * the distance between them. Drawing the whole 1000-unit arena at a fixed scale instead
+   * leaves the fighters tiny at the bottom of an empty screen on any tall display.
+   */
+  aimCamera(x0, x1, snap = false) {
+    const gap = Math.abs(x0 - x1);
+    const visW = Math.min(W, Math.max(540, gap + 470));
+    const target = {
+      scale: Math.min(this.cssW / visW, this.cssH / 300),
+      x: Math.max(RULES.ARENA_MIN - 30, Math.min(RULES.ARENA_MAX + 30, (x0 + x1) / 2)),
+    };
+    if (!this.cam || snap) this.cam = { ...target };
+    else {
+      this.cam.scale += (target.scale - this.cam.scale) * 0.18;
+      this.cam.x += (target.x - this.cam.x) * 0.18;
+    }
+    const s = this.cam.scale;
+    this.scale = s;
+    this.topWorld = GROUND - this.groundPx / s;
+    this.botWorld = this.topWorld + this.cssH / s;
+    this.leftWorld = this.cam.x - this.cssW / (2 * s);
+    this.rightWorld = this.leftWorld + this.cssW / s;
+  }
+
+  /** Put the canvas into world coordinates for the rest of the drawing code. */
+  applyTransform() {
+    const k = this.dpr * this.scale;
+    this.g.setTransform(k, 0, 0, k, this.dpr * (this.cssW / 2 - this.cam.x * this.scale),
+      this.dpr * (this.groundPx - GROUND * this.scale));
   }
 
   /** Show a static neutral pose — used between turns while you are choosing. */
   setPreview(state, myMove, theirBestMove, showThreat) {
-    this.result = null;
     this.playing = false;
+    this.mode = 'preview';
     this.state = state;
     this.preview = { state, myMove, theirBestMove, showThreat };
     this.draw();
   }
 
-  play(result, state) {
+  play(result, state, adv = null) {
     if (state) this.state = state;
+    this.snapCam = true;
     this.result = result;
-    this.preview = null;
+    this.adv = adv;
+    this.mode = 'playback';
     this.frame = 0;
     this.acc = 0;
     this.hitstop = 0;
@@ -2159,13 +2241,16 @@ class Stage {
     this.playing = true;
   }
 
+  /** Scrubbing works whenever an exchange has been resolved, playing or not. */
   seek(f) {
     if (!this.result) return;
     this.playing = false;
+    this.mode = 'playback';
     this.frame = Math.max(0, Math.min(this.result.total, f));
     this.trails.length = 0;
     this.draw();
   }
+  get scrubbable() { return !!this.result; }
 
   update(dt) {
     // decay shake and particles even while paused, so a scrubbed frame settles cleanly
@@ -2200,8 +2285,13 @@ class Stage {
     if (!tl) return;
     this.onFrame?.(f);
     for (let i = 0; i < 2; i++) {
-      if (tl.phase[i] === 'active') {
-        this.trails.push({ x: tl.x[i], colour: sideColour(this.state, i), life: 0.22 });
+      if (tl.phase[i] === 'active' || tl.phase[i] === 'startup') {
+        const m = this.result.summary[i].move;
+        this.trails.push({
+          x: tl.x[i], colour: sideColour(this.state, i), life: 0.3,
+          facing: (tl.x[0] <= tl.x[1] ? 1 : -1) * (i === 0 ? 1 : -1),
+          pose: poseFor(tl.phase[i], m, f / 10),
+        });
       }
     }
     for (const e of tl.events) {
@@ -2248,17 +2338,26 @@ class Stage {
 
   draw() {
     const g = this.g;
-    drawArena(g, this.shake);
+    const pos = this.mode === 'playback' && this.result
+      ? (this.result.timeline[this.frame]?.x ?? [400, 600])
+      : (this.preview ? [pointOf(this.preview.state, 0).x, pointOf(this.preview.state, 1).x] : [400, 600]);
+    this.aimCamera(pos[0], pos[1], this.snapCam);
+    this.snapCam = false;
+
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, this.c.width, this.c.height);
+    this.applyTransform();
+    drawArena(g, this.shake, this.topWorld, this.botWorld, this.leftWorld, this.rightWorld);
     g.save();
     g.translate(this.shake.x, this.shake.y);
 
-    if (this.preview) this.drawPreview(g);
-    else if (this.result) this.drawFrame(g);
+    if (this.mode === 'playback' && this.result) this.drawFrame(g);
+    else if (this.preview) this.drawPreview(g);
 
-    for (const t of this.trails) {
-      g.globalAlpha = Math.max(0, t.life / 0.22) * 0.35;
-      g.strokeStyle = t.colour; g.lineWidth = 3;
-      g.beginPath(); g.moveTo(t.x, GROUND - 90); g.lineTo(t.x, GROUND - 10); g.stroke();
+    // After-images. Ghosts of the frames just gone, which is how you read a swing.
+    for (const tr of this.trails) {
+      const a = Math.max(0, tr.life / 0.3);
+      drawFighter(g, tr.x, tr.facing, tr.pose, tr.colour, { ghost: 1 - a * 0.3 });
     }
     g.globalAlpha = 1;
 
@@ -2310,6 +2409,8 @@ class Stage {
     if (!tl) return;
     const facing = tl.x[0] <= tl.x[1] ? 1 : -1;
 
+    if (this.boxes) this.drawBoxes(g, tl, facing);
+
     for (let i = 0; i < 2; i++) {
       const m = r.summary[i].move;
       const ph = tl.phase[i];
@@ -2355,10 +2456,63 @@ class Stage {
       g.globalAlpha = 1;
     }
 
-    g.fillStyle = '#33404f';
-    g.font = '600 11px ui-monospace, monospace';
+    g.fillStyle = '#3b4a5c';
+    g.font = '700 12px ui-monospace, monospace';
     g.textAlign = 'left';
-    g.fillText(`FRAME ${String(this.frame).padStart(2, '0')} / ${r.total}`, 16, 24);
+    g.fillText(`FRAME ${String(this.frame).padStart(2, '0')} / ${r.total}`, this.leftWorld + 16, this.topWorld + 26);
+
+    // Frame advantage, printed once the exchange has settled. YOMIH puts this number
+    // right next to the fighters because it is the single thing that decides the next turn.
+    if (this.adv != null && this.frame >= r.total) {
+      const good = this.adv > 0;
+      g.font = '800 26px ui-monospace, monospace';
+      g.textAlign = 'center';
+      g.fillStyle = this.adv === 0 ? '#9aa7b6' : good ? '#5ef2a0' : '#ff7a8a';
+      const label = this.adv > 0 ? `+${this.adv}` : `${this.adv}`;
+      g.fillText(label, tl.x[0], GROUND - 150);
+      g.font = '700 9px ui-monospace, monospace';
+      g.fillStyle = '#5b6876';
+      g.fillText(this.adv === 0 ? 'EVEN' : good ? 'YOU ACT FIRST' : 'THEY ACT FIRST', tl.x[0], GROUND - 136);
+    }
+  }
+
+  /**
+   * Hitbox / hurtbox overlay, the way the source game shows it: a blue box for what can be
+   * hit and a red one for what is hitting. Turning this on is the fastest way to understand
+   * why a move whiffed — the reach is drawn, not described.
+   */
+  drawBoxes(g, tl, facing) {
+    const r = this.result;
+    const bodyW = 46, bodyH = 112;
+    for (let i = 0; i < 2; i++) {
+      const x = tl.x[i];
+      g.strokeStyle = '#4aa8ff'; g.lineWidth = 1.5; g.globalAlpha = 0.55;
+      g.strokeRect(x - bodyW / 2, GROUND - bodyH, bodyW, bodyH);
+      g.fillStyle = '#4aa8ff14';
+      g.fillRect(x - bodyW / 2, GROUND - bodyH, bodyW, bodyH);
+
+      const m = r.summary[i].move;
+      if (tl.phase[i] === 'active' && m.range) {
+        const face = i === 0 ? facing : -facing;
+        const top = m.level === 'high' ? GROUND - bodyH - 6
+          : m.level === 'low' ? GROUND - 40 : GROUND - 86;
+        const h = m.level === 'low' ? 40 : 46;
+        const w = m.range;
+        g.globalAlpha = 0.9;
+        g.strokeStyle = '#ff4d63'; g.lineWidth = 2;
+        g.strokeRect(face > 0 ? x : x - w, top, w, h);
+        g.fillStyle = '#ff4d6322';
+        g.fillRect(face > 0 ? x : x - w, top, w, h);
+      }
+      if (tl.phase[i] === 'invuln' || tl.phase[i] === 'parryWindow') {
+        g.globalAlpha = 0.8;
+        g.strokeStyle = tl.phase[i] === 'invuln' ? '#9aa7b6' : '#7cc4ff';
+        g.setLineDash([4, 4]); g.lineWidth = 2;
+        g.strokeRect(x - bodyW / 2 - 3, GROUND - bodyH - 3, bodyW + 6, bodyH + 6);
+        g.setLineDash([]);
+      }
+    }
+    g.globalAlpha = 1;
   }
 }
 
@@ -2786,12 +2940,14 @@ function commit(id) {
   $('#scrub').max = String(result.total);
   $('#scrubwrap').hidden = false;
 
+  game.lastAdv = result.summary[ME].adv;
   stage.onFrame = (f) => {
     $('#scrub').value = String(f);
+    $('#scrubval').textContent = `${f}f`;
     for (const e of result.timeline[f].events) sfx.event(e.type);
   };
   stage.onEnd = () => finishTurn(result, id, theirId);
-  stage.play(result, game.state);
+  stage.play(result, game.state, result.summary[ME].adv);
 
   showBanner(`${choiceLabel(game.state, ME, id)}  vs  ${choiceLabel(game.state, THEM, theirId)}`);
 }
@@ -2842,6 +2998,17 @@ function renderCoach(myId, theirId) {
     `${pm.best.label} was the answer — ${pm.best.verdict.label.toLowerCase()}, `
     + `you end ${fmtAdv(pm.best.adv)}f. Yours ranked ${pm.rank} of ${pm.total}.`,
   ));
+}
+
+/** Re-watch the last exchange. The result is kept alive so this works any time. */
+function replay() {
+  if (!game.lastResult) return;
+  stage.onFrame = (f) => {
+    $('#scrub').value = String(f);
+    $('#scrubval').textContent = `${f}f`;
+  };
+  stage.onEnd = () => {};
+  stage.play(game.lastResult, null, game.lastAdv);
 }
 
 function showBanner(text, key) {
@@ -3058,16 +3225,30 @@ function boot() {
     game.mode = b.dataset.mode;
     openSelect();
   });
-  $('#replay').addEventListener('click', () => {
-    if (game.lastResult) { stage.play(game.lastResult); stage.onEnd = () => {}; }
+  $('#replay').addEventListener('click', replay);
+  $('#scrub').addEventListener('input', (e) => {
+    stage.seek(Number(e.target.value));
+    $('#scrubval').textContent = `${e.target.value}f`;
   });
-  $('#scrub').addEventListener('input', (e) => stage.seek(Number(e.target.value)));
+  $('#boxes').addEventListener('click', (e) => {
+    stage.boxes = !stage.boxes;
+    e.target.classList.toggle('on', stage.boxes);
+    stage.draw();
+  });
 
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'SELECT' || $('#help').open) return;
     if (e.key === '?') { $('#help').showModal(); return; }
     if ($('#select').open) { if (e.key === 'Enter') startMatch(); return; }
     if (e.key === 'Enter' && (game.phase === 'over' || game.phase === 'roundover')) { advance(); return; }
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && stage.scrubbable) {
+      e.preventDefault();
+      const f = stage.frame + (e.key === 'ArrowRight' ? 1 : -1);
+      stage.seek(f);
+      $('#scrub').value = String(stage.frame);
+      $('#scrubval').textContent = `${stage.frame}f`;
+      return;
+    }
     if (game.phase !== 'choosing') return;
     const k = e.key.toLowerCase();
     if (squadMode() && (k === 'c' || k === 'v' || k === 'b')) {

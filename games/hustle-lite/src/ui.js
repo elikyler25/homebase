@@ -391,12 +391,14 @@ function commit(id) {
   $('#scrub').max = String(result.total);
   $('#scrubwrap').hidden = false;
 
+  game.lastAdv = result.summary[ME].adv;
   stage.onFrame = (f) => {
     $('#scrub').value = String(f);
+    $('#scrubval').textContent = `${f}f`;
     for (const e of result.timeline[f].events) sfx.event(e.type);
   };
   stage.onEnd = () => finishTurn(result, id, theirId);
-  stage.play(result, game.state);
+  stage.play(result, game.state, result.summary[ME].adv);
 
   showBanner(`${choiceLabel(game.state, ME, id)}  vs  ${choiceLabel(game.state, THEM, theirId)}`);
 }
@@ -447,6 +449,17 @@ function renderCoach(myId, theirId) {
     `${pm.best.label} was the answer — ${pm.best.verdict.label.toLowerCase()}, `
     + `you end ${fmtAdv(pm.best.adv)}f. Yours ranked ${pm.rank} of ${pm.total}.`,
   ));
+}
+
+/** Re-watch the last exchange. The result is kept alive so this works any time. */
+function replay() {
+  if (!game.lastResult) return;
+  stage.onFrame = (f) => {
+    $('#scrub').value = String(f);
+    $('#scrubval').textContent = `${f}f`;
+  };
+  stage.onEnd = () => {};
+  stage.play(game.lastResult, null, game.lastAdv);
 }
 
 function showBanner(text, key) {
@@ -663,16 +676,30 @@ export function boot() {
     game.mode = b.dataset.mode;
     openSelect();
   });
-  $('#replay').addEventListener('click', () => {
-    if (game.lastResult) { stage.play(game.lastResult); stage.onEnd = () => {}; }
+  $('#replay').addEventListener('click', replay);
+  $('#scrub').addEventListener('input', (e) => {
+    stage.seek(Number(e.target.value));
+    $('#scrubval').textContent = `${e.target.value}f`;
   });
-  $('#scrub').addEventListener('input', (e) => stage.seek(Number(e.target.value)));
+  $('#boxes').addEventListener('click', (e) => {
+    stage.boxes = !stage.boxes;
+    e.target.classList.toggle('on', stage.boxes);
+    stage.draw();
+  });
 
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'SELECT' || $('#help').open) return;
     if (e.key === '?') { $('#help').showModal(); return; }
     if ($('#select').open) { if (e.key === 'Enter') startMatch(); return; }
     if (e.key === 'Enter' && (game.phase === 'over' || game.phase === 'roundover')) { advance(); return; }
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && stage.scrubbable) {
+      e.preventDefault();
+      const f = stage.frame + (e.key === 'ArrowRight' ? 1 : -1);
+      stage.seek(f);
+      $('#scrub').value = String(stage.frame);
+      $('#scrubval').textContent = `${stage.frame}f`;
+      return;
+    }
     if (game.phase !== 'choosing') return;
     const k = e.key.toLowerCase();
     if (squadMode() && (k === 'c' || k === 'v' || k === 'b')) {
