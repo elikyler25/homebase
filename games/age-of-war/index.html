@@ -148,7 +148,7 @@
     <canvas id="cv"></canvas>
     <div id="overlay">
       <h1 id="ovTitle">Age of War</h1>
-      <p id="ovText">Two players, one screen. P1 (blue) holds the left base, P2 (red) the right. Spawn troops, bank XP to evolve through five ages, and smash the other base.<br><b>P1:</b> 1 2 3 spawn &middot; E evolve &middot; T turret &middot; Q special<br><b>P2:</b> 7 8 9 spawn &middot; I evolve &middot; O turret &middot; U special<br>Or just tap the buttons &mdash; both sides are touch-friendly.</p>
+      <p id="ovText">Two players, one screen. P1 (blue) holds the left base, P2 (red) the right. Spawn troops, bank XP to evolve through five ages, and smash the other base.<br><b>P1:</b> 1 2 3 spawn &middot; E evolve &middot; T turret &middot; Q special<br><b>P2:</b> 7 8 9 spawn &middot; I evolve &middot; O turret &middot; U special<br>Or just tap the buttons &mdash; both sides are touch-friendly.<br><br><b>Light</b> beats <b>Ranged</b> beats <b>Heavy</b> beats <b>Light</b> &mdash; slots 1/2/3 in every age. Counter what they field.</p>
       <div class="diffrow" id="modeRow">
         <button class="modebtn on" data-m="2p">2 Players</button>
         <button class="modebtn" data-m="ai">1 Player vs AI</button>
@@ -213,19 +213,19 @@ const UNITS = [
     { n: "Knight",    cost: 260, hp: 420,  dmg: 46,  rng: 32,  spd: 34, cd: 1.05, gold: 155, xp: 105, kind: "melee" },
   ],
   [ // Renaissance
-    { n: "Duelist",   cost: 260, hp: 380,  dmg: 48,  rng: 30,  spd: 50, cd: 0.75, gold: 150, xp: 100, kind: "melee" },
-    { n: "Musketeer", cost: 340, hp: 280,  dmg: 62,  rng: 225, spd: 39, cd: 1.2,  gold: 195, xp: 130, kind: "shot" },
-    { n: "Cannon",    cost: 560, hp: 640,  dmg: 105, rng: 260, spd: 26, cd: 1.9,  gold: 320, xp: 215, kind: "shot", splash: 46 },
+    { n: "Duelist",   cost: 260, hp: 400,  dmg: 52,  rng: 30,  spd: 50, cd: 0.72, gold: 150, xp: 100, kind: "melee" },
+    { n: "Musketeer", cost: 340, hp: 290,  dmg: 68,  rng: 240, spd: 39, cd: 1.15, gold: 195, xp: 130, kind: "shot" },
+    { n: "Bombard",   cost: 560, hp: 860,  dmg: 118, rng: 62,  spd: 27, cd: 1.55, gold: 320, xp: 215, kind: "shot", splash: 46 },
   ],
   [ // Modern
-    { n: "Rifleman",  cost: 520, hp: 520,  dmg: 82,  rng: 235, spd: 44, cd: 0.85, gold: 290, xp: 195, kind: "shot" },
-    { n: "Grenadier", cost: 760, hp: 620,  dmg: 135, rng: 205, spd: 38, cd: 1.5,  gold: 410, xp: 280, kind: "shot", splash: 52 },
-    { n: "Tank",      cost: 1300,hp: 1900, dmg: 215, rng: 190, spd: 28, cd: 1.45, gold: 700, xp: 470, kind: "shot", splash: 58 },
+    { n: "Shotgunner",cost: 520, hp: 600,  dmg: 98,  rng: 54,  spd: 46, cd: 0.72, gold: 290, xp: 195, kind: "shot" },
+    { n: "Rifleman",  cost: 760, hp: 500,  dmg: 148, rng: 250, spd: 38, cd: 1.1,  gold: 410, xp: 280, kind: "shot" },
+    { n: "Tank",      cost: 1300,hp: 2300, dmg: 255, rng: 66,  spd: 29, cd: 1.4,  gold: 700, xp: 470, kind: "shot", splash: 56 },
   ],
   [ // Future
-    { n: "Laser Trp", cost: 1100,hp: 1000, dmg: 165, rng: 255, spd: 46, cd: 0.7,  gold: 600, xp: 400, kind: "shot" },
-    { n: "Mech",      cost: 1800,hp: 2400, dmg: 270, rng: 220, spd: 34, cd: 1.15, gold: 980, xp: 660, kind: "shot", splash: 55 },
-    { n: "Titan",     cost: 3000,hp: 4600, dmg: 430, rng: 245, spd: 26, cd: 1.4,  gold: 1600,xp: 1100,kind: "shot", splash: 70 },
+    { n: "Blade Drone",cost: 1100,hp: 1250, dmg: 185, rng: 32,  spd: 72, cd: 0.62, gold: 600, xp: 400, kind: "melee" },
+    { n: "Laser Trp", cost: 1800,hp: 950,  dmg: 300, rng: 252, spd: 36, cd: 1.0,  gold: 980, xp: 660, kind: "shot" },
+    { n: "Titan",     cost: 3000,hp: 5200, dmg: 480, rng: 72,  spd: 26, cd: 1.35, gold: 1600,xp: 1100,kind: "shot", splash: 70 },
   ],
 ];
 
@@ -236,12 +236,25 @@ const MAX_UNITS    = 14;                   // per side, keeps the field readable
 const BASE_DMG_MULT = 2.6;                 // siege bonus: bases fall to a real push
 const QUEUE_MAX    = 4;                    // taps you can bank per slot
 
+// Slot 0 is Light, 1 is Ranged, 2 is Heavy in every age. Light beats Ranged,
+// Ranged beats Heavy, Heavy beats Light — so reading what the other side is
+// fielding matters more than always buying the most expensive unit.
+const CLASS_NAME = ["Light", "Ranged", "Heavy"];
+const COUNTER = [[1, 1.5, 0.7],
+                 [0.7, 1, 1.5],
+                 [1.5, 0.7, 1]];
+function counterMul(atkSlot, target) {
+  if (atkSlot == null || !target || target.slot == null) return 1;
+  return COUNTER[atkSlot][target.slot];
+}
+
 /* ---------------- game state ---------------- */
 
 let G = null;
 let difficulty = 1;
 let aiPower = 1;              // enemy unit hp/dmg multiplier, set by difficulty
 let mode = "2p";              // "2p" = hotseat two-player, "ai" = P2 is the computer
+let series = { p: 0, e: 0 };  // wins across matches this sitting
 let running = false, paused = false;
 
 function newSide(isPlayer) {
@@ -259,6 +272,8 @@ function newSide(isPlayer) {
     specialCd: 0,
     aiTimer: 0,
     income: 0,
+    kills: 0,
+    earned: 0,
   };
 }
 
@@ -301,7 +316,7 @@ function emit(side, slot) {
   const dir = side.isPlayer ? 1 : -1;
   const pow = side.isPlayer ? 1 : aiPower;
   side.units.push({
-    side, d, dir, pow,
+    side, d, dir, pow, slot,
     x: side.isPlayer ? SPAWN_X.p : SPAWN_X.e,
     lane: rnd(-17, 17),
     hp: d.hp * pow, maxHp: d.hp * pow,
@@ -365,6 +380,12 @@ function damage(u, amt, from) {
     u.dead = true;
     from.gold += u.d.gold;
     from.xp   += u.d.xp;
+    from.kills++; from.earned += u.d.gold;
+    // leave a body behind for a beat instead of vanishing mid-swing
+    G.fx.push({ corpse: { d: u.d, slot: u.slot, age: u.age, dir: u.dir,
+                          side: u.side, cd: 0, step: u.step, flash: 0,
+                          hp: 1, maxHp: 1, lane: u.lane },
+                x: u.x, lane: u.lane, life: 0.65, max: 0.65 });
     G.fx.push({ x: u.x, y: GROUND_Y - 46 + u.lane, txt: "+" + u.d.gold,
                 life: 0.85, max: 0.85, c: "#f2c14e" });
     for (let i = 0; i < 8; i++) burst(u.x, GROUND_Y - 14 + u.lane, "#c1494a");
@@ -397,10 +418,11 @@ function nearestTarget(u) {
 function fire(from, tgt, def, isTurret) {
   const y0 = GROUND_Y - (isTurret ? 78 : 20) + (from.lane || 0);
   G.shots.push({
-    side: from.side, x: from.x, y: y0,
+    side: from.side, x: from.x, y: y0, sx: from.x, sy: y0,
+    d0: Math.hypot(tgt.x - from.x, 20),
     tx: tgt.x, ty: GROUND_Y - 16 + (tgt.unit ? tgt.unit.lane : 0),
     target: tgt.unit || null, base: !!tgt.base,
-    dmg: def.dmg * (from.pow || 1), splash: def.splash || 0,
+    dmg: def.dmg * (from.pow || 1), splash: def.splash || 0, slot: from.slot,
     spd: 420 + (def.splash ? -60 : 0),
     age: from.age || 0,
   });
@@ -436,7 +458,7 @@ function update(dt) {
     // snowballs into an unrecoverable deficit.
     // Income starts lean and accelerates, so the opening is a careful trickle
     // and the late game can field the expensive units without a long wait.
-    const ramp = 0.42 + Math.min(G.t / 190, 1.28);
+    const ramp = 0.42 + Math.min(G.t / 190, 2.4);
     const inc = (13 + side.age * 9) * ramp
               * (side.isPlayer || mode === "2p" ? 1 : 1 + (difficulty - 1) * 0.5);
     side.gold += inc * dt;
@@ -491,7 +513,7 @@ function update(dt) {
         if (u.d.kind === "shot") {
           fire(u, tgt, u.d, false);
         } else {
-          if (tgt.unit) damage(tgt.unit, u.d.dmg * u.pow, side);
+          if (tgt.unit) damage(tgt.unit, u.d.dmg * u.pow * counterMul(u.slot, tgt.unit), side);
           else hitBase(foe(side), u.d.dmg * u.pow, side);
           G.fx.push({ x: u.x + u.dir * 16, y: GROUND_Y - 18 + u.lane, r: 8, life: 0.14, max: 0.14, c: "#fff2c4", ring: true });
         }
@@ -513,13 +535,13 @@ function update(dt) {
       const shooter = s.side, other = foe(shooter);
       if (s.splash) {
         for (const u of other.units) {
-          if (!u.dead && Math.abs(u.x - s.x) < s.splash) damage(u, s.dmg, shooter);
+          if (!u.dead && Math.abs(u.x - s.x) < s.splash) damage(u, s.dmg * counterMul(s.slot, u), shooter);
         }
         const bx = shooter.isPlayer ? BASE_X.e : BASE_X.p;
         if (Math.abs(bx - s.x) < s.splash + 20) hitBase(other, s.dmg, shooter);
         G.fx.push({ x: s.x, y: s.y, r: s.splash, life: 0.3, max: 0.3, c: "#ffb35c", ring: true });
       } else if (s.target && !s.target.dead) {
-        damage(s.target, s.dmg, shooter);
+        damage(s.target, s.dmg * counterMul(s.slot, s.target), shooter);
       } else if (s.base || !s.target) {
         const bx = shooter.isPlayer ? BASE_X.e : BASE_X.p;
         if (Math.abs(bx - s.x) < 60) hitBase(other, s.dmg, shooter);
@@ -569,7 +591,15 @@ function ai(dt) {
   if (e.units.length >= MAX_UNITS) return;
   // prefer the strongest affordable unit, with a bias to cheap chaff when outnumbered
   const outnumbered = G.p.units.length > e.units.length + 2;
-  const order = outnumbered ? [0, 1, 2] : [2, 1, 0];
+  // read what the other side is fielding and lead with the class that counters
+  // it; falling back to strongest-affordable when the field is empty
+  const counts = [0, 0, 0];
+  for (const u of G.p.units) if (u.slot != null) counts[u.slot]++;
+  let dom = -1, most = 0;
+  for (let i = 0; i < 3; i++) if (counts[i] > most) { most = counts[i]; dom = i; }
+  const want = dom < 0 ? -1 : [0, 1, 2].find(x => COUNTER[x][dom] > 1);
+  const base = outnumbered ? [0, 1, 2] : [2, 1, 0];
+  const order = want >= 0 ? [want, ...base.filter(x => x !== want)] : base;
   for (const slot of order) {
     if (e.qs[slot] >= 2) continue;
     const d = spec(e, slot);
@@ -774,88 +804,179 @@ function drawBase(side) {
   ctx.restore();
 }
 
-function drawUnit(u) {
+function drawUnit(u, fade) {
   const x = u.x, y = GROUND_Y + u.lane * 0.35;
   const p = u.side.isPlayer;
-  const scale = Math.min(0.9 + u.d.hp / 3000, 1.9) * 1.35;
+  const S = Math.min(0.9 + u.d.hp / 3000, 1.9) * 1.35;
   const bob = Math.sin(u.step) * 1.6;
+  const cls = u.slot == null ? 0 : u.slot, age = u.age;
   ctx.save();
   ctx.translate(x, y + u.lane * 0.12);
+  if (fade !== undefined) { ctx.globalAlpha = fade; ctx.rotate((1 - fade) * 1.1 * u.dir); }
   ctx.scale(u.dir, 1);
 
-  // shadow
   ctx.fillStyle = "rgba(0,0,0,.32)";
-  ctx.beginPath(); ctx.ellipse(0, 1, 13 * scale, 4 * scale, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 1, 13 * S, 4 * S, 0, 0, 7); ctx.fill();
 
   const skin = p ? "#7fb2e0" : "#e08a7f";
   const kit  = p ? "#3f6a99" : "#99453f";
   const trim = p ? "#cfe4f7" : "#f7d2cf";
-  ctx.globalAlpha = 1;
-  const H = 30 * scale;
-
-  // legs
-  ctx.strokeStyle = kit; ctx.lineWidth = 3.4 * scale; ctx.lineCap = "round";
+  const dark = p ? "#2a4a6e" : "#6e2f2a";
+  const H = 30 * S;
   const swing = Math.sin(u.step) * 5;
-  ctx.beginPath();
-  ctx.moveTo(0, -H * 0.42); ctx.lineTo(swing, 0);
-  ctx.moveTo(0, -H * 0.42); ctx.lineTo(-swing, 0);
-  ctx.stroke();
-  // body
-  ctx.fillStyle = kit;
-  ctx.beginPath();
-  ctx.roundRect(-5 * scale, -H * 0.82 + bob * .3, 10 * scale, H * 0.44, 3);
-  ctx.fill();
-  // head
-  ctx.fillStyle = skin;
-  ctx.beginPath(); ctx.arc(1.5 * scale, -H * 0.92 + bob * .3, 4.4 * scale, 0, 7); ctx.fill();
-  // weapon, keyed to unit kind + age
-  ctx.strokeStyle = trim; ctx.lineWidth = 2.6 * scale;
-  const armY = -H * 0.66 + bob * .3;
-  ctx.beginPath();
-  if (u.d.kind === "shot") {
-    ctx.moveTo(2 * scale, armY); ctx.lineTo(15 * scale, armY - 2 * scale);
-  } else {
-    const sw = u.cd > u.d.cd * 0.7 ? -6 : 0;   // wind-up on attack
-    ctx.moveTo(2 * scale, armY); ctx.lineTo(12 * scale, armY - 10 * scale + sw);
-  }
-  ctx.stroke();
-  if (u.d.splash) { // barrel end
+
+  if (cls === 2 && age === 0) {                 // beast and rider
+    ctx.strokeStyle = dark; ctx.lineWidth = 3 * S; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-7 * S, -8 * S); ctx.lineTo(-7 * S + swing, 0);
+    ctx.moveTo(7 * S, -8 * S);  ctx.lineTo(7 * S - swing, 0);
+    ctx.stroke();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(0, -12 * S, 14 * S, 7 * S, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(10 * S, -16 * S); ctx.lineTo(19 * S, -23 * S);
+    ctx.lineTo(22 * S, -20 * S); ctx.lineTo(12 * S, -13 * S); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = kit; ctx.beginPath();
+    ctx.roundRect(-5 * S, -27 * S, 9 * S, 13 * S, 2 * S); ctx.fill();
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(-0.5 * S, -30 * S, 4.2 * S, 0, 7); ctx.fill();
+    ctx.strokeStyle = trim; ctx.lineWidth = 2.4 * S;
+    ctx.beginPath(); ctx.moveTo(2 * S, -26 * S); ctx.lineTo(13 * S, -33 * S); ctx.stroke();
+
+  } else if (cls === 2 && age === 2) {          // field gun on wheels
+    ctx.fillStyle = dark;
+    for (const wx of [-7, 6]) { ctx.beginPath(); ctx.arc(wx * S, -6 * S, 6.5 * S, 0, 7); ctx.fill(); }
+    ctx.fillStyle = "#12151a";
+    for (const wx of [-7, 6]) { ctx.beginPath(); ctx.arc(wx * S, -6 * S, 2.2 * S, 0, 7); ctx.fill(); }
+    ctx.fillStyle = kit;
+    ctx.beginPath(); ctx.roundRect(-12 * S, -16 * S, 22 * S, 8 * S, 2 * S); ctx.fill();
+    ctx.fillStyle = trim; ctx.fillRect(4 * S, -20 * S, 20 * S, 5 * S);
+    ctx.fillStyle = dark;  ctx.fillRect(22 * S, -21 * S, 4 * S, 7 * S);
+    ctx.fillStyle = kit;   ctx.fillRect(-19 * S, -20 * S, 6 * S, 14 * S);
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(-16 * S, -23 * S, 4.2 * S, 0, 7); ctx.fill();
+
+  } else if (cls === 2 && age === 3) {          // tank
+    ctx.fillStyle = "#15181d";
+    ctx.beginPath(); ctx.roundRect(-18 * S, -11 * S, 36 * S, 10 * S, 4 * S); ctx.fill();
+    ctx.fillStyle = dark;
+    for (let i = 0; i < 7; i++) ctx.fillRect((-16 + i * 5) * S, -9 * S, 3 * S, 6 * S);
+    ctx.fillStyle = kit;
+    ctx.beginPath(); ctx.roundRect(-15 * S, -19 * S, 30 * S, 9 * S, 2 * S); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-8 * S, -27 * S, 17 * S, 9 * S, 3 * S); ctx.fill();
+    ctx.fillStyle = trim; ctx.fillRect(7 * S, -25 * S, 24 * S, 4 * S);
+    ctx.fillStyle = dark;  ctx.fillRect(29 * S, -26 * S, 4 * S, 6 * S);
+
+  } else if (cls === 2 && age === 4) {          // titan walker
+    ctx.strokeStyle = dark; ctx.lineWidth = 5.5 * S; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-4 * S, -20 * S); ctx.lineTo(swing * 0.8, -10 * S); ctx.lineTo(swing * 0.5, 0);
+    ctx.moveTo(4 * S, -20 * S);  ctx.lineTo(-swing * 0.8, -10 * S); ctx.lineTo(-swing * 0.5, 0);
+    ctx.stroke();
+    ctx.fillStyle = kit;
+    ctx.beginPath(); ctx.roundRect(-13 * S, -40 * S, 26 * S, 21 * S, 5 * S); ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.roundRect(-9 * S, -46 * S, 15 * S, 7 * S, 3 * S); ctx.fill();
+    ctx.fillStyle = "#59e3ff";
+    ctx.fillRect(-6 * S, -44 * S, 10 * S, 2.5 * S);
+    ctx.fillStyle = trim; ctx.fillRect(11 * S, -36 * S, 26 * S, 6 * S);
+    ctx.fillStyle = dark;  ctx.fillRect(35 * S, -37 * S, 5 * S, 8 * S);
+
+  } else {                                       // humanoid
+    ctx.strokeStyle = kit; ctx.lineWidth = 3.4 * S; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(0, -H * 0.42); ctx.lineTo(swing, 0);
+    ctx.moveTo(0, -H * 0.42); ctx.lineTo(-swing, 0);
+    ctx.stroke();
+    ctx.fillStyle = kit;
+    ctx.beginPath(); ctx.roundRect(-5 * S, -H * 0.82 + bob * .3, 10 * S, H * 0.44, 3); ctx.fill();
+    if (age >= 3) { ctx.fillStyle = dark; ctx.fillRect(-7 * S, -H * 0.78 + bob * .3, 4 * S, H * 0.3); }
+
+    const hy = -H * 0.92 + bob * .3;
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(1.5 * S, hy, 4.4 * S, 0, 7); ctx.fill();
     ctx.fillStyle = trim;
-    ctx.fillRect(14 * scale, armY - 4.5 * scale, 5 * scale, 5 * scale);
+    if (age === 1) {
+      ctx.beginPath(); ctx.arc(1.5 * S, hy, 4.9 * S, Math.PI, 0); ctx.fill();
+      if (cls === 2) { ctx.fillStyle = "#e6c464"; ctx.fillRect(0.5 * S, hy - 10 * S, 2 * S, 6 * S); }
+    } else if (age === 2) {
+      ctx.fillRect(-4 * S, hy - 4 * S, 12 * S, 1.8 * S);
+      ctx.fillRect(-1 * S, hy - 6.5 * S, 6 * S, 3 * S);
+    } else if (age >= 3) {
+      ctx.beginPath(); ctx.arc(1.5 * S, hy - 0.6 * S, 5.1 * S, Math.PI, 0); ctx.fill();
+    }
+    if (age === 1 && cls === 2) {
+      ctx.fillStyle = trim;
+      ctx.beginPath(); ctx.roundRect(5 * S, -H * 0.76 + bob * .3, 5 * S, H * 0.4, 2); ctx.fill();
+    }
+
+    const armY = -H * 0.66 + bob * .3;
+    const wind = u.cd > u.d.cd * 0.72 ? -5 * S : 0;
+    ctx.strokeStyle = trim; ctx.lineWidth = 2.6 * S; ctx.lineCap = "round";
+    if (u.d.kind === "shot") {
+      ctx.beginPath(); ctx.moveTo(2 * S, armY); ctx.lineTo(16 * S, armY - 2 * S); ctx.stroke();
+      if (age === 0) {
+        ctx.fillStyle = trim;
+        ctx.beginPath(); ctx.arc(18 * S, armY + 3 * S, 2.6 * S, 0, 7); ctx.fill();
+      } else if (age === 1) {
+        ctx.lineWidth = 1.7 * S;
+        ctx.beginPath(); ctx.arc(13 * S, armY - 1 * S, 7.5 * S, -1.15, 1.15); ctx.stroke();
+      } else {
+        ctx.fillStyle = dark; ctx.fillRect(15 * S, armY - 3.6 * S, 5 * S, 3.2 * S);
+      }
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(2 * S, armY); ctx.lineTo(12 * S, armY - 11 * S + wind); ctx.stroke();
+      if (age === 0) {
+        ctx.lineWidth = 5 * S;
+        ctx.beginPath(); ctx.moveTo(11 * S, armY - 9 * S + wind);
+        ctx.lineTo(13.5 * S, armY - 14 * S + wind); ctx.stroke();
+      } else if (age >= 1) {
+        ctx.lineWidth = 1.8 * S;
+        ctx.beginPath(); ctx.moveTo(6 * S, armY - 5 * S + wind);
+        ctx.lineTo(12 * S, armY - 3 * S + wind); ctx.stroke();
+      }
+    }
+    if (u.d.splash) { ctx.fillStyle = trim; ctx.fillRect(15 * S, armY - 5 * S, 5 * S, 5 * S); }
   }
 
   if (u.flash > 0) {
     ctx.globalAlpha = clamp(u.flash * 6, 0, .8);
     ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.roundRect(-7 * scale, -H, 14 * scale, H, 4); ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.roundRect(-9 * S, -H * 1.3, 18 * S, H * 1.3, 4); ctx.fill();
   }
   ctx.restore();
 
-  // hp bar
-  if (u.hp < u.maxHp) {
-    const w = 26 * scale, hx = x - w / 2, hy = y - 40 * scale;
-    ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(hx, hy, w, 3.4);
+  if (fade === undefined && u.hp < u.maxHp) {
+    const w = 26 * S, hx = x - w / 2, hy2 = y - 44 * S;
+    ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(hx, hy2, w, 3.4);
     ctx.fillStyle = p ? "#5fd07a" : "#e0645a";
-    ctx.fillRect(hx, hy, w * clamp(u.hp / u.maxHp, 0, 1), 3.4);
+    ctx.fillRect(hx, hy2, w * clamp(u.hp / u.maxHp, 0, 1), 3.4);
   }
 }
 
 function drawShot(s) {
   const c = s.side.isPlayer ? "#bfe0ff" : "#ffc0b8";
+  // shells lob; bullets and arrows fly flat
+  let ay = 0;
+  if (s.splash) {
+    const t = clamp(Math.hypot(s.x - s.sx, s.y - s.sy) / (s.d0 || 1), 0, 1);
+    ay = -Math.sin(t * Math.PI) * Math.min(70, (s.d0 || 0) * 0.3);
+  }
+  s.ay = ay;
   ctx.fillStyle = c;
   ctx.beginPath();
-  ctx.arc(s.x, s.y, s.splash ? 4.5 : 2.6, 0, 7);
+  ctx.arc(s.x, s.y + ay, s.splash ? 4.5 : 2.6, 0, 7);
   ctx.fill();
   ctx.strokeStyle = c; ctx.globalAlpha = .35; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(s.x, s.y);
+  ctx.beginPath(); ctx.moveTo(s.x, s.y + ay);
   const dx = (s.target && !s.target.dead ? s.target.x : s.tx) - s.x;
-  ctx.lineTo(s.x - Math.sign(dx) * 10, s.y); ctx.stroke();
+  ctx.lineTo(s.x - Math.sign(dx) * 10, s.y + ay); ctx.stroke();
   ctx.globalAlpha = 1;
 }
 
 function drawFx(f) {
   const a = clamp(f.life / f.max, 0, 1);
+  if (f.corpse) { drawUnit(Object.assign(f.corpse, { x: f.x }), a); return; }
   ctx.globalAlpha = a;
   ctx.fillStyle = f.c;
   if (f.txt) {
@@ -924,7 +1045,8 @@ function syncDeck(side, d) {
     b.querySelector(".n").textContent = def.n;
     const q = side.qs[i], full = side.units.length >= MAX_UNITS;
     b.querySelector(".c").textContent =
-      q ? def.cost + "g  x" + q : (full ? "field full" : def.cost + "g");
+      q ? def.cost + "g  x" + q
+        : (full ? "field full" : def.cost + "g \u00b7 " + CLASS_NAME[i]);
     b.disabled = side.gold < def.cost || q >= QUEUE_MAX;
     b.querySelector(".cd").style.width = (side.cds[i] / SPAWN_CD[i] * 100) + "%";
   }
@@ -1010,12 +1132,21 @@ function endGame(result) {              // result "win" = P1 (blue) took the rig
   el("ovText").innerHTML = mode === "2p"
     ? `${p1 ? "Blue (P1)" : "Red (P2)"} razed the enemy base in ${Math.floor(G.t)}s, ending in the ${AGES[p1 ? G.p.age : G.e.age].name}.`
     : (p1 ? `You razed the enemy base in ${Math.floor(G.t)}s.` : `Your base fell after ${Math.floor(G.t)}s.`);
+  if (p1) series.p++; else series.e++;
+  const w = p1 ? G.p : G.e, l = p1 ? G.e : G.p;
+  el("ovText").innerHTML +=
+    `<br><br><span style="color:#8d99ad">Kills ${w.kills} to ${l.kills}` +
+    ` \u00b7 gold from kills ${Math.round(w.earned).toLocaleString()} to ${Math.round(l.earned).toLocaleString()}` +
+    ` \u00b7 ${AGES[G.p.age].name} vs ${AGES[G.e.age].name}</span>` +
+    `<br><b style="color:#7fb2e0">Blue ${series.p}</b>` +
+    ` <span style="color:#8d99ad">\u2014</span> ` +
+    `<b style="color:#e08a7f">${series.e} Red</b>`;
   el("ovBtn").textContent = "Play Again";
   beep(p1 ? 780 : 130, 0.6, 0.06);
 }
 
 function start() {
-  aiPower = mode === "2p" ? 1 : 0.72 + (difficulty - 1) * 1.15;
+  aiPower = mode === "2p" ? 1 : 0.75 + (difficulty - 1) * 1.9;
   reset();
   resize();
   running = true; paused = false;
