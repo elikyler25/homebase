@@ -278,27 +278,23 @@ underneath, so a rematch with different armies is one tap.
     **8.8 ms → 0.6 ms** — with bodies three pixels tall, the ordering inside a bucket is invisible.
 - **CHAOS got faster while carrying more.** The same work took it from 3,121 troops at 6.70 ms of
   `step` to 4,200 troops at **1.60 ms** — a third more army for a quarter of the cost.
-- **Simpler sprites were the obvious idea and turned out not to be the problem.** At three pixels a
-  troop the whole atlas is 48 sprites in a 2048×10 strip, baked once; drawing was never the bottleneck
-  at this scale. The cost was all in per-troop bookkeeping — string keys, Map lookups, per-frame
-  allocation, and a targeting scan that should not have been running.
-- **The army is one draw call.** Canvas2D charges about 4 microseconds of call overhead per
-  `drawImage`, so three thousand troops cost ~12 ms of CPU before a single pixel is filled — the
-  frame was draw-call bound, not fill bound (the whole army is roughly one screenful of pixels, and
-  a 3,100-troop frame used only 47 distinct sprites). Packing an atlas and drawing it with the
-  9-argument `drawImage` only recovered 16%, because the overhead is per call. So the baked sprites
-  now go into a WebGL texture and the entire army is submitted as a single triangle batch: **12.0 ms
-  of CPU becomes 1.0 ms** (0.52 ms filling the vertex buffer, 0.45 ms uploading and drawing, 0.01 ms
-  compositing the layer back into the 2D canvas). Everything else — ground, crystals, effects, bars,
-  radar — stays on 2D, so layering and screen shake are untouched.
-- **The batch is declined when it would not help.** Chrome silently falls back to a software GL
-  driver whenever the real GPU is blocklisted, and software-rasterising three thousand textured
-  quads is *slower* than the Canvas2D path it replaces — measured 30.0 ms against 16.2 ms on the
-  same frame. The renderer string is checked for SwiftShader/llvmpipe and the batch is refused.
-  Below 350 troops it is refused too: a full-screen GL layer has a fixed cost a skirmish never earns
-  back. Missing WebGL and a lost context both fall back the same way, verified by blocking
-  `getContext('webgl')` and by firing `WEBGL_lose_context` mid-battle — 3,100 troops kept rendering,
-  no exceptions either time.
+- **Small battles draw simplified bodies.** Below about eight pixels there is no room in a troop for
+  a walk cycle, a weapon swing or a perspective step — CHAOS draws soldiers at seven pixels, CHAOS ×10
+  at three, and a phone screen shrinks every size past that. Those battles bake **one flat silhouette
+  per unit per side** instead of twenty-four animated variants. NORMAL and EPIC are untouched.
+
+  The saving is not in the drawing — a sprite is baked once either way, so simpler *art* costs nothing
+  per frame. It is that the hot loops stop computing a walk frame, a swing state and a perspective
+  band for every troop on every frame; that the atlas collapses (a CHAOS field of one unit type goes
+  from dozens of sprites to two); and that the box loses all the padding that only ever existed to
+  accommodate lances and capes, which halves the pixels blitted per troop.
+
+  It also turned out to **look better**, which was not the expectation. Rendered side by side at CHAOS
+  zoom, the detailed sprites are dominated by their skin-tone heads: the field reads as one beige mass
+  and blue is hard to tell from red at a glance. The flat bodies are mostly team colour, so the front
+  line is legible. The single biggest thing for readability was not detail but the dark rim around each
+  body — at this density what makes a troop visible is the edge between it and the one behind it.
+
 - **The game measures the device and scales itself.** A battle size is written for a machine nobody
   can know in advance: CHAOS asks for 4,200 troops and CHAOS ×10 for 20,000, which a laptop shrugs off
   and an old phone does not. Each frame times its own simulation and drawing — deliberately *not* the
@@ -317,19 +313,15 @@ underneath, so a rematch with different armies is one tap.
     every six seconds, so climbing down from a full field took about two minutes. It decides on
     wall-clock now, and the cut is proportional: if a frame costs four times the budget the field is
     four times too big, and one decision says so.
-  - **Throttling recruitment cannot shrink a field that is already full.** Measured on a device taking
-    250 ms a frame at CHAOS: the budget hit its floor within a second, and the battle then took **97
-    more seconds to resolve, every one of them a slideshow**, because the four thousand troops already
-    standing there were the cost. The governor now also retires the rear ranks — troops with nobody in
-    reach, furthest from the fighting, never a champion. Same scenario: **playable in under five
-    seconds.**
-- **Retiring troops cannot decide a battle.** They are removed rather than killed, so no kill is
-  credited and no body is left, and each side gives up the same *fraction* of its army — capped by
-  what the smaller side can actually spare. A flat proportional split looked fair and was not: a
-  player 13:1 ahead has thousands of troops walking up behind the line while the loser has none to
-  give, so the cut fell almost entirely on the winner and took their lead from 93% of the field to
-  71%. With the cap, a lopsided field keeps its 0.928 share exactly and a mirror match retires
-  460/461 down to 291/291.
+  - **Throttling recruitment cannot shrink a field that is already full.** This one is a known limit
+    rather than a fix. Measured on a device taking 250 ms a frame at CHAOS: the budget hits its floor
+    within a second, but the four thousand troops already standing there are what costs the time, and
+    they have to be worked off by the fighting. A version that retired the rear ranks to claw that
+    time back was built and measured — playable in under five seconds instead of ninety-seven — and
+    then removed, because troops quietly vanishing is a worse thing to watch than a slow recovery.
+    The simplified bodies attack the same problem from the other side: they make each troop cheap
+    enough that the ceiling is rarely reached at all.
+
 - **The renderer asks the device which of the two is faster.** The batch should win by a distance, and
   does everywhere it can be measured here — but compositing a WebGL layer into a 2D canvas is a plain
   texture copy on some drivers and a full readback on others, and a readback would make it lose. That

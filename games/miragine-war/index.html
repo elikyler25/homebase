@@ -538,7 +538,7 @@ function applyBattleSize() {
     u.price = u.hero ? Math.round(u.basePrice * c.hero.price) : u.basePrice;
   });
   spriteCache.clear(); gpu.stamp = -1;
-  resize();
+  resize();          // resize() re-evaluates SIMPLE for the new zoom
 }
 const SHRINE_R = 251, SHRINE_GOLD = 240, SUDDEN_ROUND = 28;
 const shrineX = () => G.W/2, shrineY = () => crystalY();
@@ -587,7 +587,7 @@ function resize() {
   buildTerrain();
   buildZones();
   paintBackground();
-  if (typeof spriteCache !== "undefined") { spriteCache.clear(); gpu.stamp = -1; }
+  if (typeof spriteCache !== "undefined") { spriteCache.clear(); gpu.stamp = -1; refreshSimple(); }
 }
 /* Size the board to whatever the browser is actually showing right now. iOS in
    particular reports a layout viewport that is taller than the visible area and
@@ -1962,10 +1962,71 @@ function drawUnitVector(a) {
 // of them at CHAOS x10, inside the hottest loop in the renderer.
 const spriteSlot = [];                       // packed key -> baked canvas
 const spriteList = [];                       // every baked canvas, for the atlas
+const simpleSlot = [];                       // gid<<1|team -> flat body
 const spriteCache = { get size() { return spriteList.length; },
-                      clear() { spriteSlot.length = 0; spriteList.length = 0; },
+                      clear() { spriteSlot.length = 0; spriteList.length = 0;
+                                simpleSlot.length = 0; },
                       values() { return spriteList; } };
 const PS_STEPS = [0.84, 1.0, 1.16];          // perspective, quantised so blits are 1:1
+
+/* ---------- simplified bodies ----------
+   Below about eight pixels there is no room in a body for a walk cycle, a weapon
+   swing or a perspective step: CHAOS draws soldiers at seven pixels, CHAOS x10 at
+   three, and a phone shrinks every size past that. Those battles bake ONE flat
+   silhouette per unit per side instead of twenty-four animated variants.
+
+   The saving is not in the drawing - a sprite is baked once either way. It is that
+   the hot loops stop computing a walk frame, a swing state and a perspective band
+   for every troop on every frame, the atlas collapses to a handful of sprites, and
+   the box loses all the padding that only existed to accommodate lances and capes.
+   At three pixels the flat body is also simply more legible than a detailed one
+   squeezed into the same space. */
+let SIMPLE = false;
+const SIMPLE_PX = 8;
+function refreshSimple() { SIMPLE = (ALL_UNITS[0].size * VIEW) < SIMPLE_PX; }
+
+function simpleSprite(u, team) {
+  const key = u.gid << 1 | team;
+  const c = simpleSlot[key];
+  return c !== undefined ? c : bakeSimple(u, team, key);
+}
+function bakeSimple(u, team, key) {
+  const q = VIEW*DPR, s = u.size;
+  const w = Math.ceil(s*1.7), h = Math.ceil(s*2.1);       // no lance/cape padding
+  const c = document.createElement("canvas");
+  c.width = Math.max(2, Math.ceil(w*q)); c.height = Math.max(2, Math.ceil(h*q));
+  const g = c.getContext("2d");
+  g.setTransform(q, 0, 0, q, 0, 0);
+  const cx = w/2, base = h*0.86;
+  const body = team===0 ? "#4a8fe0" : "#e05636";
+  const lite = team===0 ? "#8cc0f5" : "#ff9a70";
+  const skin = (u.art && u.art.skin) || "#e8c9a0";
+  const px = v => Math.max(0.8, v);                        // never round away to nothing
+  const bw = s*(u.type === "armored" ? .60 : .44), bh = s*.78;
+  const hr = s*.22, hy = base - bh - hr*.75;
+  g.fillStyle = "rgba(0,0,0,.30)";                         // keeps the crowd on the ground
+  g.beginPath(); g.ellipse(cx, base, s*.40, s*.14, 0, 0, 6.29); g.fill();
+  // A dark rim under everything. In a crowd this deep the thing that makes a body
+  // legible is not detail, it is the edge between it and the body behind it -
+  // without this the field reads as one blue smear rather than as troops.
+  const o = px(s*.09);
+  g.fillStyle = "rgba(12,8,4,.72)";
+  g.fillRect(cx-bw/2-o, base-bh-o, bw+o*2, bh+o);
+  g.beginPath(); g.arc(cx, hy, hr+o, 0, 6.29); g.fill();
+  g.fillStyle = body;  g.fillRect(cx-bw/2, base-bh, bw, bh);
+  g.fillStyle = lite;  g.fillRect(cx-bw/2, base-bh, bw, px(s*.15));   // lit shoulders
+  g.fillStyle = u.col; g.fillRect(cx-bw/2, base-bh*.58, bw, px(s*.18)); // its own colour
+  g.fillStyle = skin;
+  g.beginPath(); g.arc(cx, hy, hr, 0, 6.29); g.fill();
+  if (u.hero) {                                            // champions stay findable
+    g.fillStyle = "#ffd75e";
+    g.fillRect(cx-s*.30, hy-hr-px(s*.16), s*.60, px(s*.16));
+  }
+  c._w = w; c._h = h; c._a = 0.86;
+  simpleSlot[key] = c; spriteList.push(c);
+  return c;
+}
+
 function sprite(u, team, walk, sw, ps) {
   const key = ((((u.gid << 1 | team) << 2) | walk) << 1 | sw) * 3 + ps;
   let c = spriteSlot[key];
@@ -1993,15 +2054,15 @@ function sprite(u, team, walk, sw, ps) {
   return c;
 }
 
-const psiOf = a => a.y < TOP() + (BOT()-TOP())*0.34 ? 0
+const psiOf = a => SIMPLE ? 1
+                 : a.y < TOP() + (BOT()-TOP())*0.34 ? 0
                  : a.y < TOP() + (BOT()-TOP())*0.7  ? 1 : 2;
 
 function drawUnit(a, q) {
   if (a.ghost) { drawUnitVector(a); return; }     // shop icons still draw as paths
-  const psi = psiOf(a);
   const X = a.x*q, Y = a.y*q;
-  const walk = ((a.step / (Math.PI/2)) | 0) & 3;
-  const c = sprite(a.u, a.team, walk, a.swing > .45 ? 1 : 0, psi);
+  const c = SIMPLE ? simpleSprite(a.u, a.team)
+                   : sprite(a.u, a.team, ((a.step/(Math.PI/2))|0)&3, a.swing > .45 ? 1 : 0, psiOf(a));
   const dx = (X - c.width/2) | 0, dy = (Y - c.height*c._a) | 0;
   ctx.drawImage(c, dx, dy);                       // 1:1, no resampling
   if (a.hurt > 0 && !G.crowd) {
@@ -2178,9 +2239,13 @@ function gpuUnits(list, q) {
   // Resolve sprites first: this is what bakes any new ones, so the atlas check
   // below sees a complete cache.
   const cs = gpu.cs; let n = 0;
-  for (const a of list) {
-    if (a.dead) continue;
-    cs[n++] = sprite(a.u, a.team, ((a.step/(Math.PI/2))|0)&3, a.swing > .45 ? 1 : 0, psiOf(a));
+  if (SIMPLE) {                       // one array read a troop, no animation maths
+    for (const a of list) { if (!a.dead) cs[n++] = simpleSprite(a.u, a.team); }
+  } else {
+    for (const a of list) {
+      if (a.dead) continue;
+      cs[n++] = sprite(a.u, a.team, ((a.step/(Math.PI/2))|0)&3, a.swing > .45 ? 1 : 0, psiOf(a));
+    }
   }
   if (!gpuAtlas()) return false;
   if (gpu.cap < n) {
@@ -2672,60 +2737,6 @@ function probeStep(ms) {
   return true;
 }
 
-/* Cutting recruitment does not shrink a field that is already too big. Measured
-   on a device taking 250ms a frame at CHAOS: the budget drops to the floor within
-   a second, and the battle then takes 97 more seconds to resolve - every one of
-   them a slideshow, because the four thousand troops already standing there are
-   what costs the time. So when the field is far over budget the governor also
-   retires the rear ranks.
-
-   Retired troops are removed, not killed: nobody is credited a kill, no body is
-   left, and each side loses the same share of its army so this can never decide
-   who wins. It takes the troops with nobody in reach, furthest from the fighting,
-   and never a champion - so what disappears is the crowd still walking up behind
-   the line, which is the part you are least likely to be watching. */
-function retire(target) {
-  const us = G.units, n = us.length;
-  if (n <= target) return 0;
-  const live = [0, 0], spare = [0, 0];
-  for (let i = 0; i < n; i++) {
-    const a = us[i];
-    if (a.dead) continue;
-    live[a.team]++;
-    if (!a.u.hero && !a.tgt) spare[a.team]++;
-  }
-  const tot = live[0] + live[1];
-  if (!tot) return 0;
-  // Each side gives up the same *fraction* of its army, and never more than it
-  // can actually spare. A flat proportional split looked fair and was not: a
-  // player 13:1 ahead has thousands of troops walking up behind the line and the
-  // loser has none to give, so the cut fell almost entirely on the winner and
-  // took their lead from 93% of the field to 71%. Capping by the smaller side's
-  // spare capacity means this can shrink a battle but never decide one.
-  let f = (n - target) / tot;
-  for (const t of [0, 1]) if (live[t]) f = Math.min(f, spare[t]/live[t]);
-  if (f <= 0) return 0;
-  const quota = [Math.round(f*live[0]), Math.round(f*live[1])];
-  let gone = 0;
-  // pass 0 takes only the rear; pass 1 widens to anything not in contact.
-  for (let pass = 0; pass < 2; pass++) {
-    if (quota[0] <= 0 && quota[1] <= 0) break;
-    for (let i = n-1; i >= 0; i--) {
-      const a = us[i];
-      if (a.dead || a.u.hero || a.tgt) continue;
-      const t = a.team;
-      if (quota[t] <= 0) continue;
-      if (pass === 0) {
-        const home = crystalX(t), foe = crystalX(1-t);
-        if (Math.abs(a.x - home) > Math.abs(foe - home) * 0.45) continue;
-      }
-      a.dead = true; a.fade = 0;          // removed outright, so no corpse and no credit
-      quota[t]--; gone++;
-    }
-  }
-  return gone;
-}
-
 function govern(ms) {
   // Measure our own work, not the gap between frames: a display capped at 30Hz,
   // or a browser throttling a background tab, would otherwise look exactly like a
@@ -2751,8 +2762,6 @@ function govern(ms) {
     // budget, the field is four times too big and one decision should say so.
     const want = (G.units.length * (GOV_HI / G.ft)) | 0;
     G.budget = Math.max(floor, Math.min(G.budget, want));
-    // Stopping the tap is not enough when the bath is already full.
-    if (G.units.length > G.budget * 1.25) retire((G.budget * 1.1) | 0);
   } else if (G.ft < GOV_LO && G.budget < UNIT_CAP) {
     FX_CAP = FX_MAX;
     G.budget = Math.min(UNIT_CAP, G.budget * 1.08 + 25 | 0);
