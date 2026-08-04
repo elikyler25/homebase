@@ -349,6 +349,8 @@ function damage(u, amt, from) {
     u.dead = true;
     from.gold += u.d.gold;
     from.xp   += u.d.xp;
+    G.fx.push({ x: u.x, y: GROUND_Y - 46 + u.lane, txt: "+" + u.d.gold,
+                life: 0.85, max: 0.85, c: "#f2c14e" });
     for (let i = 0; i < 8; i++) burst(u.x, GROUND_Y - 14 + u.lane, "#c1494a");
   }
 }
@@ -508,6 +510,7 @@ function update(dt) {
   // particles
   for (const f of G.fx) {
     f.life -= dt;
+    if (f.txt) { f.y -= 30 * dt; continue; }
     if (f.vx !== undefined) {
       f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 320 * dt;
     }
@@ -556,6 +559,17 @@ const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
 let view = { s: 1, ox: 0, oy: 0, top: 0, bot: FIELD_H };
 
+// fixed star + cloud fields, generated once so they never flicker frame to frame
+const STARS = [], CLOUDS = [];
+for (let i = 0; i < 80; i++) {
+  const a = (i * 9301 + 49297) % 233280 / 233280, b = (i * 4919 + 7919) % 233280 / 233280;
+  STARS.push({ x: a * FIELD_W, y: -170 + b * 400, r: 0.7 + ((i * 7) % 4) * 0.35, tw: (i % 9) });
+}
+for (let i = 0; i < 7; i++) {
+  const a = (i * 7717 + 311) % 233280 / 233280, b = (i * 2179 + 97) % 233280 / 233280;
+  CLOUDS.push({ x: a * FIELD_W * 1.3 - 100, y: -110 + b * 210, w: 90 + b * 150, h: 13 + a * 16, sp: 3 + a * 7 });
+}
+
 // blend two "#rrggbb" colours; used for the age crossfade across the sky
 function mix(c1, c2, t) {
   const p1 = parseInt(c1.slice(1), 16), p2 = parseInt(c2.slice(1), 16);
@@ -574,7 +588,8 @@ function resize() {
   // then whatever that scale gives; the ground line is parked low in frame and
   // sky/earth are painted past the field box so there are never letterbox bars.
   let s = r.width / FIELD_W;
-  if (FIELD_H * s > r.height) s = r.height / FIELD_H;   // very short viewport
+  const MUST_SEE = 235;                                 // bases + troops + a strip of ground
+  if (MUST_SEE * s > r.height) s = r.height / MUST_SEE;
   // park the ground line ~76% down the frame: sky above, a shallow strip of
   // earth below, and the fighting where the eye already is
   const groundOnScreen = clamp(r.height * 0.76, r.height * 0.5, r.height - 30);
@@ -618,6 +633,25 @@ function draw() {
     }
   }
 
+  // sky furniture — stars, a disc, slow cloud bands
+  for (const st of STARS) {
+    if (st.y < top - 10) continue;
+    ctx.globalAlpha = 0.25 + 0.3 * (0.5 + 0.5 * Math.sin(G.t * 1.4 + st.tw));
+    ctx.fillStyle = "#dfeaff";
+    ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 0.10;
+  ctx.fillStyle = "#ffe9c0";
+  ctx.beginPath(); ctx.arc(FIELD_W * 0.52, top + (GROUND_Y - top) * 0.18, 46, 0, 7); ctx.fill();
+  ctx.globalAlpha = 0.06;
+  ctx.fillStyle = "#ffffff";
+  for (const c of CLOUDS) {
+    const cx = ((c.x + G.t * c.sp) % (FIELD_W + 400)) - 200;
+    if (c.y < top - c.h) continue;
+    ctx.beginPath(); ctx.ellipse(cx, c.y, c.w, c.h, 0, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
   // distant hills
   ctx.fillStyle = "rgba(0,0,0,.22)";
   ctx.beginPath();
@@ -633,6 +667,13 @@ function draw() {
   ctx.fillStyle = gg; ctx.fillRect(0, GROUND_Y, FIELD_W, bot - GROUND_Y);
   ctx.fillStyle = "rgba(255,255,255,.05)";
   ctx.fillRect(0, GROUND_Y, FIELD_W, 2);
+  ctx.globalAlpha = 0.5;
+  for (let i = 0; i < 60; i++) {
+    const a = (i * 6151 + 331) % 233280 / 233280, b = (i * 3121 + 17) % 233280 / 233280;
+    ctx.fillStyle = i % 2 ? "rgba(255,255,255,.028)" : "rgba(0,0,0,.10)";
+    ctx.fillRect(a * FIELD_W, GROUND_Y + 6 + b * (bot - GROUND_Y), 12 + b * 34, 2);
+  }
+  ctx.globalAlpha = 1;
 
   drawBase(G.p);
   drawBase(G.e);
@@ -654,8 +695,8 @@ function drawBase(side) {
 
   const body = side.isPlayer ? "#4d5a6e" : "#6e4d4d";
   const dark = side.isPlayer ? "#394453" : "#523a3a";
-  const h = 96 + age * 12;
-  const w = 62 + age * 4;
+  const h = 118 + age * 14;
+  const w = 74 + age * 5;
 
   // silhouette shifts with age: cave → castle → fort → bunker → spire
   ctx.fillStyle = dark;
@@ -711,7 +752,7 @@ function drawBase(side) {
 function drawUnit(u) {
   const x = u.x, y = GROUND_Y + u.lane * 0.35;
   const p = u.side.isPlayer;
-  const scale = 0.82 + u.d.hp / 2600;
+  const scale = Math.min(0.9 + u.d.hp / 3000, 1.9) * 1.35;
   const bob = Math.sin(u.step) * 1.6;
   ctx.save();
   ctx.translate(x, y + u.lane * 0.12);
@@ -792,6 +833,14 @@ function drawFx(f) {
   const a = clamp(f.life / f.max, 0, 1);
   ctx.globalAlpha = a;
   ctx.fillStyle = f.c;
+  if (f.txt) {
+    ctx.font = "bold 16px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.strokeStyle = "rgba(0,0,0,.55)"; ctx.lineWidth = 3;
+    ctx.strokeText(f.txt, f.x, f.y); ctx.fillText(f.txt, f.x, f.y);
+    ctx.globalAlpha = 1; ctx.textAlign = "left";
+    return;
+  }
   if (f.ring) {
     ctx.strokeStyle = f.c; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (1.4 - a * 0.6), 0, 7); ctx.stroke();
