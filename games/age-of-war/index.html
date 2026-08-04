@@ -108,6 +108,8 @@
     color: var(--text); padding: 8px 12px; min-width: 108px; text-align: left;
     cursor: pointer; font-family: inherit; transition: border-color .1s, transform .05s;
   }
+  .btn, .bigbtn, .diffbtn, .modebtn, #muteBtn, #musicBtn, #helpBtn { touch-action: manipulation; }
+  #stage { touch-action: none; }
   .btn:hover:not(:disabled) { border-color: #4a586e; }
   .btn:active:not(:disabled) { transform: translateY(1px); }
   .btn:disabled { opacity: .42; cursor: not-allowed; }
@@ -127,7 +129,7 @@
   .btn.b1 { border-color: #2f4a6b; } .btn.b1 .n { color: #9dc6ec; }
   .btn.b2 { border-color: #6b3a34; } .btn.b2 .n { color: #eca9a1; }
   .half { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; min-width: 0; }
-  .btn { flex: 0 1 auto; }
+  .btn { flex: 0 0 auto; width: 106px; }
   .btn .n, .btn .c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .btn .n { padding-right: 13px; }   /* clear the key badge in the corner */
   #deckP2 { justify-content: flex-end; }
@@ -146,12 +148,12 @@
     #top { padding: 3px 8px; gap: 8px; }
     .barlabel { font-size: 9px; margin-bottom: 1px; } .bar { height: 8px; }
     #deck { padding: 5px 6px; gap: 6px; }
-    .btn { min-width: 66px; padding: 3px 6px; }
+    .btn { width: 84px; padding: 3px 6px; }
     .btn .n { font-size: 10px; } .btn .c { font-size: 9px; } .btn .k { font-size: 9px; }
     #hint { display: none; }
   }
   @media (max-width: 760px) {
-    .btn { min-width: 84px; padding: 6px 8px; }
+    .btn { width: 78px; padding: 6px 8px; }
     .btn .n { font-size: 11px; }
     #hint { display: none; }
   }
@@ -1516,7 +1518,19 @@ function buildDeck(hostId, sk) {
     const b = document.createElement("button");
     b.className = "btn " + cls + (extra ? " " + extra : "");
     b.innerHTML = `<span class="k">${key}</span><span class="n"></span><span class="c"></span><i class="cd"></i>`;
-    b.onclick = () => act(() => fn(G[sk]));
+    const run = () => act(() => fn(G[sk]));
+    // Fire on touchstart and swallow the event: relying on the synthesised
+    // click means two players tapping together get read as a pinch and
+    // neither tap lands.
+    b.addEventListener("touchstart", ev => {
+      ev.preventDefault();
+      b.dataset.t = String(performance.now());
+      run();
+    }, { passive: false });
+    b.addEventListener("click", () => {
+      if (b.dataset.t && performance.now() - +b.dataset.t < 700) return;   // already handled
+      run();
+    });
     host.appendChild(b);
     return b;
   };
