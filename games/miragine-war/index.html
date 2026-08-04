@@ -188,13 +188,13 @@
    UNIT TYPES  —  cls drives the counter matrix
    ============================================================ */
 const UNITS = [
-  { id:"peasant",  name:"Peasant",  cls:"inf",    cost:60,  hp:60,   atk:7,   rng:22,  spd:44, cd:0.7,  size:9,  col:"#b8b2a0" },
-  { id:"spearman", name:"Spearman", cls:"pike",   cost:130, hp:130,  atk:15,  rng:40,  spd:38, cd:0.85, size:10, col:"#c9a86a" },
-  { id:"sword",    name:"Swordsman",cls:"inf",    cost:190, hp:200,  atk:22,  rng:26,  spd:46, cd:0.7,  size:11, col:"#d9d9e2" },
-  { id:"archer",   name:"Archer",   cls:"ranged", cost:230, hp:95,   atk:24,  rng:210, spd:36, cd:1.05, size:9,  col:"#8fd98f" },
-  { id:"knight",   name:"Knight",   cls:"cav",    cost:350, hp:300,  atk:36,  rng:30,  spd:82, cd:0.8,  size:14, col:"#e0c25a", splash:26 },
-  { id:"mage",     name:"Mage",     cls:"mage",   cost:490, hp:120,  atk:44,  rng:165, spd:32, cd:1.5,  size:10, col:"#c78fe0", splash:52 },
-  { id:"giant",    name:"Giant",    cls:"tank",   cost:720, hp:1500, atk:70,  rng:44,  spd:26, cd:1.3,  size:20, col:"#9c7b5a", splash:50 },
+  { id:"peasant",  name:"Peasant",  cls:"inf",    cost:60,  hp:60,   atk:7,   rng:22,  spd:44, cd:0.7,  size:12, col:"#b8b2a0" },
+  { id:"spearman", name:"Spearman", cls:"pike",   cost:130, hp:130,  atk:15,  rng:40,  spd:38, cd:0.85, size:13, col:"#c9a86a" },
+  { id:"sword",    name:"Swordsman",cls:"inf",    cost:190, hp:200,  atk:22,  rng:26,  spd:46, cd:0.7,  size:15, col:"#d9d9e2" },
+  { id:"archer",   name:"Archer",   cls:"ranged", cost:230, hp:95,   atk:24,  rng:210, spd:36, cd:1.05, size:12, col:"#8fd98f" },
+  { id:"knight",   name:"Knight",   cls:"cav",    cost:350, hp:300,  atk:36,  rng:30,  spd:82, cd:0.8,  size:19, col:"#e0c25a", splash:26 },
+  { id:"mage",     name:"Mage",     cls:"mage",   cost:490, hp:120,  atk:44,  rng:165, spd:32, cd:1.5,  size:13, col:"#c78fe0", splash:52 },
+  { id:"giant",    name:"Giant",    cls:"tank",   cost:720, hp:1500, atk:70,  rng:44,  spd:26, cd:1.3,  size:27, col:"#9c7b5a", splash:50 },
 ];
 
 // attacker class -> defender class -> damage multiplier
@@ -334,13 +334,14 @@ function formation(queue, team) {
   const gapY = 32, gapX = 30;
   const maxRows = Math.max(3, Math.floor((bot - top) / gapY));
   const rows = Math.max(1, Math.min(maxRows, Math.ceil(Math.sqrt(order.length * 3.5))));
+  const gapXa = order.length > maxRows * 12 ? 18 : gapX;   // deep armies pack tighter, never capped
   const cy = (top + bot) / 2;
   const y0 = cy - (rows - 1) * gapY / 2;
   const front = team === 0 ? 250 : G.W - 250;
   const dir = team === 0 ? -1 : 1;      // deeper columns sit further back
   return order.map((idx, i) => ({
     idx,
-    x: front + dir * Math.floor(i / rows) * gapX,
+    x: front + dir * Math.floor(i / rows) * gapXa,
     y: y0 + (i % rows) * gapY,
   }));
 }
