@@ -520,6 +520,12 @@ function fire(from, tgt, def, isTurret) {
     spd: 420 + (def.splash ? -60 : 0),
     age: from.age || 0,
   });
+  const fdir = from.dir || 1;
+  if ((from.age || 0) >= 2 || isTurret || def.splash) {
+    G.fx.push({ muzzle: true, x: from.x + fdir * (isTurret ? 26 : 20), y: y0 - 2 * (isTurret ? 0 : 1),
+                dir: fdir, life: 0.09, max: 0.09, big: !!def.splash,
+                c: def.splash ? "#ffd08a" : "#ffe6a8" });
+  }
   sfx(def.splash ? "cannon" : ((from.age || 0) <= 1 && !isTurret ? "bow" : "gun"));
 }
 
@@ -598,7 +604,8 @@ function update(dt) {
       }
       if (best) {
         t.cd = t.def.cd;
-        fire({ x: tx + (side.isPlayer ? 26 : -26), side, lane: 0, age: t.age, pow: side.isPlayer ? 1 : aiPower },
+        fire({ x: tx + (side.isPlayer ? 26 : -26), side, lane: 0, age: t.age,
+               dir: side.isPlayer ? 1 : -1, pow: side.isPlayer ? 1 : aiPower },
              { unit: best, x: best.x }, t.def, true);
       }
     }
@@ -635,7 +642,9 @@ function update(dt) {
         } else {
           if (tgt.unit) damage(tgt.unit, u.d.dmg * u.pow * counterMul(u.slot, tgt.unit), side);
           else hitBase(foe(side), u.d.dmg * u.pow, side);
-          G.fx.push({ x: u.x + u.dir * 16, y: GROUND_Y - 18 + u.lane, r: 8, life: 0.14, max: 0.14, c: "#fff2c4", ring: true });
+          G.fx.push({ slash: true, x: u.x + u.dir * 11, y: GROUND_Y - 22 + u.lane * 0.35,
+                      dir: u.dir, r: 15 + u.d.rng * 0.12, life: 0.17, max: 0.17,
+                      c: u.age >= 4 ? "#bfefff" : "#ffffff" });
           sfx("melee");
         }
       }
@@ -1060,6 +1069,83 @@ function drawBase(side) {
   ctx.restore();
 }
 
+// Weapons are drawn from the hand along +x, in the unit's already-flipped
+// space, so the caller only has to rotate for the swing.
+function meleeWeapon(age, S, trim, dark) {
+  ctx.save();
+  ctx.lineCap = "round";
+  if (age === 0) {                                  // stone club
+    ctx.strokeStyle = "#8a7355"; ctx.lineWidth = 2.6 * S;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(11 * S, 0); ctx.stroke();
+    ctx.fillStyle = "#a89070";
+    ctx.beginPath(); ctx.ellipse(14.5 * S, 0, 5 * S, 3.6 * S, 0, 0, 7); ctx.fill();
+  } else if (age === 1) {                            // sword
+    ctx.strokeStyle = dark; ctx.lineWidth = 2.6 * S;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(4 * S, 0); ctx.stroke();
+    ctx.strokeStyle = "#d8c07a"; ctx.lineWidth = 1.7 * S;
+    ctx.beginPath(); ctx.moveTo(4.5 * S, -3.6 * S); ctx.lineTo(4.5 * S, 3.6 * S); ctx.stroke();
+    ctx.fillStyle = "#e9eef6";
+    ctx.beginPath();
+    ctx.moveTo(5 * S, -1.6 * S); ctx.lineTo(17 * S, -1 * S); ctx.lineTo(20 * S, 0);
+    ctx.lineTo(17 * S, 1 * S); ctx.lineTo(5 * S, 1.6 * S); ctx.closePath(); ctx.fill();
+  } else if (age === 2) {                            // rapier
+    ctx.strokeStyle = dark; ctx.lineWidth = 2.2 * S;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3.5 * S, 0); ctx.stroke();
+    ctx.strokeStyle = "#d8c08a"; ctx.lineWidth = 1.4 * S;
+    ctx.beginPath(); ctx.arc(4.6 * S, 0, 3.2 * S, -1.5, 1.5); ctx.stroke();
+    ctx.strokeStyle = "#eef3fa"; ctx.lineWidth = 1.4 * S;
+    ctx.beginPath(); ctx.moveTo(5 * S, 0); ctx.lineTo(22 * S, 0); ctx.stroke();
+  } else {                                           // energy blade
+    ctx.strokeStyle = dark; ctx.lineWidth = 2.8 * S;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(4 * S, 0); ctx.stroke();
+    const a0 = ctx.globalAlpha;
+    ctx.globalAlpha = a0 * 0.45; ctx.strokeStyle = "#7ef0ff"; ctx.lineWidth = 6 * S;
+    ctx.beginPath(); ctx.moveTo(4 * S, 0); ctx.lineTo(19 * S, 0); ctx.stroke();
+    ctx.globalAlpha = a0; ctx.strokeStyle = "#eaffff"; ctx.lineWidth = 1.9 * S;
+    ctx.beginPath(); ctx.moveTo(4 * S, 0); ctx.lineTo(19 * S, 0); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function rangedWeapon(age, S, trim, dark) {
+  ctx.save();
+  ctx.lineCap = "round";
+  if (age === 0) {                                   // sling
+    ctx.strokeStyle = trim; ctx.lineWidth = 2.2 * S;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(9 * S, -2.5 * S); ctx.stroke();
+    ctx.strokeStyle = dark; ctx.lineWidth = 1.1 * S;
+    ctx.beginPath(); ctx.moveTo(9 * S, -2.5 * S); ctx.lineTo(13 * S, 3.5 * S); ctx.stroke();
+    ctx.fillStyle = "#9a8f7d";
+    ctx.beginPath(); ctx.arc(13.5 * S, 4.6 * S, 2.5 * S, 0, 7); ctx.fill();
+  } else if (age === 1) {                            // bow with nocked arrow
+    ctx.strokeStyle = "#8a6a44"; ctx.lineWidth = 2.1 * S;
+    ctx.beginPath(); ctx.arc(11 * S, 0, 8.5 * S, -1.3, 1.3); ctx.stroke();
+    const ex = 11 * S + 8.5 * S * Math.cos(1.3), ey = 8.5 * S * Math.sin(1.3);
+    ctx.strokeStyle = "#e6e0d0"; ctx.lineWidth = 0.9 * S;
+    ctx.beginPath(); ctx.moveTo(ex, -ey); ctx.lineTo(6 * S, 0); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.strokeStyle = "#d8c9a8"; ctx.lineWidth = 1.3 * S;
+    ctx.beginPath(); ctx.moveTo(5 * S, 0); ctx.lineTo(18 * S, 0); ctx.stroke();
+  } else if (age === 2) {                            // musket
+    ctx.strokeStyle = "#7a5636"; ctx.lineWidth = 3.2 * S;
+    ctx.beginPath(); ctx.moveTo(-2 * S, 1.4 * S); ctx.lineTo(7 * S, -1 * S); ctx.stroke();
+    ctx.strokeStyle = trim; ctx.lineWidth = 1.9 * S;
+    ctx.beginPath(); ctx.moveTo(6 * S, -1 * S); ctx.lineTo(20 * S, -2.6 * S); ctx.stroke();
+  } else if (age === 3) {                            // scoped rifle
+    ctx.strokeStyle = "#3d434c"; ctx.lineWidth = 3.2 * S;
+    ctx.beginPath(); ctx.moveTo(-2 * S, 1.4 * S); ctx.lineTo(15 * S, -1 * S); ctx.stroke();
+    ctx.strokeStyle = trim; ctx.lineWidth = 1.7 * S;
+    ctx.beginPath(); ctx.moveTo(14 * S, -1 * S); ctx.lineTo(21 * S, -1.8 * S); ctx.stroke();
+    ctx.fillStyle = dark; ctx.fillRect(6 * S, -4.6 * S, 6 * S, 2 * S);
+  } else {                                           // laser rifle
+    ctx.strokeStyle = "#39424e"; ctx.lineWidth = 3.6 * S;
+    ctx.beginPath(); ctx.moveTo(-2 * S, 1.4 * S); ctx.lineTo(15 * S, -1.4 * S); ctx.stroke();
+    ctx.fillStyle = "#7ef0ff"; ctx.fillRect(6 * S, -4.2 * S, 7 * S, 1.9 * S);
+    ctx.strokeStyle = "#bfefff"; ctx.lineWidth = 1.7 * S;
+    ctx.beginPath(); ctx.moveTo(15 * S, -1.4 * S); ctx.lineTo(22 * S, -2.2 * S); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawUnit(u, fade) {
   const x = u.x, y = GROUND_Y + u.lane * 0.35;
   const p = u.side.isPlayer;
@@ -1126,11 +1212,14 @@ function drawUnit(u, fade) {
     ctx.fillStyle = dark;  ctx.fillRect(29 * S, -26 * S, 4 * S, 6 * S);
 
   } else if (cls === 2 && age === 4) {          // titan walker
-    ctx.strokeStyle = kit; ctx.lineWidth = 6.5 * S; ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-4 * S, -20 * S); ctx.lineTo(swing * 0.8, -10 * S); ctx.lineTo(swing * 0.5, 0);
-    ctx.moveTo(4 * S, -20 * S);  ctx.lineTo(-swing * 0.8, -10 * S); ctx.lineTo(-swing * 0.5, 0);
-    ctx.stroke();
+    ctx.lineCap = "round";
+    for (const [col, wd] of [[dark, 8 * S], [kit, 4 * S]]) {
+      ctx.strokeStyle = col; ctx.lineWidth = wd;
+      ctx.beginPath();
+      ctx.moveTo(-4 * S, -20 * S); ctx.lineTo(swing * 0.8, -10 * S); ctx.lineTo(swing * 0.5, 0);
+      ctx.moveTo(4 * S, -20 * S);  ctx.lineTo(-swing * 0.8, -10 * S); ctx.lineTo(-swing * 0.5, 0);
+      ctx.stroke();
+    }
     ctx.fillStyle = kit;
     ctx.beginPath(); ctx.roundRect(-13 * S, -40 * S, 26 * S, 21 * S, 5 * S); ctx.fill();
     ctx.fillStyle = dark;
@@ -1209,32 +1298,21 @@ function drawUnit(u, fade) {
     }
 
     const armY = -H * 0.66 + bob * .3;
-    const wind = u.cd > u.d.cd * 0.72 ? -5 * S : 0;
-    ctx.strokeStyle = trim; ctx.lineWidth = 2.6 * S; ctx.lineCap = "round";
+    // cd runs from full down to zero, so it doubles as the animation clock:
+    // the weapon snaps forward on the strike and eases back to guard
+    const phase = clamp(u.cd / (u.d.cd || 1), 0, 1);
+    ctx.lineCap = "round";
+    ctx.save();
     if (u.d.kind === "shot") {
-      ctx.beginPath(); ctx.moveTo(2 * S, armY); ctx.lineTo(16 * S, armY - 2 * S); ctx.stroke();
-      if (age === 0) {
-        ctx.fillStyle = trim;
-        ctx.beginPath(); ctx.arc(18 * S, armY + 3 * S, 2.6 * S, 0, 7); ctx.fill();
-      } else if (age === 1) {
-        ctx.lineWidth = 1.7 * S;
-        ctx.beginPath(); ctx.arc(13 * S, armY - 1 * S, 7.5 * S, -1.15, 1.15); ctx.stroke();
-      } else {
-        ctx.fillStyle = dark; ctx.fillRect(15 * S, armY - 3.6 * S, 5 * S, 3.2 * S);
-      }
+      const recoil = clamp((phase - 0.72) / 0.28, 0, 1) * 4.5 * S;
+      ctx.translate(2 * S - recoil, armY);
+      rangedWeapon(age, S, trim, dark);
     } else {
-      ctx.beginPath();
-      ctx.moveTo(2 * S, armY); ctx.lineTo(12 * S, armY - 11 * S + wind); ctx.stroke();
-      if (age === 0) {
-        ctx.lineWidth = 5 * S;
-        ctx.beginPath(); ctx.moveTo(11 * S, armY - 9 * S + wind);
-        ctx.lineTo(13.5 * S, armY - 14 * S + wind); ctx.stroke();
-      } else if (age >= 1) {
-        ctx.lineWidth = 1.8 * S;
-        ctx.beginPath(); ctx.moveTo(6 * S, armY - 5 * S + wind);
-        ctx.lineTo(12 * S, armY - 3 * S + wind); ctx.stroke();
-      }
+      ctx.translate(2 * S, armY);
+      ctx.rotate(-2.1 + 2.45 * Math.pow(phase, 0.55));
+      meleeWeapon(age, S, trim, dark);
     }
+    ctx.restore();
     if (u.d.splash) { ctx.fillStyle = trim; ctx.fillRect(15 * S, armY - 5 * S, 5 * S, 5 * S); }
   }
 
@@ -1255,28 +1333,94 @@ function drawUnit(u, fade) {
 }
 
 function drawShot(s) {
-  const c = s.side.isPlayer ? "#bfe0ff" : "#ffc0b8";
-  // shells lob; bullets and arrows fly flat
+  const p = s.side.isPlayer;
+  const c = p ? "#bfe0ff" : "#ffc0b8";
   let ay = 0;
-  if (s.splash) {
+  if (s.splash) {                      // shells lob, direct fire stays flat
     const t = clamp(Math.hypot(s.x - s.sx, s.y - s.sy) / (s.d0 || 1), 0, 1);
     ay = -Math.sin(t * Math.PI) * Math.min(70, (s.d0 || 0) * 0.3);
   }
-  s.ay = ay;
-  ctx.fillStyle = c;
-  ctx.beginPath();
-  ctx.arc(s.x, s.y + ay, s.splash ? 4.5 : 2.6, 0, 7);
-  ctx.fill();
-  ctx.strokeStyle = c; ctx.globalAlpha = .35; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(s.x, s.y + ay);
-  const dx = (s.target && !s.target.dead ? s.target.x : s.tx) - s.x;
-  ctx.lineTo(s.x - Math.sign(dx) * 10, s.y + ay); ctx.stroke();
+  const goal = s.target && !s.target.dead ? s.target.x : s.tx;
+  const dir = Math.sign(goal - s.x) || 1;
+  const y = s.y + ay;
+  ctx.save();
+
+  if (s.splash) {                                        // shell with smoke
+    for (let i = 1; i <= 4; i++) {
+      ctx.globalAlpha = 0.20 - i * 0.04;
+      ctx.fillStyle = "#c8c8c8";
+      ctx.beginPath(); ctx.arc(s.x - dir * i * 9, y + i * 1.6, 4 - i * 0.6, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#2f343c";
+    ctx.beginPath(); ctx.ellipse(s.x, y, 5.2, 3.4, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = c;
+    ctx.beginPath(); ctx.arc(s.x + dir * 3, y, 2, 0, 7); ctx.fill();
+
+  } else if (s.age === 0) {                              // tumbling stone
+    ctx.translate(s.x, y); ctx.rotate(G.t * 13 + s.sx * 0.3);
+    ctx.fillStyle = "#9a8f7d";
+    ctx.beginPath();
+    ctx.moveTo(-3.4, -2.4); ctx.lineTo(3.2, -3.2); ctx.lineTo(3.4, 2.6);
+    ctx.lineTo(-2.6, 3.4); ctx.closePath(); ctx.fill();
+
+  } else if (s.age === 1) {                              // arrow
+    ctx.translate(s.x, y); ctx.scale(dir, 1);
+    ctx.strokeStyle = "#d8c9a8"; ctx.lineWidth = 1.7;
+    ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(7, 0); ctx.stroke();
+    ctx.fillStyle = "#eef2f8";
+    ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(6, -2.5); ctx.lineTo(6, 2.5); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#c9c2b0"; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-10, 0); ctx.lineTo(-13.5, -2.8);
+    ctx.moveTo(-10, 0); ctx.lineTo(-13.5, 2.8); ctx.stroke();
+
+  } else if (s.age === 4) {                              // laser bolt
+    ctx.strokeStyle = p ? "#8ef0ff" : "#ffb0a0";
+    ctx.globalAlpha = 0.38; ctx.lineWidth = 4.2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(s.x - dir * 30, y); ctx.lineTo(s.x + dir * 7, y); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.strokeStyle = "#f2ffff"; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(s.x - dir * 22, y); ctx.lineTo(s.x + dir * 6, y); ctx.stroke();
+
+  } else {                                               // bullet tracer
+    ctx.strokeStyle = c; ctx.globalAlpha = 0.45; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(s.x - dir * 15, y); ctx.lineTo(s.x, y); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.fillStyle = "#fff6d0";
+    ctx.beginPath(); ctx.arc(s.x, y, 1.9, 0, 7); ctx.fill();
+  }
+  ctx.restore();
   ctx.globalAlpha = 1;
 }
 
 function drawFx(f) {
   const a = clamp(f.life / f.max, 0, 1);
   if (f.corpse) { drawUnit(Object.assign(f.corpse, { x: f.x }), a); return; }
+
+  if (f.muzzle) {
+    ctx.globalAlpha = a;
+    ctx.save(); ctx.translate(f.x, f.y); ctx.scale(f.dir, 1);
+    const k = f.big ? 1.7 : 1;
+    ctx.fillStyle = f.c;
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(14 * k, -5.5 * k); ctx.lineTo(9 * k, 0);
+    ctx.lineTo(14 * k, 5.5 * k); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#fffdf0";
+    ctx.beginPath(); ctx.arc(3 * k, 0, 2.6 * k, 0, 7); ctx.fill();
+    ctx.restore(); ctx.globalAlpha = 1;
+    return;
+  }
+
+  if (f.slash) {
+    ctx.globalAlpha = a * 0.85;
+    ctx.save(); ctx.translate(f.x, f.y); ctx.scale(f.dir, 1);
+    ctx.strokeStyle = f.c; ctx.lineWidth = 2.8; ctx.lineCap = "round";
+    const sweep = (1 - a) * 1.7;
+    ctx.beginPath(); ctx.arc(0, 0, f.r, -1.55 + sweep, -0.15 + sweep); ctx.stroke();
+    ctx.globalAlpha = a * 0.35; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.arc(0, 0, f.r, -1.5 + sweep, -0.25 + sweep); ctx.stroke();
+    ctx.restore(); ctx.globalAlpha = 1;
+    return;
+  }
 
   if (f.plane) {                                  // age-3 strike aircraft
     ctx.globalAlpha = clamp(a * 2.2, 0, 1);
