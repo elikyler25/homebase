@@ -29,33 +29,39 @@
 
   /* ---- top status bar ---- */
   #top {
-    display: flex; align-items: center; gap: 14px; background: var(--panel);
-    border-bottom: 1px solid var(--line); flex-wrap: wrap;
-    padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left));
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    gap: 18px; background: var(--panel); border-bottom: 1px solid var(--line);
+    padding: max(6px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 7px max(12px, env(safe-area-inset-left));
   }
+  #topmid { display: flex; gap: 5px; }
+  #topmid button {
+    background: var(--panel-hi); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 7px; padding: 5px 9px; font: 700 11px inherit; cursor: pointer;
+    touch-action: manipulation; white-space: nowrap;
+  }
+  #topmid button:hover { color: var(--text); }
+  #topmid button.off { color: var(--foe); border-color: #5a2a2a; }
+  #topmid button.on  { color: var(--gold); border-color: #6a5a2a; }
   .stat { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
   .stat .dot { width: 10px; height: 10px; border-radius: 50%; }
   .bars { display: flex; gap: 12px; flex: 1; min-width: 260px; }
-  .barbox { flex: 1; }
-  .barlabel { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
-  .bar { height: 12px; background: #0c0f15; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
-  .bar > i { display: block; height: 100%; width: 100%; transition: width .15s linear; }
-  .bar span { position: absolute; }
+  .bars { display: flex; gap: 12px; min-width: 0; }
+  .barbox { flex: 1; min-width: 0; }
+  .bar { height: 7px; background: #0c0f15; border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
+  .bar > i { display: block; height: 100%; width: 100%; border-radius: 999px; transition: width .15s linear; }
+  .barlabel {
+    display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; overflow: hidden;
+    font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+  }
+  .barlabel span { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .barlabel b {
+    flex: 0 0 auto; color: var(--text); font-weight: 600;
+    font-variant-numeric: tabular-nums; letter-spacing: 0; white-space: nowrap;
+  }
 
   /* ---- battlefield ---- */
   #stage { position: relative; flex: 1; min-height: 0; }
   canvas { display: block; width: 100%; height: 100%; }
-  #muteBtn {
-    position: absolute; top: 8px; right: 8px; z-index: 4;
-    background: rgba(20,25,34,.72); color: var(--muted); border: 1px solid var(--line);
-    border-radius: 6px; padding: 4px 9px; font: 600 11px inherit; cursor: pointer;
-  }
-  #helpBtn {
-    position: absolute; top: 8px; right: 160px; z-index: 4;
-    background: rgba(20,25,34,.72); color: var(--muted); border: 1px solid var(--line);
-    border-radius: 6px; padding: 4px 9px; font: 600 11px inherit; cursor: pointer;
-  }
-  #helpBtn.on { color: var(--gold); border-color: #6a5a2a; }
   #statsPanel {
     position: absolute; inset: 0; display: none; z-index: 6;
     align-items: center; justify-content: center;
@@ -69,19 +75,56 @@
   #statsPanel td { padding: 3px 6px; border-top: 1px solid var(--line); }
   #statsPanel .num { text-align: right; font-variant-numeric: tabular-nums; }
   #statsPanel .tri { color: var(--muted); font-size: 12px; line-height: 1.6; }
-  #musicBtn {
-    position: absolute; top: 8px; right: 84px; z-index: 4;
-    background: rgba(20,25,34,.72); color: var(--muted); border: 1px solid var(--line);
-    border-radius: 6px; padding: 4px 9px; font: 600 11px inherit; cursor: pointer;
-  }
-  #muteBtn.off, #musicBtn.off { color: var(--foe); border-color: #5a2a2a; }
   #overlay {
     position: absolute; inset: 0; display: none;
-    align-items: center; justify-content: center; flex-direction: column;
-    background: rgba(8,10,15,.86); text-align: center; gap: 14px; z-index: 5;
+    align-items: center; justify-content: center;
+    background: rgba(8,10,15,.88); text-align: center; z-index: 5;
+    overflow-y: auto; padding: 16px 12px;
   }
-  #overlay h1 { margin: 0; font-size: 44px; letter-spacing: -.02em; }
-  #overlay p { margin: 0; color: var(--muted); max-width: 460px; line-height: 1.5; }
+  #ovInner {
+    margin: auto; display: flex; flex-direction: column; align-items: center; gap: 13px;
+  }
+  #ovsecs {
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 10px;
+  }
+  #ovActions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; }
+  .ovsec.compact { width: auto; padding: 8px 12px 9px; }
+  #howBtn {
+    background: none; border: 0; color: var(--muted); font: 600 11.5px inherit;
+    cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+    touch-action: manipulation; padding: 4px 8px;
+  }
+  #howBtn:hover { color: var(--text); }
+  /* a short screen gets a start screen you can act on without scrolling;
+     the reference cards sit behind the toggle */
+  @media (max-height: 620px), (max-width: 620px) { #ovsecs { display: none; } }
+  #overlay h1 { margin: 0; font-size: 40px; letter-spacing: -.025em; font-weight: 800; }
+  #overlay p { margin: 0; color: var(--muted); max-width: 470px; line-height: 1.55; font-size: 13.5px; }
+  #overlay .c1 { color: #8fbde8; } #overlay .c2 { color: #e8988c; }
+  .ovsec {
+    width: min(470px, 92vw); background: rgba(26,31,43,.72);
+    border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px 12px;
+  }
+  .ovlabel {
+    font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px; text-align: left;
+  }
+  .ovnote { font-size: 11px; color: var(--muted); line-height: 1.6; text-align: left; margin-top: 9px; }
+  .ovnote b { color: var(--text); font-weight: 700; }
+  .tri3 { display: flex; align-items: center; justify-content: center; gap: 7px; flex-wrap: wrap; }
+  .tchip {
+    background: var(--panel-hi); border: 1px solid var(--line); border-radius: 999px;
+    padding: 3px 11px; font-size: 11.5px; font-weight: 700;
+  }
+  .tarrow { font-size: 10px; color: var(--muted); }
+  table.keys { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.keys th {
+    font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; text-align: center; padding: 0 4px 5px;
+  }
+  table.keys td { padding: 4px; text-align: center; font-variant-numeric: tabular-nums;
+    border-top: 1px solid var(--line); letter-spacing: .09em; }
+  table.keys td:first-child { text-align: left; font-weight: 700; letter-spacing: 0; }
   .bigbtn {
     background: var(--gold); color: #1a1206; border: 0; border-radius: 8px;
     padding: 12px 26px; font-size: 16px; font-weight: 700; cursor: pointer;
@@ -96,19 +139,20 @@
 
   /* ---- bottom control deck ---- */
   #deck {
-    display: flex; gap: 8px; background: var(--panel);
-    border-top: 1px solid var(--line); align-items: stretch; flex-wrap: wrap;
-    padding: 10px max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    display: grid; grid-template-columns: 1fr 1px 1fr; gap: 14px; align-items: start;
+    background: var(--panel); border-top: 1px solid var(--line);
+    padding: 9px max(12px, env(safe-area-inset-right)) max(9px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
+  #deckMid { align-self: stretch; background: var(--line); }
   .group { display: flex; gap: 8px; }
   .sep { width: 1px; background: var(--line); margin: 2px 4px; }
   .btn {
     position: relative; overflow: hidden;
     background: var(--panel-hi); border: 1px solid var(--line); border-radius: 8px;
-    color: var(--text); padding: 8px 12px; min-width: 108px; text-align: left;
+    color: var(--text); padding: 8px 11px; min-width: 0; text-align: left;
     cursor: pointer; font-family: inherit; transition: border-color .1s, transform .05s;
   }
-  .btn, .bigbtn, .diffbtn, .modebtn, #muteBtn, #musicBtn, #helpBtn { touch-action: manipulation; }
+  .btn, .bigbtn, .diffbtn, .modebtn { touch-action: manipulation; }
   #stage { touch-action: none; }
   .btn:hover:not(:disabled) { border-color: #4a586e; }
   .btn:active:not(:disabled) { transform: translateY(1px); }
@@ -128,32 +172,48 @@
   #hint { font-size: 11px; color: var(--muted); align-self: center; margin-left: auto; }
   .btn.b1 { border-color: #2f4a6b; } .btn.b1 .n { color: #9dc6ec; }
   .btn.b2 { border-color: #6b3a34; } .btn.b2 .n { color: #eca9a1; }
-  .half { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; min-width: 0; }
-  .btn { flex: 0 0 auto; width: 144px; }
+  /* three troops on the top row, three base actions beneath: the shape never
+     changes with viewport width, so nothing reflows mid-match */
+  .half { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; min-width: 0; }
+  .btn.base { background: #191f2b; }        /* base actions read apart from troops */
   .btn .n, .btn .c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .btn .n { padding-right: 13px; }   /* clear the key badge in the corner */
-  #deckP2 { justify-content: flex-end; }
-  .pcol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-  .prow { display: flex; align-items: center; gap: 8px; }
+
+  .pcol { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  .prow { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
   .p2col .prow { justify-content: flex-end; }
-  .tag { font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 4px; letter-spacing: .06em; }
+  .tag { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; letter-spacing: .08em; }
   .t1 { background: #2f4a6b; color: #cfe4f7; } .t2 { background: #6b3a34; color: #f7d2cf; }
-  .g { color: var(--gold); font-weight: 700; font-size: 14px; }
-  .ag { font-weight: 600; font-size: 13px; }
+  .g { color: var(--gold); font-weight: 800; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .ag { font-weight: 600; font-size: 12px; color: var(--muted); }
   .modebtn { background: var(--panel-hi); color: var(--text); border: 1px solid var(--line);
     border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
   .modebtn.on { border-color: var(--gold); color: var(--gold); }
   /* phone in landscape: shrink chrome so the battlefield keeps the screen */
   @media (max-height: 560px) {
+    #ovInner { gap: 9px; }
+    #overlay h1 { font-size: 25px; }
+    #overlay p { font-size: 11.5px; max-width: 640px; line-height: 1.45; }
+    .ovsec { width: min(370px, 46vw); padding: 8px 11px; }
+    .ovlabel { margin-bottom: 6px; }
+    .ovnote { font-size: 10px; margin-top: 6px; line-height: 1.5; }
+    .tchip { padding: 2px 9px; font-size: 10.5px; }
+    table.keys { font-size: 11px; }
+    .bigbtn { padding: 9px 24px; font-size: 14px; }
     #top { padding: 3px 8px; gap: 8px; }
     .barlabel { font-size: 9px; margin-bottom: 1px; } .bar { height: 8px; }
     #deck { padding: 5px 6px; gap: 6px; }
-    .btn { width: 84px; padding: 3px 6px; }
+    .btn { padding: 3px 6px; }
     .btn .n { font-size: 10px; } .btn .c { font-size: 9px; } .btn .k { font-size: 9px; }
     #hint { display: none; }
   }
+  @media (max-width: 620px) {
+    #deck { grid-template-columns: 1fr; gap: 8px; }
+    #deckMid { height: 1px; align-self: auto; }
+    #top { gap: 10px; }
+  }
   @media (max-width: 760px) {
-    .btn { width: 78px; padding: 6px 8px; }
+    .btn { padding: 6px 8px; }
     .btn .n { font-size: 11px; }
     #hint { display: none; }
   }
@@ -164,44 +224,100 @@
   <div id="top">
     <div class="pcol p1col">
       <div class="prow"><span class="tag t1">P1</span><span class="g" id="gold1">0</span><span class="ag" id="age1">Stone Age</span></div>
-      <div class="prow">
-        <div class="barbox"><div class="barlabel">Base <span id="hpTxt1"></span></div><div class="bar"><i id="hpBar1" style="background:var(--hp)"></i></div></div>
-        <div class="barbox"><div class="barlabel">XP <span id="xpTxt1"></span></div><div class="bar"><i id="xpBar1" style="background:var(--xp)"></i></div></div>
+      <div class="prow bars">
+        <div class="barbox">
+          <div class="bar"><i id="hpBar1" style="background:var(--hp)"></i></div>
+          <div class="barlabel"><span>Base</span><b id="hpTxt1"></b></div>
+        </div>
+        <div class="barbox">
+          <div class="bar"><i id="xpBar1" style="background:var(--xp)"></i></div>
+          <div class="barlabel"><span>Next age</span><b id="xpTxt1"></b></div>
+        </div>
       </div>
     </div>
+
+    <div id="topmid">
+      <button id="helpBtn" title="Troop stats (H)">? stats</button>
+      <button id="musicBtn" title="Score (N)">&#9835;</button>
+      <button id="muteBtn" title="Sound effects (M)">&#9834;</button>
+    </div>
+
     <div class="pcol p2col">
       <div class="prow"><span class="ag" id="age2">Stone Age</span><span class="g" id="gold2">0</span><span class="tag t2">P2</span></div>
-      <div class="prow">
-        <div class="barbox"><div class="barlabel">XP <span id="xpTxt2"></span></div><div class="bar"><i id="xpBar2" style="background:var(--xp)"></i></div></div>
-        <div class="barbox"><div class="barlabel">Base <span id="hpTxt2"></span></div><div class="bar"><i id="hpBar2" style="background:var(--foe)"></i></div></div>
+      <div class="prow bars">
+        <div class="barbox">
+          <div class="bar"><i id="xpBar2" style="background:var(--xp)"></i></div>
+          <div class="barlabel"><span>Next age</span><b id="xpTxt2"></b></div>
+        </div>
+        <div class="barbox">
+          <div class="bar"><i id="hpBar2" style="background:var(--foe)"></i></div>
+          <div class="barlabel"><span>Base</span><b id="hpTxt2"></b></div>
+        </div>
       </div>
     </div>
   </div>
 
   <div id="stage">
     <canvas id="cv"></canvas>
-    <button id="muteBtn">&#9834; sound</button>
-    <button id="musicBtn">&#9835; score</button>
-    <button id="helpBtn">? stats</button>
     <div id="statsPanel"><div id="statsInner"></div></div>
     <div id="overlay">
+      <div id="ovInner">
       <h1 id="ovTitle">Age of War</h1>
-      <p id="ovText">Two players, one screen. P1 (blue) holds the left base, P2 (red) the right. Spawn troops, bank XP to evolve through five ages, and smash the other base.<br><b>P1:</b> 1 2 3 spawn &middot; E evolve &middot; T turret &middot; Q special<br><b>P2:</b> 7 8 9 spawn &middot; I evolve &middot; O turret &middot; U special<br>Or just tap the buttons &mdash; both sides are touch-friendly.<br><br><b>Light</b> beats <b>Ranged</b> beats <b>Heavy</b> beats <b>Light</b> &mdash; slots 1/2/3 in every age. Counter what they field.<br><span style="font-size:12px">P pauses &middot; M mutes &middot; N toggles the score</span></p>
-      <div class="diffrow" id="modeRow">
-        <button class="modebtn on" data-m="2p">2 Players</button>
-        <button class="modebtn" data-m="ai">1 Player vs AI</button>
+      <p id="ovText">Two players, one screen. Hold the left base as <b class="c1">Blue</b>,
+        the right as <b class="c2">Red</b>. Order troops, bank XP to evolve through five ages,
+        and knock the other base down.</p>
+
+      <div id="ovsecs">
+      <div class="ovsec" id="startOnly">
+        <div class="ovlabel">Counters</div>
+        <div class="tri3">
+          <span class="tchip">Light</span><span class="tarrow">beats</span>
+          <span class="tchip">Ranged</span><span class="tarrow">beats</span>
+          <span class="tchip">Heavy</span><span class="tarrow">beats</span>
+          <span class="tchip">Light</span>
+        </div>
+        <div class="ovnote">Slots 1 / 2 / 3 in every age. The deck marks the countering slot with &#9650;.</div>
       </div>
-      <div class="diffrow" id="diffRow" style="display:none">
-        <button class="diffbtn" data-d="0.8">Easy</button>
-        <button class="diffbtn on" data-d="1">Normal</button>
-        <button class="diffbtn" data-d="1.3">Hard</button>
+
+      <div class="ovsec">
+        <div class="ovlabel">Controls</div>
+        <table class="keys">
+          <tr><th></th><th>Order</th><th>Turret</th><th>Evolve</th><th>Special</th></tr>
+          <tr><td class="c1">Blue</td><td>1 2 3</td><td>T</td><td>E</td><td>Q</td></tr>
+          <tr><td class="c2">Red</td><td>7 8 9</td><td>O</td><td>I</td><td>U</td></tr>
+        </table>
+        <div class="ovnote">Or tap the buttons &mdash; each player owns their half of the deck.
+          <b>P</b> pause &middot; <b>H</b> stats &middot; <b>M</b> sound &middot; <b>N</b> score</div>
+      </div>
+
+      </div>
+
+      <div id="ovActions">
+      <div class="ovsec compact">
+        <div class="ovlabel">Players</div>
+        <div class="diffrow" id="modeRow">
+          <button class="modebtn on" data-m="2p">2 Players</button>
+          <button class="modebtn" data-m="ai">vs Computer</button>
+        </div>
+      </div>
+      <div class="ovsec compact" id="diffSec" style="display:none">
+        <div class="ovlabel">Difficulty</div>
+        <div class="diffrow" id="diffRow">
+          <button class="diffbtn" data-d="0.8">Easy</button>
+          <button class="diffbtn on" data-d="1">Normal</button>
+          <button class="diffbtn" data-d="1.3">Hard</button>
+        </div>
       </div>
       <button class="bigbtn" id="ovBtn">Start War</button>
+      </div>
+      <button id="howBtn">How to play</button>
+      </div>
     </div>
   </div>
 
   <div id="deck">
     <div class="half" id="deckP1"></div>
+    <div id="deckMid"></div>
     <div class="half" id="deckP2"></div>
   </div>
 </div>
@@ -1708,13 +1824,13 @@ function savePrefs() {
 function setMuted(v) {
   muted = v;
   const b = document.getElementById("muteBtn");
-  if (b) { b.textContent = muted ? "\u2715 sound" : "\u266a sound"; b.classList.toggle("off", muted); }
+  if (b) { b.textContent = muted ? "\u2715" : "\u266a"; b.classList.toggle("off", muted); }
   savePrefs();
 }
 function setMusic(v) {
   musicOn = v;
   const b = document.getElementById("musicBtn");
-  if (b) { b.textContent = musicOn ? "\u266b score" : "\u2715 score"; b.classList.toggle("off", !musicOn); }
+  if (b) { b.textContent = musicOn ? "\u266b" : "\u2715"; b.classList.toggle("off", !musicOn); }
   savePrefs();
 }
 
@@ -1752,9 +1868,9 @@ function buildDeck(hostId, sk) {
     return b;
   };
   return { units: [0,1,2].map(i => mk("", keys.u[i], s => spawn(s, i))),
-           turret: mk("", keys.t, buyTurret),
-           evo:    mk("evo", keys.e, evolve),
-           spec:   mk("spec", keys.q, useSpecial) };
+           turret: mk("base", keys.t, buyTurret),
+           evo:    mk("base evo", keys.e, evolve),
+           spec:   mk("base spec", keys.q, useSpecial) };
 }
 
 function syncDeck(side, d, other) {
@@ -1797,14 +1913,18 @@ function syncDeck(side, d, other) {
   d.spec.querySelector(".cd").style.width = (1 - side.specialCd / SPECIAL_CD) * 100 + "%";
 }
 
+const compact = v => v >= 10000 ? (v / 1000).toFixed(1).replace(/\.0$/, "") + "k"
+                                : Math.round(v).toLocaleString();
+
 function syncTop(side, n) {
   el("gold" + n).textContent = Math.floor(side.gold).toLocaleString();
   el("age" + n).textContent = AGES[side.age].name;
   el("hpBar" + n).style.width = (side.hp / side.maxHp * 100) + "%";
-  el("hpTxt" + n).textContent = Math.ceil(side.hp) + "/" + side.maxHp;
+  el("hpTxt" + n).textContent = compact(Math.ceil(side.hp)) + " / " + compact(side.maxHp);
   const need = AGES[side.age].xpNext;
   el("xpBar" + n).style.width = (need === Infinity ? 100 : clamp(side.xp / need, 0, 1) * 100) + "%";
-  el("xpTxt" + n).textContent = need === Infinity ? "max" : Math.floor(side.xp) + "/" + need;
+  el("xpTxt" + n).textContent = need === Infinity ? "max"
+    : compact(Math.floor(side.xp)) + " / " + compact(need);
 }
 
 function syncUI() {
@@ -1842,7 +1962,7 @@ document.querySelectorAll(".modebtn").forEach(b => {
     document.querySelectorAll(".modebtn").forEach(x => x.classList.remove("on"));
     b.classList.add("on");
     mode = b.dataset.m; savePrefs();
-    el("diffRow").style.display = mode === "2p" ? "none" : "flex";
+    el("diffSec").style.display = mode === "2p" ? "none" : "block";
   };
 });
 document.querySelectorAll(".diffbtn").forEach(b => {
@@ -1853,6 +1973,10 @@ document.querySelectorAll(".diffbtn").forEach(b => {
   };
 });
 el("ovBtn").onclick = start;
+el("howBtn").onclick = () => {
+  const secs = el("ovsecs");
+  secs.style.display = getComputedStyle(secs).display === "none" ? "flex" : "none";
+};
 el("muteBtn").onclick = () => setMuted(!muted);
 el("musicBtn").onclick = () => setMusic(!musicOn);
 el("helpBtn").onclick = () => toggleStats();
@@ -1900,7 +2024,7 @@ function endGame(result) {              // result "win" = P1 (blue) took the rig
   running = false;
   const p1 = result === "win";
   el("overlay").style.display = "flex";
-  el("diffRow").style.display = mode === "2p" ? "none" : "flex";
+  el("diffSec").style.display = mode === "2p" ? "none" : "block";
   el("ovTitle").textContent = mode === "2p"
     ? (p1 ? "Blue Wins" : "Red Wins")
     : (p1 ? "Victory" : "Defeat");
@@ -1917,6 +2041,7 @@ function endGame(result) {              // result "win" = P1 (blue) took the rig
     `<br><b style="color:#7fb2e0">Blue ${series.p}</b>` +
     ` <span style="color:#8d99ad">\u2014</span> ` +
     `<b style="color:#e08a7f">${series.e} Red</b>`;
+  el("startOnly").style.display = "none";
   el("ovBtn").textContent = "Play Again";
   sfx(p1 ? "win" : "lose");
 }
@@ -1954,7 +2079,7 @@ loadPrefs();
 setMuted(muted); setMusic(musicOn);
 document.querySelectorAll(".modebtn").forEach(b => b.classList.toggle("on", b.dataset.m === mode));
 document.querySelectorAll(".diffbtn").forEach(b => b.classList.toggle("on", +b.dataset.d === difficulty));
-el("diffRow").style.display = mode === "2p" ? "none" : "flex";
+el("diffSec").style.display = mode === "2p" ? "none" : "block";
 reset();
 resize();
 el("overlay").style.display = "flex";
