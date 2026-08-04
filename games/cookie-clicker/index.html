@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crumbfall — an incremental bakery</title>
+<meta name="description" content="A cookie-clicker-style idle game with combos, crits, golden cookies, offline baking and prestige. No build step, no dependencies, no accounts.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍪</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a class="skip-link" href="#store">Skip to store</a>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">🍪</span>
+    <span class="brand-text">Crumbfall</span>
+  </div>
+
+  <div class="counters">
+    <div class="bank">
+      <output id="cookieCount" class="bank-num" aria-live="polite" aria-atomic="true">0</output>
+      <span class="bank-label">cookies baked</span>
+    </div>
+    <div class="rate">
+      <span id="cpsCount">0</span> per second
+      <span id="cpsBuffTag" class="buff-tag" hidden></span>
+    </div>
+  </div>
+
+  <nav class="topnav">
+    <button type="button" class="ghost" id="themeBtn" aria-label="Toggle colour theme">🌗</button>
+    <button type="button" class="ghost" data-open="settings">Settings</button>
+  </nav>
+</header>
+
+<div id="buffBar" class="buff-bar" aria-live="polite" aria-label="Active effects"></div>
+
+<main class="layout">
+
+  <!-- ── Left: the cookie ─────────────────────────────────────── -->
+  <section class="stage" id="stage" aria-label="Bakery">
+    <div class="stage-inner">
+      <button type="button" id="bigCookie" class="big-cookie" aria-describedby="clickHint">
+        <span class="cookie-face" aria-hidden="true">🍪</span>
+        <span class="sr-only">Bake a cookie</span>
+      </button>
+
+      <p id="clickHint" class="hint">Click the cookie — or press <kbd>Space</kbd></p>
+
+      <div class="click-stats">
+        <div class="cs">
+          <span class="cs-label">per click</span>
+          <strong id="clickValue">1</strong>
+        </div>
+        <div class="cs">
+          <span class="cs-label">crit chance</span>
+          <strong id="critChance">5%</strong>
+        </div>
+        <div class="cs" id="comboBox">
+          <span class="cs-label">combo</span>
+          <strong id="comboValue">×1.00</strong>
+          <div class="combo-track"><div id="comboFill" class="combo-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="legacy-card">
+        <div class="legacy-head">
+          <span>Legacy</span>
+          <strong id="chipsOwned">0 chips</strong>
+        </div>
+        <p class="legacy-sub">
+          Each chip: <b>+1.5%</b> cookies per second, <b>+1%</b> per click.
+          Currently <b id="chipBonus">+0%</b> CpS.
+        </p>
+        <button type="button" id="prestigeBtn" class="primary wide" disabled>
+          Bake a new legacy
+        </button>
+        <p class="legacy-note" id="prestigeNote">Bake more cookies to earn your first chip.</p>
+      </div>
+    </div>
+
+    <div id="fx" class="fx" aria-hidden="true"></div>
+    <div id="goldenLayer" class="golden-layer"></div>
+  </section>
+
+  <!-- ── Right: the store ─────────────────────────────────────── -->
+  <section class="store" id="store" aria-label="Store">
+    <div class="tabs" role="tablist" aria-label="Store sections">
+      <button type="button" role="tab" class="tab active" data-tab="buildings" aria-selected="true">Bakery</button>
+      <button type="button" role="tab" class="tab" data-tab="upgrades" aria-selected="false">
+        Upgrades <span id="upgradeDot" class="dot" hidden></span>
+      </button>
+      <button type="button" role="tab" class="tab" data-tab="achievements" aria-selected="false">Badges</button>
+      <button type="button" role="tab" class="tab" data-tab="stats" aria-selected="false">Stats</button>
+    </div>
+
+    <div class="tabpanel" data-panel="buildings">
+      <div class="bulk" role="group" aria-label="Purchase amount">
+        <button type="button" class="bulk-btn active" data-bulk="1">×1</button>
+        <button type="button" class="bulk-btn" data-bulk="10">×10</button>
+        <button type="button" class="bulk-btn" data-bulk="100">×100</button>
+        <button type="button" class="bulk-btn" data-bulk="max">Max</button>
+        <button type="button" class="bulk-btn sell" data-bulk="sell">Sell 1</button>
+      </div>
+      <ul id="buildingList" class="list"></ul>
+    </div>
+
+    <div class="tabpanel" data-panel="upgrades" hidden>
+      <p class="panel-note">Upgrades are permanent and survive nothing — a new legacy wipes them. Buy freely.</p>
+      <ul id="upgradeList" class="grid"></ul>
+      <p id="upgradeEmpty" class="empty">No upgrades available yet. Keep baking.</p>
+    </div>
+
+    <div class="tabpanel" data-panel="achievements" hidden>
+      <p class="panel-note">
+        Every badge permanently adds <b>+0.5%</b> to cookies per second — and badges survive a new legacy.
+        <span id="achCount"></span>
+      </p>
+      <ul id="achievementList" class="grid"></ul>
+    </div>
+
+    <div class="tabpanel" data-panel="stats" hidden>
+      <dl id="statList" class="stats"></dl>
+    </div>
+  </section>
+</main>
+
+<!-- ── Settings dialog ────────────────────────────────────────── -->
+<dialog id="settings" class="sheet">
+  <form method="dialog" class="sheet-head">
+    <h2>Settings</h2>
+    <button class="ghost" value="close" aria-label="Close settings">✕</button>
+  </form>
+
+  <div class="sheet-body">
+    <label class="row">
+      <span>Particles &amp; animations</span>
+      <input type="checkbox" id="optFx" checked>
+    </label>
+    <label class="row">
+      <span>Number shorthand (1.23M vs 1,230,000)</span>
+      <input type="checkbox" id="optShort" checked>
+    </label>
+    <label class="row">
+      <span>Confirm before starting a new legacy</span>
+      <input type="checkbox" id="optConfirm" checked>
+    </label>
+
+    <h3>Your save</h3>
+    <p class="muted">
+      Saves live in this browser's local storage — nothing is uploaded anywhere.
+      Export a save to move it to another machine.
+    </p>
+    <div class="row wrap">
+      <button type="button" class="ghost" id="exportBtn">Export save</button>
+      <button type="button" class="ghost" id="importBtn">Import save</button>
+      <button type="button" class="ghost danger" id="wipeBtn">Delete everything</button>
+    </div>
+    <textarea id="saveBox" class="savebox" spellcheck="false" placeholder="Exported save text appears here." hidden></textarea>
+    <p class="muted" id="saveStatus" role="status"></p>
+  </div>
+</dialog>
+
+<!-- ── Offline report ─────────────────────────────────────────── -->
+<dialog id="offlineDlg" class="sheet narrow">
+  <form method="dialog" class="sheet-head">
+    <h2>The ovens kept running</h2>
+    <button class="ghost" value="close" aria-label="Close">✕</button>
+  </form>
+  <div class="sheet-body center">
+    <p class="offline-away">You were away for <b id="offlineTime">a while</b>.</p>
+    <p class="offline-earn"><span id="offlineEarned">0</span></p>
+    <p class="muted" id="offlineRate"></p>
+    <form method="dialog"><button class="primary wide" value="ok">Back to work</button></form>
+  </div>
+</dialog>
+
+<!-- One shared tooltip, outside the scrolling store panel so it can never be
+     clipped by it. Purely visual: every tile carries the same text in its
+     aria-label. -->
+<div id="tipbox" class="tipbox" hidden aria-hidden="true"></div>
+
+<div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script src="game.js"></script>
+</body>
+</html>
