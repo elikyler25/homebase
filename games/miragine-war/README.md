@@ -12,16 +12,24 @@ Also playable solo: pick **VS CPU** on the menu (easy / normal / hard).
 
 Pick one on the menu, alongside the opponent:
 
-| | Map | Gold | Recruit rate | Crystal |
-|---|---|---|---|---|
-| **NORMAL BATTLE** | 2600 wide | ×1 | one troop / 0.30s | 6,000 |
-| **EPIC BATTLE** | 5200 wide (4× the area) | ×4 | one troop / 0.05s | 18,000 |
+| | Map | Gold | Recruit rate | Crystal | Troop ceiling |
+|---|---|---|---|---|---|
+| **NORMAL BATTLE** | 2600 wide | ×1 | one troop / 0.30s | 6,000 | 2,600 |
+| **EPIC BATTLE** | 5200 wide (4× the area) | ×4 | one troop / 0.05s | 18,000 | 2,600 |
+| **CHAOS** | 9000 wide (12× the area) | ×40 | one troop / 0.005s | 48,000 | 3,000 |
 
 EPIC is the same game at a different scale: twice the map, four times the gold and six times the
-recruit rate, so armies run into the many hundreds and the front line becomes a solid wall of bodies
-across the middle of the field. Troops are drawn a little larger in world units so they stay legible
-on the wider map, and they move faster so crossing it doesn't drag. Crystals are three times tougher
-so a match still lasts.
+recruit rate, so armies run into the many hundreds and the front line becomes a solid wall of bodies.
+
+CHAOS takes EPIC's dials ten times further — forty times the gold, sixty times the recruit rate.
+Troops pour out faster than they can die, the field saturates in seconds and stays that way, and a
+match is decided by which wall of bodies grinds through first. Measured with both sides recruiting
+flat out: **2,770 troops on the field**.
+
+One honest limit: **the map could not go the full ten times.** Two people share one screen with no
+scrolling, so a wider world means smaller troops, and past a point they stop being visible at all —
+at CHAOS's zoom a soldier is already under ten pixels tall. The map grows as far as legibility
+allows (12× the area of NORMAL) and bodies scale up with it; gold and recruit rate take the full 10×.
 
 ## How it plays
 
@@ -147,10 +155,15 @@ in are two different jobs.
   screen and take almost nothing back. Counter-picking now beats blind teching 5-1, and picking the
   *wrong* counter loses 6-0, which is the shape you want.
 - **Colour is never the only cue.** Blue rings are solid, red rings are dashed.
-- **Battle size is one switch.** Map width, gold multiplier, recruit interval, crystal HP and the
-  per-unit size and speed multipliers all come from a single table, applied at the start of a match
-  and restored cleanly when you switch back. Auto-recruit also stops at a 2,600-unit safety cap so a
-  runaway epic can't stall the frame — deliberate purchases are never blocked.
+- **Battle size is one switch.** Map width, gold multiplier, recruit interval, crystal HP, the troop
+  ceiling and the per-unit size and speed multipliers all come from a single table, applied at the
+  start of a match and restored cleanly when you switch back. Auto-recruit pauses at the ceiling so a
+  runaway battle can't stall the frame — deliberate purchases are never blocked.
+- **Crowd rendering.** Past 900 troops the per-unit trimmings (hit flash, hover ring, veteran
+  chevrons, full health bars) drop away, particles are capped, and separation resolves half the crowd
+  per frame. Sprites for troops only a few pixels tall are baked in a cropped box, since the padding
+  that accommodates lances and capes is otherwise most of the pixels being pushed. A 2,770-troop
+  CHAOS battle draws in ~28 ms in software rendering.
 - **One virtual resolution.** The world is always 2000 units wide and the canvas scales to fit, so a
   phone in landscape sees the same proportions a desktop does rather than desktop-sized troops on a
   250-pixel strip of field. The shop collapses on short screens — smaller cards, then icons instead

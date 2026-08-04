@@ -294,19 +294,24 @@ let CPU = null;                   // {team, level} or null for 2-player
 let REPAIR_COST = 450, REPAIR_HEAL = 700;
 let AUTO_GAP = 0.30;        // seconds between automatic recruits
 let goldMul = 1;            // battle-size gold multiplier
-const UNIT_CAP = 2600;      // safety valve so a runaway epic cannot stall the frame
+let UNIT_CAP = 2600;        // safety valve so a runaway battle cannot stall the frame
 
 /* ---------- battle sizes ---------- */
 const BASE_SIZE = UNITS.map(u => u.size);
 const BASE_SPD  = UNITS.map(u => u.spd);
 const SIZES = {
-  normal: { label: "NORMAL BATTLE", world: 2600, gold: 1, auto: 0.30, size: 1,    spd: 1,   hp: 6000  },
-  epic:   { label: "EPIC BATTLE",   world: 5200, gold: 4, auto: 0.05, size: 1.45, spd: 1.7, hp: 18000 },
+  normal: { label:"NORMAL BATTLE", world:2600, gold: 1, auto:0.300, size:1,    spd:1,   hp: 6000, cap:2600 },
+  epic:   { label:"EPIC BATTLE",   world:5200, gold: 4, auto:0.050, size:1.45, spd:1.7, hp:18000, cap:2600 },
+  // CHAOS takes EPIC's dials ten times further wherever that stays playable.
+  // Gold and recruit rate go the full 10x; the map cannot, because troops have to
+  // stay visible on a screen two people share - so it grows as far as legibility
+  // allows and bodies scale with it.
+  chaos:  { label:"CHAOS",         world:9000, gold:40, auto:0.005, size:3.0,  spd:3.0, hp:48000, cap:3000 },
 };
 let sizeId = "normal";
 function applyBattleSize() {
   const c = SIZES[sizeId];
-  WORLD_W = c.world; goldMul = c.gold; AUTO_GAP = c.auto; CRYSTAL_HP = c.hp;
+  WORLD_W = c.world; goldMul = c.gold; AUTO_GAP = c.auto; CRYSTAL_HP = c.hp; UNIT_CAP = c.cap;
   REPAIR_COST = Math.round(450 * c.gold);
   REPAIR_HEAL = Math.round(700 * (c.hp / 6000));
   UNITS.forEach((u, i) => { u.size = Math.round(BASE_SIZE[i]*c.size); u.spd = Math.round(BASE_SPD[i]*c.spd); });
@@ -712,7 +717,7 @@ function step(dt) {
       a.step += dt*a.u.spd*.2;
       a.y = Math.max(TOP(), Math.min(BOT(), a.y));
       a.dust -= dt;
-      if (a.dust <= 0 && a.u.spd > 55) {
+      if (a.dust <= 0 && a.u.spd > 55 && !G.crowd && G.fx.length < FX_CAP) {
         a.dust = .12;
         G.fx.push({ t:"p", x:a.x-(a.team===0?6:-6), y:a.y+a.u.size*.8,
                     vx:(Math.random()-.5)*18, vy:-8-Math.random()*12,
@@ -778,8 +783,10 @@ function step(dt) {
   }
   G.shots = G.shots.filter(s => !s.done);
 
+  const halfSep = G.units.length > 1200;
   for (const a of G.units) {
     if (a.dead) continue;
+    if (halfSep && ((a.uid + G.frame) & 1)) continue;
     nearby(a.x, a.y, a.u.size*2, b => {
       if (b === a || b.dead) return;
       const dx=b.x-a.x, dy=b.y-a.y, md=(a.u.size+b.u.size)*.82, d2=dx*dx+dy*dy;
@@ -803,14 +810,17 @@ function step(dt) {
 /* ============================================================
    FX
    ============================================================ */
+const FX_CAP = 1400;
 function spark(x, y) {
-  for (let i=0;i<3;i++)
+  if (G.fx.length > FX_CAP) return;
+  for (let i=0;i<(G.crowd?1:3);i++)
     G.fx.push({ t:"p", x, y, vx:(Math.random()-.5)*90, vy:-Math.random()*70,
                 life:.26, max:.26, c:"#ffd0a0", r:1.4+Math.random()*1.4 });
 }
 function puff(x, y, team, size) {
+  if (G.fx.length > FX_CAP) return;
   const c = team === 0 ? "#bfe6ff" : "#ffc0a0";
-  for (let i=0;i<9;i++)
+  for (let i=0;i<(G.crowd?3:9);i++)
     G.fx.push({ t:"p", x, y, vx:(Math.random()-.5)*140, vy:-Math.random()*130,
                 life:.5, max:.5, c, r:1.5+Math.random()*size*.3 });
 }
@@ -825,19 +835,22 @@ function bleed(x, y, size) {
   G.decals++;
 }
 function boom(x, y, r) {
-  for (let i=0;i<18;i++) {
+  if (G.fx.length > FX_CAP) return;
+  for (let i=0;i<(G.crowd?6:18);i++) {
     const a=Math.random()*6.28, s=Math.random()*r*2.6;
     G.fx.push({ t:"p", x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s-40,
                 life:.45, max:.45, c:"#e08fff", r:2+Math.random()*3 });
   }
 }
 function arc(a, tgt) {
+  if (G.crowd || G.fx.length > FX_CAP) return;
   const ang = Math.atan2(tgt.y-a.y, tgt.x-a.x);
   G.fx.push({ t:"arc", x:(a.x+tgt.x)/2, y:(a.y+tgt.y)/2 - a.u.size*.3,
               ang, r:a.u.size*1.5, life:.16, max:.16 });
 }
 let dmgShown = 0;
 function dmgText(x, y, n, blue) {
+  if (G.crowd) return;
   if (++dmgShown % 2) return;                     // thin them out in a big melee
   G.fx.push({ t:"txt", x, y, s:String(n), life:.6, max:.6, c: blue ? "#cfe8ff" : "#ffd0c0" });
 }
@@ -860,8 +873,11 @@ function draw() {
     ctx.translate(shx, shy);
   }
 
-  ctx.drawImage(bgCv, 0, 0, W, H);
-  ctx.drawImage(decCv, 0, 0, W, H);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(bgCv, 0, 0);
+  ctx.drawImage(decCv, 0, 0);
+  ctx.restore();
 
   drawShrine();
   drawHoldLine(0); drawHoldLine(1);
@@ -872,6 +888,7 @@ function draw() {
   // being rescaled - measured 9.3ms vs 22.8ms for 680 units.
   const list = G.units.slice().sort((a,b) => a.y - b.y);
   const q = VIEW*DPR;
+  G.crowd = list.length > 900;          // skip trimmings once the field is a wall of bodies
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, shx*q, shy*q);
   for (const a of list) drawUnit(a, q);
@@ -885,19 +902,25 @@ function draw() {
     if (s.splash) { ctx.fillStyle=s.col; ctx.beginPath(); ctx.arc(s.x,s.y,3.2,0,6.29); ctx.fill(); }
   }
 
+  let lastA = -1, lastC = "";
   for (const f of G.fx) {
     const k = Math.max(0, f.life/f.max);
     if (f.t === "arc") {
+      lastA = -1; lastC = "";
       ctx.globalAlpha = k*.85; ctx.strokeStyle="#fff"; ctx.lineWidth=3.2; ctx.lineCap="round";
       ctx.beginPath(); ctx.arc(f.x, f.y, f.r*(1.4-k*.4), f.ang-1.15, f.ang+1.15); ctx.stroke();
     } else if (f.t === "txt") {
+      lastA = -1; lastC = "";
       ctx.globalAlpha = k; ctx.font = "bold 23px 'Trebuchet MS', sans-serif";
       ctx.textAlign = "center"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.75)";
       ctx.strokeText(f.s, f.x, f.y); ctx.fillStyle = f.c; ctx.fillText(f.s, f.x, f.y);
       ctx.textAlign = "left";
     } else {
-      ctx.globalAlpha = k; ctx.fillStyle=f.c;
-      ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,6.29); ctx.fill();
+      const bucket = k > .75 ? 1 : k > .5 ? .7 : k > .25 ? .45 : .2;
+      if (bucket !== lastA) { ctx.globalAlpha = bucket; lastA = bucket; }
+      if (f.c !== lastC) { ctx.fillStyle = f.c; lastC = f.c; }
+      const d = f.r*2;
+      ctx.fillRect(f.x-f.r, f.y-f.r, d, d);
     }
   }
   ctx.globalAlpha = 1;
@@ -1380,17 +1403,25 @@ function sprite(u, team, walk, sw, ps) {
   const key = u.idx + "_" + team + "_" + walk + "_" + sw + "_" + ps;
   let c = spriteCache.get(key);
   if (c) return c;
-  const k = PS_STEPS[ps], q = Math.max(0.35, VIEW*DPR);
-  const w = Math.ceil(u.size*4.6*k), h = Math.ceil(u.size*3.6*k);
+  // NB: no floor on q. Clamping it up made sprites bake denser than the view,
+  // and since they blit 1:1 that drew every troop oversized on the zoomed-out
+  // battle sizes - and cost ~4x the pixels.
+  const k = PS_STEPS[ps], q = VIEW*DPR;
+  // When a soldier is only a handful of pixels tall, the generous box that
+  // accommodates lances and capes is almost entirely empty padding - and padding
+  // is what costs at three thousand troops. Crop it; nothing visible is lost.
+  const tiny = u.size * VIEW * k < 16;
+  const bw = tiny ? 2.7 : 3.9, bh = tiny ? 2.5 : 3.15;
+  const w = Math.ceil(u.size*bw*k), h = Math.ceil(u.size*bh*k);
   c = document.createElement("canvas");
-  c.width = Math.ceil(w*q); c.height = Math.ceil(h*q);
+  c.width = Math.max(2, Math.ceil(w*q)); c.height = Math.max(2, Math.ceil(h*q));
   const g = c.getContext("2d");
   g.setTransform(q*k, 0, 0, q*k, 0, 0);
   const real = ctx; ctx = g;
   drawUnitVector({ team, u, x:w/(2*k), y:h*0.6/k, hp:1, maxhp:1,
                    swing: sw/2, hurt:0, step: walk*Math.PI/2, dead:false, ghost:true });
   ctx = real;
-  c._w = w; c._h = h;
+  c._w = w; c._h = h; c._a = tiny ? 0.58 : 0.60;
   spriteCache.set(key, c);
   return c;
 }
@@ -1415,13 +1446,21 @@ function drawUnit(a, q) {
   const walk = ((a.step / (Math.PI/2)) | 0) & 3;
   const sw = a.swing > .45 ? 1 : 0;
   const c = sprite(a.u, a.team, walk, sw, psi);
-  const dx = (X - c.width/2) | 0, dy = (Y - c.height*0.6) | 0;
+  const dx = (X - c.width/2) | 0, dy = (Y - c.height*c._a) | 0;
   ctx.drawImage(c, dx, dy);                       // 1:1, no resampling
-  if (a.hurt > 0) {
+  if (a.hurt > 0 && !G.crowd) {
     const op = ctx.globalCompositeOperation, al = ctx.globalAlpha;
     ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = al * .6;
     ctx.drawImage(c, dx, dy);
     ctx.globalCompositeOperation = op; ctx.globalAlpha = al;
+  }
+  if (G.crowd) {                        // health only, and only when it matters
+    if (a.hp < a.maxhp * .55) {
+      const bw = s*1.9, f = Math.max(0, a.hp/a.maxhp);
+      ctx.fillStyle = f>.25 ? "#ffd75e" : "#ff5e5e";
+      ctx.fillRect(X-bw/2, Y-s*1.65, bw*f, 3*q);
+    }
+    return;
   }
   if (G.hi && G.hi.team === a.team && G.hi.idx === a.u.idx) {
     ctx.strokeStyle = "#fff8c0"; ctx.lineWidth = 2.4*q;
@@ -1633,16 +1672,17 @@ function buildSizes() {
     const b = document.createElement("button");
     b.className = "mode" + (id === sizeId ? " on" : "");
     b.textContent = SIZES[id].label;
-    b.title = id === "epic"
-      ? "Twice the map, four times the gold, six times the recruit rate"
+    b.title = id === "epic" ? "Twice the map, four times the gold, six times the recruit rate"
+      : id === "chaos" ? "Ten times EPIC's gold and recruit rate, on the largest field that stays readable"
       : "The standard battlefield";
     b.addEventListener("click", () => { sizeId = id; buildSizes(); });
     host.appendChild(b);
   }
   const note = document.getElementById("sizeNote");
-  if (note) note.textContent = sizeId === "epic"
-    ? "EPIC: twice the map, four times the gold, six times the recruit rate — armies in the thousands."
-    : "";
+  if (note) note.textContent =
+    sizeId === "epic"  ? "EPIC: twice the map, four times the gold, six times the recruit rate."
+  : sizeId === "chaos" ? "CHAOS: forty times the gold and sixty times the recruit rate — troops pour out faster than they can die."
+  : "";
 }
 
 function buildModes() {
