@@ -56,12 +56,6 @@
     border-radius: 6px; padding: 4px 9px; font: 600 11px inherit; cursor: pointer;
   }
   #helpBtn.on { color: var(--gold); border-color: #6a5a2a; }
-  #intensity {
-    position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 4;
-    color: #ffb35c; font: 700 11px inherit; letter-spacing: .08em; text-transform: uppercase;
-    background: rgba(20,25,34,.7); border: 1px solid #5a3a20; border-radius: 6px;
-    padding: 3px 10px; display: none; pointer-events: none;
-  }
   #statsPanel {
     position: absolute; inset: 0; display: none; z-index: 6;
     align-items: center; justify-content: center;
@@ -119,7 +113,7 @@
   .btn:hover:not(:disabled) { border-color: #4a586e; }
   .btn:active:not(:disabled) { transform: translateY(1px); }
   .btn:disabled { opacity: .42; cursor: not-allowed; }
-  .btn .n { display: block; font-size: 13px; font-weight: 700; }
+  .btn .n { display: block; font-size: 12px; font-weight: 700; }
   .btn .c { display: block; font-size: 11px; color: var(--gold); margin-top: 2px; }
   .btn .k { position: absolute; top: 4px; right: 6px; font-size: 10px; color: var(--muted); }
   .btn .cd {
@@ -135,7 +129,7 @@
   .btn.b1 { border-color: #2f4a6b; } .btn.b1 .n { color: #9dc6ec; }
   .btn.b2 { border-color: #6b3a34; } .btn.b2 .n { color: #eca9a1; }
   .half { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; min-width: 0; }
-  .btn { flex: 0 0 auto; width: 106px; }
+  .btn { flex: 0 0 auto; width: 138px; }
   .btn .n, .btn .c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .btn .n { padding-right: 13px; }   /* clear the key badge in the corner */
   #deckP2 { justify-content: flex-end; }
@@ -189,7 +183,6 @@
     <button id="muteBtn">&#9834; sound</button>
     <button id="musicBtn">&#9835; score</button>
     <button id="helpBtn">? stats</button>
-    <div id="intensity"></div>
     <div id="statsPanel"><div id="statsInner"></div></div>
     <div id="overlay">
       <h1 id="ovTitle">Age of War</h1>
@@ -223,7 +216,7 @@
 
 const FIELD_W = 1200, FIELD_H = 420, GROUND_Y = 340;
 const BASE_X = { p: 78, e: FIELD_W - 78 };   // base centres
-const SPAWN_X = { p: 140, e: FIELD_W - 140 };
+const SPAWN_X = { p: 106, e: FIELD_W - 106 };   // the base doorway
 
 /* ---------------- content tables ---------------- */
 
@@ -274,7 +267,7 @@ const UNITS = [
   ],
 ];
 
-const SPAWN_CD    = [1.0, 1.2, 1.6];       // per-slot cooldown seconds
+const SPAWN_CD    = [1.9, 2.3, 3.0];       // per-slot cooldown seconds
 const TURRET_SLOTS = [2, 2, 3, 3, 4];      // slots unlocked per age
 const SPECIAL_CD   = 50;                   // seconds
 const MAX_UNITS    = 14;                   // per side, keeps the field readable
@@ -459,7 +452,7 @@ function updateStrikes(dt) {
         im.hit = true;
         const other = foe(st.side);
         for (const u of other.units)
-          if (!u.dead && Math.abs(u.x - im.x) < 74) damage(u, st.dmg, st.side, true);
+          if (!u.dead && Math.abs(u.x - im.x) < 74) damage(u, st.dmg, st.side);
         const bx = other.isPlayer ? BASE_X.p : BASE_X.e;
         if (Math.abs(bx - im.x) < 74) hitBase(other, st.dmg * 0.5, st.side);
         G.fx.push({ x: im.x, y: GROUND_Y - 12, r: st.age === 4 ? 40 : 30,
@@ -473,16 +466,7 @@ function updateStrikes(dt) {
   G.strikes = G.strikes.filter(st => st.t < 2.2);
 }
 
-// Two evenly matched players both sit at the unit cap and the front line never
-// moves: 200 seconds of live play produced 136 kills and not one point of base
-// damage. Damage climbs after the opening so armies churn faster than they can
-// be replaced, and any local advantage turns into a push instead of dissolving.
-function intensity() {
-  return 1 + clamp((G.t - 150) / 260, 0, 1.5);
-}
-
 function damage(u, amt, from, raw) {
-  if (!raw) amt *= intensity();
   u.hp -= amt;
   u.flash = 0.12;
   if (u.hp <= 0 && !u.dead) {
@@ -543,7 +527,7 @@ function fire(from, tgt, def, isTurret) {
 // pays out gold and xp, so a side that wins the field converts that lead into
 // a finish instead of grinding a permanent midfield stalemate.
 function hitBase(side, amt, from) {
-  const dealt = amt * BASE_DMG_MULT * intensity();
+  const dealt = amt * BASE_DMG_MULT;
   side.hp -= dealt;
   if (from) { from.gold += dealt * 0.05; from.xp += dealt * 0.11; }
   G.shake = Math.max(G.shake, 6);
@@ -1615,12 +1599,6 @@ function syncTop(side, n) {
 function syncUI() {
   if (!G) return;
   syncTop(G.p, 1); syncTop(G.e, 2);
-  const inten = intensity();
-  const ib = el("intensity");
-  if (inten > 1.02) {
-    ib.style.display = "block";
-    ib.textContent = "War intensifies \u00d7" + inten.toFixed(2);
-  } else ib.style.display = "none";
   syncDeck(G.p, decks.p, G.e);
   syncDeck(G.e, decks.e, G.p);
 }
@@ -1733,7 +1711,8 @@ function endGame(result) {              // result "win" = P1 (blue) took the rig
 }
 
 function start() {
-  aiPower = mode === "2p" ? 1 : 0.72 + (difficulty - 1) * 2.4;
+  aiPower = mode === "2p" ? 1
+            : difficulty < 0.9 ? 0.55 : difficulty > 1.15 ? 1.75 : 0.78;
   reset();
   resize();
   running = true; paused = false;
