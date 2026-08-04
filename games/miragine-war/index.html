@@ -102,6 +102,7 @@
       <div id="centre">
         <div id="round">ROUND 1</div>
         <div id="tick">payday in 10s</div>
+        <div id="shrine" style="font-size:11px;margin-top:2px;text-shadow:0 2px 3px #000"></div>
       </div>
       <div class="side right p2">
         <div class="stats" style="margin:0 0 3px">
@@ -173,38 +174,38 @@ const U = (name, price, income, hp, armour, type, spd, dL, dA, rng, ws, size, co
   ({ name, price, income, hp, armour, type, spd, dL, dA, rng, ws, size, col, kind, art, ...(extra||{}) });
 
 const UNITS = [
-  U("Newbie",       40,  2,   70,  0, "light",    46,  12,   5,  22, 0.75, 14, "#b8b2a0", "melee",
+  U("Newbie",       22,  2,   70,  0, "light",    46,  12,   5,  22, 0.75, 14, "#b8b2a0", "melee",
     { head:"bare",  body:"tunic", weapon:"club" }),
-  U("Veteran",      90,  4,  140,  1, "light",    44,  21,  10,  24, 0.80, 16, "#c2a878", "melee",
+  U("Veteran",      55,  4,  140,  1, "light",    44,  21,  10,  24, 0.80, 16, "#c2a878", "melee",
     { head:"helm",  body:"tunic", weapon:"sword" }),
-  U("Zombie",      140,  5,  320,  2, "light",    26,  18,  13,  22, 1.00, 17, "#7fa86a", "melee",
+  U("Zombie",       95,  5,  320,  2, "light",    26,  18,  13,  22, 1.00, 17, "#7fa86a", "melee",
     { head:"bare",  body:"tatter", weapon:"claws", skin:"#93b87a", hunch:true }),
-  U("Samurai",     200,  7,  190,  2, "light",    52,  58,  14,  26, 0.70, 17, "#d96a6a", "melee",
+  U("Samurai",     185,  7,  190,  2, "light",    52,  58,  14,  26, 0.70, 17, "#d96a6a", "melee",
     { head:"kasa",  body:"tunic", weapon:"katana" }),
-  U("Sword Man",   280,  9,  260,  4, "armored",  44,  33,  24,  26, 0.80, 18, "#d9d9e2", "melee",
+  U("Sword Man",   190,  9,  260,  4, "armored",  44,  33,  24,  26, 0.80, 18, "#d9d9e2", "melee",
     { head:"helm",  body:"plate", weapon:"sword", shield:true }),
-  U("Ninja",       360, 11,  170,  1, "light",    96,  98,   9,  24, 0.55, 16, "#5f5f74", "melee",
+  U("Ninja",       330, 11,  170,  1, "light",    96,  98,   9,  24, 0.55, 16, "#5f5f74", "melee",
     { head:"mask",  body:"tunic", weapon:"daggers", scarf:true }),
-  U("Novice",      440, 14,  200,  2, "light",    40,  36,  36, 160, 1.10, 16, "#8fd98f", "ranged",
+  U("Novice",      360, 14,  200,  2, "light",    40,  36,  36, 140, 1.10, 16, "#8fd98f", "ranged",
     { head:"hood",  body:"tunic", weapon:"bow" }),
-  U("Heavy Sword", 560, 17,  540,  8, "armored",  36,  43,  43,  30, 0.90, 21, "#a9b4c2", "melee",
+  U("Heavy Sword", 520, 17,  540,  8, "armored",  36,  43,  43,  30, 0.90, 21, "#a9b4c2", "melee",
     { head:"visor", body:"plate", weapon:"greatsword", pauldrons:true }),
-  U("Monk",        700, 20,  300,  3, "light",    40,  26, 152, 130, 1.00, 17, "#e0c060", "ranged",
+  U("Monk",        820, 20,  260,  3, "light",    40,  26, 152, 112, 1.00, 17, "#e0c060", "ranged",
     { head:"bald",  body:"robe",  weapon:"staff", halo:true, skin:"#e8c9a0" }),
-  U("Vampire",     880, 24,  460,  4, "light",    62,  58, 150,  28, 0.68, 18, "#a05ac0", "melee",
+  U("Vampire",    1250, 24,  460,  4, "light",    62,  58, 150,  28, 0.68, 18, "#a05ac0", "melee",
     { head:"bare",  body:"robe",  weapon:"claws", cape:"#5a1030", wings:true, skin:"#e8dcea" }, { drain:0.75 }),
-  U("Cavalry",    1100, 28,  620,  6, "armored", 104,  76,  38,  30, 0.75, 23, "#e0c25a", "mount",
-    { head:"plume", body:"plate", weapon:"lance", mount:true }, { splash:30 }),
-  U("Immortal",   1400, 33, 1150, 12, "armored",  32,  51,  51,  30, 0.90, 23, "#c0a0d0", "melee",
+  U("Cavalry",    1450, 28,  620,  6, "armored", 104,  76,  38,  30, 0.75, 23, "#e0c25a", "mount",
+    { head:"plume", body:"plate", weapon:"lance", mount:true }, { splash:38 }),
+  U("Immortal",   1500, 33, 1150, 12, "armored",  32,  51,  51,  30, 0.90, 23, "#c0a0d0", "melee",
     { head:"visor", body:"plate", weapon:"spear", tower:true }),
-  U("Mage",       1750, 38,  380,  2, "light",    34,  78,  78, 205, 1.40, 18, "#c78fe0", "ranged",
-    { head:"wizhat", body:"robe", weapon:"staff", orb:"#d27bff" }, { splash:60 }),
-  U("Iron Knight",2200, 44, 1900, 20, "armored",  30,  94,  70,  34, 1.00, 29, "#8fa0b8", "melee",
-    { head:"visor", body:"plate", weapon:"greatsword", pauldrons:true, tower:true, glow:"#ffd070" }, { splash:40 }),
-  U("Dread Lord", 2800, 52, 1650,  4, "light",    64, 128, 110,  36, 0.80, 26, "#8a3a3a", "melee",
-    { head:"horns", body:"plate", weapon:"axe", cape:"#2a0a10", aura:"#ff3a3a" }, { splash:46 }),
-  U("High Lord",  3600, 62, 2600, 16, "armored",  40, 148, 124,  40, 0.85, 34, "#e0d070", "melee",
-    { head:"crown", body:"plate", weapon:"greatsword", cape:"#6a5a10", aura:"#ffe66a", pauldrons:true }, { splash:55 }),
+  U("Mage",       1900, 38,  300,  2, "light",    34,  78,  78, 170, 1.40, 18, "#c78fe0", "ranged",
+    { head:"wizhat", body:"robe", weapon:"staff", orb:"#d27bff" }, { splash:72 }),
+  U("Iron Knight",3200, 44, 1700, 14, "armored",  30,  78,  58,  34, 1.00, 29, "#8fa0b8", "melee",
+    { head:"visor", body:"plate", weapon:"greatsword", pauldrons:true, tower:true, glow:"#ffd070" }, { splash:0 }),
+  U("Dread Lord", 4600, 52, 1500,  4, "light",    64, 128, 110,  36, 0.80, 26, "#8a3a3a", "melee",
+    { head:"horns", body:"plate", weapon:"axe", cape:"#2a0a10", aura:"#ff3a3a" }, { splash:30 }),
+  U("High Lord",  8200, 62, 2200, 12, "armored",  40, 130, 108,  40, 0.85, 34, "#e0d070", "melee",
+    { head:"crown", body:"plate", weapon:"greatsword", cape:"#6a5a10", aura:"#ffe66a", pauldrons:true }, { splash:34 }),
 ].map((u, i) => (u.idx = i, u));
 
 const P1_KEYS = ["Digit1","Digit2","Digit3","Digit4","KeyQ","KeyW","KeyE","KeyR",
@@ -224,11 +225,14 @@ const TICK_T      = 10;
 const BASE_INCOME = 300;
 
 const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed:1,
-            units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false };
+            units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false,
+            shrine:{ owner:-1, prog:0 }, sudden:false };
 let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
 const REPAIR_COST = 450, REPAIR_HEAL = 700;
+const SHRINE_R = 135, SHRINE_GOLD = 240, SUDDEN_ROUND = 28;
+const shrineX = () => G.W/2, shrineY = () => crystalY();
 function mkPlayer(team) {
   return { team, gold: START_GOLD, hp: CRYSTAL_HP, cool: 0, kills: 0, lane: 0, spent: 0,
            built: {}, mend: 0 };
@@ -460,7 +464,7 @@ const CPU_LEVELS = {
   // duels put value-buying ahead 7 games in 10, so hard plays that way.
   // What really separates them is awareness, not reaction speed: easy never looks
   // at what it is fighting, normal sees it through noise, hard sees it exactly.
-  easy:   { think: 2.0,  smart: 0.35, costPow: 0.00, maxPrice: 700,  blind: true,  mend: false },
+  easy:   { think: 2.0,  smart: 0.35, costPow: 0.00, maxPrice: 820,  blind: true,  mend: false },
   normal: { think: 1.2,  smart: 0.70, costPow: 0.60, maxPrice: 1400, noise: 0.35,  mend: true  },
   hard:   { think: 0.25, smart: 1.00, costPow: 1.00, maxPrice: 9999, noise: 0,     mend: true  },
 };
@@ -471,30 +475,40 @@ function cpuThink(dt) {
   if (CPU.t > 0) return;
   CPU.t = cfg.think * (0.75 + Math.random()*0.5);
 
-  // read the enemy army by remaining hp, so the counter-pick tracks reality
-  let light = 1, armored = 1, mine = 0, theirs = 0;
+  // Profile the enemy army by remaining HP per unit type. This is where the
+  // difficulty lives: easy never looks (flat profile), normal sees it through
+  // noise, hard sees it exactly.
+  const prof = new Map();
+  let tot = 0, mine = 0, theirs = 0;
   for (const a of G.units) {
     if (a.dead) continue;
-    if (a.team === foe) { theirs++; if (a.u.type === "light") light += a.hp; else armored += a.hp; }
+    if (a.team === foe) { theirs++; prof.set(a.u.idx, (prof.get(a.u.idx)||0) + a.hp); tot += a.hp; }
     else mine++;
   }
-  let armoredShare = armored / (armored + light);
-  if (cfg.blind) armoredShare = 0.5;                       // easy fights blind
-  else if (cfg.noise) armoredShare = Math.max(0, Math.min(1,
-    armoredShare + (Math.random()-0.5)*cfg.noise));        // normal misreads it a little
+  if (cfg.blind || !tot) { prof.clear(); tot = 0; }
+  else if (cfg.noise) {
+    for (const [k,v] of prof) prof.set(k, v * (1 + (Math.random()-0.5)*cfg.noise*2));
+    tot = 0; for (const v of prof.values()) tot += v;
+  }
 
-  // losing the field means spend everything; winning it means bank toward better troops
-  const losing = theirs > mine + 2 || me.hp < P[foe].hp * 0.9;
-
+  // How well would this unit actually do against what they have on the field?
+  // Damage after their armour, weighed against how long it survives their damage.
   const score = u => {
-    const dps = (u.dA*armoredShare + u.dL*(1-armoredShare)) / u.ws;   // counter-aware
-    const ehp = u.hp * (1 + u.armour/18);
-    const splash = 1 + (u.splash ? u.splash/110 : 0);
-    return dps * ehp * splash / Math.pow(u.price, cfg.costPow);
+    let dps, inc;
+    if (!tot) { dps = (u.dL + u.dA)/2 / u.ws; inc = 45; }
+    else {
+      dps = 0; inc = 0;
+      for (const [k, hp] of prof) {
+        const e = UNITS[k], sh = hp/tot;
+        dps += sh * Math.max(2, (e.type === "light" ? u.dL : u.dA) - e.armour) / u.ws;
+        inc += sh * Math.max(2, (u.type === "light" ? e.dL : e.dA) - u.armour) / e.ws;
+      }
+    }
+    const surv = u.hp / Math.max(1, inc);
+    return dps * surv * (1 + (u.splash ? u.splash/110 : 0)) / Math.pow(u.price, cfg.costPow);
   };
 
-  // Simulated duels settled this: buying the best-scoring unit you can afford
-  // right now beats hoarding for something bigger. Idle gold is a dead army.
+  const losing = theirs > mine + 2 || me.hp < P[foe].hp * 0.9;
   const opts = UNITS.filter(u => u.price <= me.gold && u.price <= cfg.maxPrice);
   const any  = UNITS.filter(u => u.price <= me.gold);
   if (Math.random() > cfg.smart) {                       // sloppy play on lower levels
@@ -505,10 +519,9 @@ function cpuThink(dt) {
       let pick = pool[0], best = -1;
       for (const u of pool) { const v = score(u); if (v > best) { best = v; pick = u; } }
       buy(CPU.team, pick.idx);
-      if (losing && me.gold >= pick.price) buy(CPU.team, pick.idx);   // reinforce hard when pressed
+      if (losing && me.gold >= pick.price) buy(CPU.team, pick.idx);
     }
   }
-
   if (cfg.mend && me.hp < CRYSTAL_HP*0.6 && me.gold > REPAIR_COST*2.5) repair(CPU.team);
   if (Math.random() < 0.05) me.lane = Math.floor(Math.random()*4);
 }
@@ -523,13 +536,37 @@ function step(dt) {
 
   for (const p of P) if (p.mend > 0) p.mend -= dt;
 
+  // contest the shrine: whoever has more troops standing on it drags it their way
+  {
+    const n = [0,0];
+    nearby(shrineX(), shrineY(), SHRINE_R, b => {
+      if (b.dead) return;
+      if (Math.hypot(b.x-shrineX(), b.y-shrineY()) < SHRINE_R) n[b.team]++;
+    });
+    const sh = G.shrine, lead = Math.max(-4, Math.min(4, n[0]-n[1]));
+    if (lead) {
+      sh.prog = Math.max(-100, Math.min(100, sh.prog + lead*dt*11));
+      if (sh.prog >= 100 && sh.owner !== 0) { sh.owner = 0; banner("BLUE TAKES THE SHRINE", 1100); sfxPay(); }
+      if (sh.prog <= -100 && sh.owner !== 1) { sh.owner = 1; banner("RED TAKES THE SHRINE", 1100); sfxPay(); }
+      if (sh.owner === 0 && sh.prog < 0) sh.owner = -1;
+      if (sh.owner === 1 && sh.prog > 0) sh.owner = -1;
+    }
+  }
+
   G.tick -= dt;
   if (G.tick <= 0) {
     G.tick += TICK_T; G.round++;
     const inc = [0,0];
     for (const a of G.units) if (!a.dead) inc[a.team] += a.u.income;
     for (const t of [0,1]) P[t].gold += BASE_INCOME + 110*G.round + inc[t];
+    if (G.shrine.owner >= 0) P[G.shrine.owner].gold += SHRINE_GOLD;
     banner("PAYDAY", 850); sfxPay();
+    // no war lasts forever: past a point both crystals start crumbling on their own
+    if (G.round >= SUDDEN_ROUND) {
+      if (!G.sudden) { G.sudden = true; banner("SUDDEN DEATH", 1600); }
+      const chip = (G.round - SUDDEN_ROUND + 1) * 160;
+      hitCrystal(0, chip); hitCrystal(1, chip);
+    }
   }
 
   for (const a of G.units) {
@@ -562,7 +599,7 @@ function step(dt) {
     } else if (a.cool <= 0) {
       a.cool = a.u.ws; a.swing = 1;
       if (isCrystal) {
-        hitCrystal(1-a.team, Math.max(a.u.dL, a.u.dA)*2.2);
+        hitCrystal(1-a.team, 42 + Math.max(a.u.dL, a.u.dA)*0.55);
       } else if (a.u.kind === "ranged") {
         sfxBow();
         G.shots.push({ x:a.x, y:a.y-7, tx:a.tgt.x, ty:a.tgt.y-7, src:a, tgt:a.tgt,
@@ -700,6 +737,7 @@ function draw() {
   ctx.drawImage(bgCv, 0, 0, W, H);
   ctx.drawImage(decCv, 0, 0, W, H);
 
+  drawShrine();
   drawLaneMarker(0); drawLaneMarker(1);
   drawCrystal(0); drawCrystal(1);
 
@@ -747,6 +785,8 @@ function drawHelp() {
     ["Dread Lord is LIGHT: fast and lethal, but anti-light units eat it", "#ff9a9a"],
     ["Novice / Mage — hit both, from range", "#c9b6ff"],
     ["", ""],
+    ["Hold the shrine in the middle for +◆" + SHRINE_GOLD + " every payday.", "#e8dcb0"],
+    ["", ""],
     ["5 / 6  mend your crystal        L-SHIFT / R-SHIFT  spawn lane", "#9fffd8"],
     ["SPACE pause     - / =  speed     `  mute     H  close", "#cfc6ae"],
   ];
@@ -762,6 +802,36 @@ function drawHelp() {
     ctx.fillStyle = l[1];
     ctx.fillText(l[0], x+20, y+30+i*22);
   });
+}
+
+function drawShrine() {
+  const x = shrineX(), y = shrineY(), sh = G.shrine;
+  const col = sh.owner === 0 ? "#7fc4ff" : sh.owner === 1 ? "#ff8a6a" : "#e8dcb0";
+  ctx.strokeStyle = "rgba(255,255,255,.13)"; ctx.lineWidth = 2;
+  ctx.setLineDash([6,9]);
+  ctx.beginPath(); ctx.ellipse(x, y, SHRINE_R, SHRINE_R*.5, 0, 0, 6.29); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "rgba(0,0,0,.2)";
+  ctx.beginPath(); ctx.ellipse(x, y+34, 26, 9, 0, 0, 6.29); ctx.fill();
+  ctx.fillStyle = "#6b6255"; ctx.fillRect(x-22, y+22, 44, 12);
+  ctx.fillStyle = "#514a3f";
+  ctx.beginPath();
+  ctx.moveTo(x-11, y+24); ctx.lineTo(x+11, y+24);
+  ctx.lineTo(x+7, y-40); ctx.lineTo(x-7, y-40); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = col;
+  ctx.globalAlpha = .85;
+  ctx.beginPath();
+  ctx.moveTo(x, y-56); ctx.lineTo(x+8, y-42); ctx.lineTo(x, y-30); ctx.lineTo(x-8, y-42);
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = .13; ctx.beginPath(); ctx.arc(x, y-42, 30, 0, 6.29); ctx.fill();
+  ctx.globalAlpha = 1;
+  // capture ring
+  const p = Math.abs(sh.prog)/100;
+  if (p > .01) {
+    ctx.strokeStyle = sh.prog > 0 ? "#7fc4ff" : "#ff8a6a";
+    ctx.lineWidth = 4; ctx.lineCap = "butt";
+    ctx.beginPath(); ctx.arc(x, y-42, 20, -Math.PI/2, -Math.PI/2 + p*6.283); ctx.stroke();
+  }
 }
 
 function drawLaneMarker(team) {
@@ -850,10 +920,12 @@ function drawUnitVector(a) {
 
   ctx.fillStyle="rgba(0,0,0,.24)";
   ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.95, s*.88, s*.34, 0, 0, 6.29); ctx.fill();
-  if (!a.ghost && !a.dead) {                       // team ring, so allegiance reads instantly
-    ctx.strokeStyle = a.team===0 ? "rgba(110,180,255,.85)" : "rgba(255,120,90,.85)";
+  if (!a.dead) {                       // team ring: colour *and* line style
+    ctx.strokeStyle = a.team===0 ? "rgba(110,180,255,.9)" : "rgba(255,120,90,.9)";
     ctx.lineWidth = 2;
+    if (a.team === 1) ctx.setLineDash([3.5, 3.5]);
     ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.95, s*.82, s*.3, 0, 0, 6.29); ctx.stroke();
+    ctx.setLineDash([]);
   }
 
   if (a.dead) {
@@ -1158,17 +1230,19 @@ function drawUnitVector(a) {
    300 hand-drawn sprites a frame is far too much path work for canvas, so every
    animation frame is rendered once into its own little canvas and reused.       */
 const spriteCache = new Map();
-function sprite(u, team, walk, sw) {
-  const key = u.idx + "_" + team + "_" + walk + "_" + sw;
+const PS_STEPS = [0.84, 1.0, 1.16];          // perspective, quantised so blits are 1:1
+function sprite(u, team, walk, sw, ps) {
+  const key = u.idx + "_" + team + "_" + walk + "_" + sw + "_" + ps;
   let c = spriteCache.get(key);
   if (c) return c;
-  const w = Math.ceil(u.size*5.2), h = Math.ceil(u.size*4.0);
+  const k = PS_STEPS[ps];
+  const w = Math.ceil(u.size*4.6*k), h = Math.ceil(u.size*3.6*k);
   c = document.createElement("canvas");
   c.width = Math.ceil(w*DPR); c.height = Math.ceil(h*DPR);
   const g = c.getContext("2d");
-  g.setTransform(DPR,0,0,DPR,0,0);
+  g.setTransform(DPR*k, 0, 0, DPR*k, 0, 0);
   const real = ctx; ctx = g;
-  drawUnitVector({ team, u, x:w/2, y:h*0.62, hp:1, maxhp:1,
+  drawUnitVector({ team, u, x:w/(2*k), y:h*0.6/k, hp:1, maxhp:1,
                    swing: sw/2, hurt:0, step: walk*Math.PI/2, dead:false, ghost:true });
   ctx = real;
   c._w = w; c._h = h;
@@ -1178,8 +1252,8 @@ function sprite(u, team, walk, sw) {
 
 function drawUnit(a) {
   if (a.ghost) { drawUnitVector(a); return; }
-  const ps = persp(a.y);
-  const s = a.u.size * ps;
+  const psi = a.y < TOP() + (BOT()-TOP())*0.34 ? 0 : a.y < TOP() + (BOT()-TOP())*0.7 ? 1 : 2;
+  const s = a.u.size * PS_STEPS[psi];
 
   if (a.dead) {
     const al = ctx.globalAlpha;
@@ -1188,22 +1262,19 @@ function drawUnit(a) {
     ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.95, s*.88, s*.34, 0, 0, 6.29); ctx.fill();
     ctx.fillStyle = a.team===0 ? "#3f7fd6" : "#d64b2b";
     ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.62, s*.95, s*.42, 0, 0, 6.29); ctx.fill();
-    ctx.fillStyle = a.u.col;
-    ctx.beginPath(); ctx.ellipse(a.x+(a.team===0?1:-1)*s*.4, a.y+s*.5, s*.3, s*.24, 0, 0, 6.29); ctx.fill();
     ctx.globalAlpha = al;
     return;
   }
 
   const walk = ((a.step / (Math.PI/2)) | 0) & 3;
-  const sw = a.swing > .66 ? 2 : a.swing > .25 ? 1 : 0;
-  const c = sprite(a.u, a.team, walk, sw);
-  const w = c._w*ps, h = c._h*ps;
-  const dx = a.x - w/2, dy = a.y - h*0.62;
-  ctx.drawImage(c, dx, dy, w, h);
-  if (a.hurt > 0) {                       // hit flash: brighten the same sprite
+  const sw = a.swing > .45 ? 1 : 0;
+  const c = sprite(a.u, a.team, walk, sw, psi);
+  const dx = (a.x - c._w/2) | 0, dy = (a.y - c._h*0.6) | 0;
+  ctx.drawImage(c, dx, dy);                       // native size, integer origin
+  if (a.hurt > 0) {
     const op = ctx.globalCompositeOperation, al = ctx.globalAlpha;
     ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = al * .6;
-    ctx.drawImage(c, dx, dy, w, h);
+    ctx.drawImage(c, dx, dy);
     ctx.globalCompositeOperation = op; ctx.globalAlpha = al;
   }
   if (G.hi && G.hi.team === a.team && G.hi.idx === a.u.idx) {
@@ -1211,7 +1282,7 @@ function drawUnit(a) {
     ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.95, s*1.0, s*.4, 0, 0, 6.29); ctx.stroke();
   }
   const rank = Math.min(3, Math.floor((a.vet||0)/3));
-  if (rank > 0) {                                   // veteran chevrons
+  if (rank > 0) {
     ctx.strokeStyle = "#ffe066"; ctx.lineWidth = 1.6;
     for (let i=0;i<rank;i++) {
       const cy = a.y - s*1.9 - i*3.4;
@@ -1249,6 +1320,8 @@ function drawRadar() {
     ctx.fillStyle = t===0 ? "#bfe6ff" : "#ffd0b0";
     ctx.fillRect(x + crystalX(t)*sx - 2, y + h/2 - 4, 4, 8);
   }
+  ctx.fillStyle = G.shrine.owner === 0 ? "#7fc4ff" : G.shrine.owner === 1 ? "#ff8a6a" : "#e8dcb0";
+  ctx.fillRect(x + shrineX()*sx - 1.5, y + h/2 - 3, 3, 6);
   if (G.speed !== 1) {
     ctx.fillStyle = "#ffd75e"; ctx.font = "bold 12px 'Trebuchet MS', sans-serif";
     ctx.fillText(G.speed + "×", x + w + 10, y + 17);
@@ -1324,6 +1397,13 @@ function updateHUD() {
     el.textContent = p.hp < CRYSTAL_HP && p.gold >= REPAIR_COST && !(CPU && CPU.team===t)
       ? "["+(t===0?"5":"6")+"] mend ◆"+REPAIR_COST : "";
   }
+  const sh = G.shrine;
+  document.getElementById("shrine").textContent =
+    sh.owner === 0 ? "SHRINE: BLUE +◆" + SHRINE_GOLD
+    : sh.owner === 1 ? "SHRINE: RED +◆" + SHRINE_GOLD
+    : "SHRINE: neutral";
+  document.getElementById("shrine").style.color =
+    sh.owner === 0 ? "#bfe6ff" : sh.owner === 1 ? "#ffd0b0" : "#cfc6ae";
   document.getElementById("round").textContent = "ROUND " + G.round;
   document.getElementById("tick").textContent =
     G.paused ? "PAUSED" : "payday in " + Math.ceil(G.tick) + "s";
@@ -1381,6 +1461,7 @@ function newGame() {
   CPU = modeId === "2p" ? null : { team:1, level:modeId, t:0 };
   G.units=[]; G.shots=[]; G.fx=[]; G.decals=0; decCtx.clearRect(0,0,G.W,G.H);
   G.round=1; G.tick=TICK_T; G.shake=0; G.speed=1;
+  G.shrine={ owner:-1, prog:0 }; G.sudden=false; G.hi=null; G.help=false;
   G.running=true; G.over=false; G.paused=false;
   document.getElementById("overlay").classList.add("hide");
   banner("FIGHT!", 900);
