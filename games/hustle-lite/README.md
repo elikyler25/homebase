@@ -42,6 +42,11 @@ stays fixed to the bottom of the window while the rest of the page flows.
 - **Boxes** overlays hurtboxes in blue and live hitboxes in red, plus dashed outlines for
   invulnerability and parry windows. It is the quickest way to see why something whiffed.
 - **After-images** ghost the frames just gone, so a swing reads as a swing.
+- **Poses are a continuous function of the frame**, not a lookup by phase. Keyed to the
+  phase name alone, a 13-frame wind-up held one identical pose for all thirteen frames and
+  then snapped — three still images per move, which reads as a slideshow rather than a
+  swing. Every phase now interpolates, and playback blends between engine frames, so a move
+  anticipates, commits and settles. **Speed** in the header runs it at 0.5x, 1x or 1.75x.
 - Frame advantage is printed next to your fighter once the exchange settles, because it is
   the single thing that decides the next turn.
 

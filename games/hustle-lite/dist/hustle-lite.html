@@ -441,6 +441,14 @@ dialog#select { max-width: 780px; }
       </select>
       <span id="diffnote" class="note"></span>
     </div>
+    <div class="ctl">
+      <label for="speed">Speed</label>
+      <select id="speed">
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.75">1.75x</option>
+      </select>
+    </div>
     <button id="boxes" class="toggle" type="button" title="Show hitboxes and hurtboxes during playback">Boxes</button>
     <button id="sound" type="button">Sound on</button>
     <button id="helpbtn" type="button">How to play</button>
@@ -1219,7 +1227,7 @@ function simulate(s, actors, startCombo) {
       phase: points.map((a) => phaseOf(a, lf(a, f))),
       extras: actors.filter((a) => !isPoint(a) && lf(a, f) <= moveDuration(a.m))
         .map((a) => ({
-          team: a.team, char: a.f.char, x: a.x,
+          team: a.team, char: a.f.char, x: a.x, k: Math.max(0, lf(a, f)), move: a.m,
           phase: lf(a, f) < 0 ? 'move' : phaseOf(a, lf(a, f)),
         })),
       events: events.filter((e) => e.f === f),
@@ -2000,22 +2008,98 @@ function mixHex(a, b, t) {
  * the weapon arm, and how far it extends. Everything on screen is derived from the phase
  * the engine reported for that frame, so the animation cannot drift out of sync with it.
  */
-function poseFor(phase, m, t) {
+const lerp = (a, b, u) => a + (b - a) * u;
+const easeOut = (u) => 1 - (1 - u) * (1 - u);
+const easeIn = (u) => u * u;
+const clamp01 = (u) => (u < 0 ? 0 : u > 1 ? 1 : u);
+const blend = (a, b, u) => ({
+  lean: lerp(a.lean, b.lean, u), crouch: lerp(a.crouch, b.crouch, u),
+  arm: lerp(a.arm, b.arm, u), reach: lerp(a.reach, b.reach, u),
+});
+
+const REST = { lean: 0, crouch: 0.08, arm: -0.7, reach: 0.34 };
+
+/*
+ * A pose is a continuous function of the frame, not a lookup by phase.
+ *
+ * Keying it to the phase name alone meant a 13-frame wind-up held one identical pose for
+ * all thirteen frames and then snapped — three still images per move, which reads as a
+ * slideshow rather than a swing. Every phase now interpolates between a start and an end
+ * pose, so a move anticipates, commits and settles the way a strike should.
+ */
+function poseFor(phase, m, k = 0) {
+  const A = m.startup || 0, B = m.active || 0, C = m.recovery || 0;
   switch (phase) {
-    case 'startup': return { lean: -0.22, crouch: 0.1, arm: -2.3, reach: 0.25 + t * 0.1 };
-    case 'active': return { lean: 0.42, crouch: 0.06, arm: armAngle(m), reach: 1 };
-    case 'recovery': return { lean: 0.16, crouch: 0.18, arm: armAngle(m) + 0.5, reach: 0.55 };
-    case 'armour': return { lean: 0.3, crouch: 0.12, arm: -1.9, reach: 0.3 };
-    case 'guard': return { lean: -0.1, crouch: m.id === 'lowGuard' ? 0.5 : 0.2, arm: m.id === 'lowGuard' ? 1.1 : -0.55, reach: 0.42 };
-    case 'blockstun': return { lean: -0.32, crouch: m.id === 'lowGuard' ? 0.52 : 0.24, arm: m.id === 'lowGuard' ? 1.2 : -0.6, reach: 0.4 };
-    case 'parryWindow': return { lean: 0.05, crouch: 0.08, arm: -1.15, reach: 0.6 };
-    case 'parryRecover': return { lean: -0.18, crouch: 0.22, arm: -0.2, reach: 0.35 };
-    case 'invuln': return { lean: 0.1, crouch: 0.62, arm: 0.9, reach: 0.22 };
-    case 'move': return { lean: 0.24, crouch: 0.14, arm: -0.75, reach: 0.34 };
-    case 'hustle': return { lean: -0.12, crouch: 0.05, arm: -2.7 + Math.sin(t * 9) * 0.5, reach: 0.5 };
-    case 'stun': return { lean: -0.62, crouch: 0.34, arm: 1.5, reach: 0.3 };
-    case 'parried': return { lean: -0.75, crouch: 0.4, arm: 1.8, reach: 0.28 };
-    default: return { lean: 0, crouch: 0.08, arm: -0.7, reach: 0.35 };
+    case 'startup': {
+      // Anticipation: coil away from the target, easing into the held wind-up.
+      const u = easeOut(clamp01(A ? k / A : 1));
+      return blend({ ...REST, reach: 0.2 }, { lean: -0.30, crouch: 0.15, arm: -2.4, reach: 0.32 }, u);
+    }
+    case 'active': {
+      // The commit, snapping through so the fastest part of the motion is the hit.
+      const u = easeIn(clamp01(B ? (k - A) / B : 1));
+      return blend({ lean: -0.16, crouch: 0.12, arm: armAngle(m) - 1.5, reach: 0.45 },
+        { lean: 0.52, crouch: 0.04, arm: armAngle(m), reach: 1.05 }, u);
+    }
+    case 'recovery': {
+      // Follow-through, decaying back toward rest.
+      const u = easeOut(clamp01(C ? (k - A - B) / C : 1));
+      return blend({ lean: 0.52, crouch: 0.05, arm: armAngle(m), reach: 1.0 },
+        { ...REST, crouch: 0.16, arm: armAngle(m) + 0.7, reach: 0.4 }, u);
+    }
+    case 'armour': {
+      const u = clamp01(A ? k / A : 0);
+      return blend({ lean: 0.12, crouch: 0.16, arm: -2.0, reach: 0.26 },
+        { lean: 0.4, crouch: 0.08, arm: -1.7, reach: 0.36 }, u);
+    }
+    case 'guard': {
+      const low = m.id === 'lowGuard';
+      const u = easeOut(clamp01(k / 4));            // snap into the guard, then hold
+      return blend(REST, { lean: -0.12, crouch: low ? 0.52 : 0.2, arm: low ? 1.1 : -0.55, reach: 0.44 }, u);
+    }
+    case 'blockstun': {
+      const low = m.id === 'lowGuard';
+      const u = clamp01((k - 3) / 6);                // shoved back, then recovering
+      return blend({ lean: -0.4, crouch: low ? 0.55 : 0.28, arm: low ? 1.2 : -0.62, reach: 0.42 },
+        { lean: -0.14, crouch: low ? 0.5 : 0.2, arm: low ? 1.1 : -0.55, reach: 0.44 }, u);
+    }
+    case 'parryWindow': {
+      const u = clamp01(k / 2);
+      return blend({ ...REST, reach: 0.3 }, { lean: 0.08, crouch: 0.08, arm: -1.2, reach: 0.62 }, u);
+    }
+    case 'parryRecover': {
+      const u = clamp01((k - 8) / 10);
+      return blend({ lean: 0.06, crouch: 0.12, arm: -1.0, reach: 0.5 },
+        { ...REST, crouch: 0.22, arm: -0.25 }, u);
+    }
+    case 'invuln': {
+      // A roll: drop low through the middle of it, rise out the far side.
+      const win = m.invuln ? m.invuln[1] - m.invuln[0] : 8;
+      const u = clamp01((k - (m.invuln ? m.invuln[0] : 0)) / Math.max(1, win));
+      const depth = Math.sin(u * Math.PI);
+      return { lean: 0.1 + depth * 0.2, crouch: 0.12 + depth * 0.6, arm: 0.4 + depth * 0.8, reach: 0.3 - depth * 0.12 };
+    }
+    case 'move': {
+      // A walk cycle, so movement reads as travel rather than a slide.
+      const step = Math.sin(k * 0.55);
+      return { lean: 0.2 + step * 0.1, crouch: 0.12 + Math.abs(step) * 0.06, arm: -0.75 + step * 0.25, reach: 0.34 };
+    }
+    case 'hustle': {
+      const flourish = Math.sin(k * 0.42);
+      return { lean: -0.12 + flourish * 0.06, crouch: 0.05, arm: -2.7 + flourish * 0.55, reach: 0.5 };
+    }
+    case 'stun': {
+      // Recoil hard, then sag: the shape of taking a hit.
+      const u = clamp01(k / 7);
+      return blend({ lean: -0.85, crouch: 0.2, arm: 1.7, reach: 0.34 },
+        { lean: -0.5, crouch: 0.4, arm: 1.35, reach: 0.28 }, easeOut(u));
+    }
+    case 'parried': {
+      const u = clamp01(k / 6);
+      return blend({ lean: -0.95, crouch: 0.28, arm: 2.0, reach: 0.3 },
+        { lean: -0.6, crouch: 0.44, arm: 1.7, reach: 0.26 }, easeOut(u));
+    }
+    default: return { ...REST };
   }
 }
 const armAngle = (m) => (m.level === 'low' ? 0.95 : m.level === 'high' ? -1.35 : -0.12);
@@ -2330,7 +2414,7 @@ class Stage {
         this.trails.push({
           x: tl.x[i], colour: sideColour(this.state, i), life: 0.3,
           facing: (tl.x[0] <= tl.x[1] ? 1 : -1) * (i === 0 ? 1 : -1),
-          pose: poseFor(tl.phase[i], m, f / 10),
+          pose: poseFor(tl.phase[i], m, f),
         });
       }
     }
@@ -2446,9 +2530,14 @@ class Stage {
       drawRange(g, b.x, -facing, theirBestMove.range, sideColour(state, 1), true, `${theirBestMove.name} ${theirBestMove.range}`);
     }
 
+    // A slow idle sway so the planning screen is not a freeze-frame.
     const stub = { id: '', level: 'mid' };
-    drawFighter(g, a.x, facing, poseFor(idlePhase(a), stub, 0), sideColour(state, 0), { down: a.state === 'down' });
-    drawFighter(g, b.x, -facing, poseFor(idlePhase(b), stub, 0), sideColour(state, 1), { down: b.state === 'down' });
+    const sway = Math.sin(performance.now() / 620) * 0.5 + 0.5;
+    const idle = (f) => (f.state === 'neutral'
+      ? { ...REST, crouch: 0.06 + sway * 0.05, arm: -0.7 + sway * 0.09 }
+      : poseFor(idlePhase(f), stub, 4));
+    drawFighter(g, a.x, facing, idle(a), sideColour(state, 0), { down: a.state === 'down' });
+    drawFighter(g, b.x, -facing, idle(b), sideColour(state, 1), { down: b.state === 'down' });
 
     // "You" over your own fighter, exactly as the source game labels the sides.
     this.label('You', a.x, GROUND - 122, '#ffffff', 8);
@@ -2470,9 +2559,14 @@ class Stage {
       const face = i === 0 ? facing : -facing;
       const flash = ph === 'active' || ph === 'parryWindow';
       if (ph === 'active') drawRange(g, tl.x[i], face, m.range, colour, false, null);
-      drawFighter(g, tl.x[i], face, poseFor(ph, m, this.frame / 10), colour, {
+      // Sub-frame blending: the engine ticks in whole frames, but drawing between them
+      // is what turns a sequence of positions into movement.
+      const sub = this.playing ? Math.min(1, Math.max(0, this.acc)) : 0;
+      const nx = r.timeline[Math.min(r.total, this.frame + 1)]?.x[i] ?? tl.x[i];
+      const px = lerp(tl.x[i], nx, sub);
+      drawFighter(g, px, face, poseFor(ph, m, this.frame + sub), colour, {
         flash: flash ? 1 : 0,
-        ghost: ph === 'invuln' ? 0.55 : 0,
+        ghost: ph === 'invuln' ? 0.45 : 0,
         down: false,
       });
       if (ph === 'parryWindow') {
@@ -2496,7 +2590,7 @@ class Stage {
       g.translate(ex.x, GROUND);
       g.scale(0.86, 0.86);
       g.translate(-ex.x, -GROUND);
-      drawFighter(g, ex.x, face, poseFor(ex.phase, { id: '', level: 'mid' }, this.frame / 10), colour, {
+      drawFighter(g, ex.x, face, poseFor(ex.phase, ex.move ?? { id: '', level: 'mid' }, ex.k ?? 0), colour, {
         ghost: 0.14, flash: ex.phase === 'active' ? 1 : 0,
       });
       g.restore();
@@ -3082,7 +3176,7 @@ function showBanner(text, key) {
   b.firstElementChild.className = key ? `vd ${key}` : '';
   b.classList.add('show');
   clearTimeout(showBanner.t);
-  showBanner.t = setTimeout(() => b.classList.remove('show'), 2600);
+  showBanner.t = setTimeout(() => b.classList.remove('show'), 1700);
 }
 
 /* ---------------------------------------------------------- round / match */
@@ -3295,6 +3389,7 @@ function boot() {
     stage.seek(Number(e.target.value));
     $('#scrubval').textContent = `${e.target.value}f`;
   });
+  $('#speed').addEventListener('change', (e) => { stage.fps = 26 * Number(e.target.value); });
   $('#boxes').addEventListener('click', (e) => {
     stage.boxes = !stage.boxes;
     e.target.classList.toggle('on', stage.boxes);

@@ -594,7 +594,7 @@ function simulate(s, actors, startCombo) {
       phase: points.map((a) => phaseOf(a, lf(a, f))),
       extras: actors.filter((a) => !isPoint(a) && lf(a, f) <= moveDuration(a.m))
         .map((a) => ({
-          team: a.team, char: a.f.char, x: a.x,
+          team: a.team, char: a.f.char, x: a.x, k: Math.max(0, lf(a, f)), move: a.m,
           phase: lf(a, f) < 0 ? 'move' : phaseOf(a, lf(a, f)),
         })),
       events: events.filter((e) => e.f === f),

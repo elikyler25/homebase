@@ -489,7 +489,7 @@ function showBanner(text, key) {
   b.firstElementChild.className = key ? `vd ${key}` : '';
   b.classList.add('show');
   clearTimeout(showBanner.t);
-  showBanner.t = setTimeout(() => b.classList.remove('show'), 2600);
+  showBanner.t = setTimeout(() => b.classList.remove('show'), 1700);
 }
 
 /* ---------------------------------------------------------- round / match */
@@ -702,6 +702,7 @@ export function boot() {
     stage.seek(Number(e.target.value));
     $('#scrubval').textContent = `${e.target.value}f`;
   });
+  $('#speed').addEventListener('change', (e) => { stage.fps = 26 * Number(e.target.value); });
   $('#boxes').addEventListener('click', (e) => {
     stage.boxes = !stage.boxes;
     e.target.classList.toggle('on', stage.boxes);
