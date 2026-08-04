@@ -11,6 +11,9 @@ Two changes from the original:
    your rival currently has, simulates each one against your move, and ranks them. You stop
    having to watch them to learn what beats what.
 
+Two modes: **Solo** (one on one, best of three) and **Squad** (three a side, where you order
+two of your fighters in the same turn so they combo together).
+
 Open `index.html` in a browser, or `dist/hustle-lite-standalone.html` for the single file.
 
 ## The Oracle
@@ -32,6 +35,31 @@ None of this is hardcoded. The board, the chain and the post-mortem all call the
 `resolveTurn()` the fight itself runs, so they cannot drift out of step with the game. A test
 asserts that replaying the top row reproduces its displayed numbers exactly.
 
+## Squad mode
+
+Three fighters a side, one on point and two on the bench. Every turn you order your point
+fighter **and** may call one benched teammate, who runs in ahead of you and performs their
+assist move a few frames later.
+
+That delay is the whole feature. Land a knockdown, call an assist into the stun, and the two
+of them combo together — the engine counts it as one string, so proration applies across the
+pair rather than resetting for the second attacker.
+
+The counterplay is that your teammate arrives **in front** of you and is fully exposed. Call
+one into a fast poke and they eat it at 1.5× damage and sit on a long cooldown. Assists are
+worth using (an always-call strategy beats a never-call one), but they are not free.
+
+- **Call teammate** arms an assist; it folds into whichever move you press next, which keeps
+  the grid at thirteen buttons instead of thirty-eight.
+- **Tag** swaps your point fighter — twenty-four naked frames, so do it after a knockdown.
+- Benched fighters recover slowly, but only back up to half health.
+- Fighters carry smaller health pools in squad mode; three full-size pools a side never run
+  out inside the clock.
+- A team loses when all three are down, or on team health share at turn 110.
+
+The threat board, the yomi chain and the post-mortem all work in squad mode and account for
+assist calls on both sides — a row can read *"Charge + Bruiser"*.
+
 ## The roster
 
 Three archetypes on the speed / reach / damage triangle. Guards, Parry, Dodge, movement,
@@ -41,8 +69,10 @@ the super, and how far each fighter walks.
 | | Health | Fastest | Reach | Biggest hit | Identity |
 |---|---|---|---|---|---|
 | **Duelist** | 144 | 4f | 125 | 29 | Balanced. Armoured Lunge to get in. |
-| **Bruiser** | 158 | 6f | 150 | 30 | Slow, heavily armoured, enormous. Low super goes under High Guard. |
-| **Blade** | 137 | 3f | 150 | 29 | Fastest and longest, no armour. Steps *through* pokes instead of tanking them. |
+| **Bruiser** | 172 | 5f | 150 | 30 | Slow, heavily armoured, enormous. Low super goes under High Guard. |
+| **Blade** | 124 | 3f | 150 | 29 | Fastest and longest, no armour. Steps *through* pokes instead of tanking them. |
+
+In squad mode these pools are scaled down, since each side fields three of them.
 
 ## What it kept from the original
 
@@ -62,7 +92,7 @@ Researched from the Steam guides, the Mizuumi wiki and community frame-data note
 ## What it changed
 
 - **Best of three rounds**, with a 70-turn clock decided on health share.
-- **Counter-hits**: catching someone in their wind-up pays 40% extra damage and stun. This is
+- **Counter-hits**: catching someone in their wind-up pays extra damage and stun. This is
   what makes raw speed worth having.
 - **Armour is taxed** — powering through a hit costs you 28% of your own follow-through, so it
   is a trade rather than a free pass.
@@ -105,35 +135,52 @@ against it — you both know the best answer, which is exactly the layer the ori
 
 From `tests/balance.mjs`, the current state:
 
-- **No dominant button.** The best single mashed move on any character wins 20% of a
-  best-of-three against the Oracle AI; most win 0–3%.
-- **The roster is a cycle**: Blade beats Duelist, Duelist ties Bruiser, Bruiser beats Blade.
-  Picking a character is itself a read. The Bruiser–Blade edge is steep (roughly 87/13), so
-  counterpicking matters more than it should there.
-- **Soft spot**: High Guard, Low Guard and Hustle still sit near 1% of AI play. Hustle is
-  meant to be a rare greed option; the guards being that rare is a genuine weakness, and the
-  next balance pass should look at making lows and highs more threatening.
+- **Overall win rates** across all matchups, position averaged: Duelist 44%, Bruiser 46%,
+  Blade 60%. No matchup is worse than 34/66.
+- **No dominant button.** The best single mashed move on any character wins a small fraction
+  of a best-of-three against the Oracle AI; most win nothing at all.
+- **Assists are worth it but not free**: always-call beats never-call, and both lose heavily
+  to an AI that mixes.
+
+**Known soft spots**, written down rather than papered over:
+
+- Blade is still the strongest pick at 60%, and specifically beats the Duelist 66/34.
+- High Guard, Low Guard and Hustle sit near 1% of AI play. Hustle is meant to be a rare greed
+  option; the guards being that rare is a genuine weakness.
+- Squad matches still reach the turn limit more often than they end in a wipeout — closer
+  now that health drains properly, but the clock decides more of them than it should.
 
 These numbers come from a one-ply AI playing itself. A human plays differently, so treat them
 as a floor on health, not proof of it.
+
+### The spacing weight
+
+One number in `scoreFor` matters more than any frame data: the pull toward each character's
+own effective range. Set too low, both AIs drift to a 270-unit stand-off where nothing
+reaches, roughly 4% of turns land a hit, and every match is decided by the clock at
+three-quarters health. Raising it to 9 puts the AI at a real fighting range with about a
+fifth of turns connecting — and it changed the character balance enough to need a full
+retune. If matches ever start feeling passive again, look here first.
 
 ## Layout
 
 | Path | Role |
 |------|------|
-| `src/engine.js` | all fight logic: characters, frame-by-frame resolution, threat board, yomi chain, post-mortem, AI. Pure — no DOM |
+| `src/engine.js` | all fight logic: characters, squads, frame-by-frame resolution, threat board, yomi chain, post-mortem, AI. Pure — no DOM |
 | `src/render.js` | canvas replay of an engine timeline, plus synthesised sound |
 | `src/ui.js` | DOM, turn loop, input |
 | `src/style.css` | presentation |
 | `index.html` | dev entry point, loads `src/*` as modules |
 | `build.py` | inlines everything into `dist/` (stdlib only) |
-| `tests/engine.test.mjs` | 182 assertions locking down the RPS web |
+| `tests/engine.test.mjs` | 182 assertions locking down the solo RPS web |
+| `tests/squad.test.mjs` | 79 assertions for teams, assists, tagging and lives |
 | `tests/balance.mjs` | balance readout: dominant strategies, dead moves, matchup matrix |
 
 ## Working on it
 
 ```sh
-node games/hustle-lite/tests/engine.test.mjs     # must be green before committing
+node games/hustle-lite/tests/engine.test.mjs     # solo — must be green before committing
+node games/hustle-lite/tests/squad.test.mjs      # squad — likewise
 node games/hustle-lite/tests/balance.mjs         # readout, not pass/fail — slow, a few minutes
 python3 games/hustle-lite/build.py --check       # rebuild both bundles
 ```

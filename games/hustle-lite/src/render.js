@@ -5,7 +5,7 @@
  * never decides anything itself: every position, phase and impact on screen came out of
  * the simulation, so what you watch is exactly what was scored.
  */
-import { RULES, CHARS } from './engine.js';
+import { RULES, CHARS, pointOf } from './engine.js';
 
 const W = 1000, H = 300;
 const GROUND = 246;
@@ -14,7 +14,7 @@ const COL = { ink: '#e9eef4', dim: '#3a4653', floor: '#131a22' };
 // Player one always reads cool, player two always reads warm, whichever characters are
 // picked — you should never have to work out which fighter is yours.
 const SIDE_TINT = ['#3fe0cf', '#ff5f78'];
-const sideColour = (state, i) => (state ? mixHex(CHARS[state.fighters[i].char].accent, SIDE_TINT[i], 0.55) : SIDE_TINT[i]);
+const sideColour = (state, i) => (state ? mixHex(CHARS[pointOf(state, i).char].accent, SIDE_TINT[i], 0.55) : SIDE_TINT[i]);
 
 function mixHex(a, b, t) {
   const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -361,7 +361,7 @@ export class Stage {
 
   drawPreview(g) {
     const { state, myMove, theirBestMove, showThreat } = this.preview;
-    const [a, b] = state.fighters;
+    const [a, b] = [pointOf(state, 0), pointOf(state, 1)];
     const facing = a.x <= b.x ? 1 : -1;
 
     if (myMove?.range) {
@@ -409,6 +409,27 @@ export class Stage {
         g.beginPath(); g.arc(tl.x[i], GROUND - 62, 26, 0, Math.PI * 2); g.stroke();
         g.globalAlpha = 1;
       }
+    }
+
+    // Called assists. Drawn a touch smaller and tinted to their own character, so it is
+    // obvious at a glance that a second body just arrived and whose it is.
+    for (const ex of tl.extras ?? []) {
+      const face = ex.team === 0 ? facing : -facing;
+      const colour = mixHex(CHARS[ex.char].accent, SIDE_TINT[ex.team], 0.3);
+      g.save();
+      g.translate(ex.x, GROUND);
+      g.scale(0.86, 0.86);
+      g.translate(-ex.x, -GROUND);
+      drawFighter(g, ex.x, face, poseFor(ex.phase, { id: '', level: 'mid' }, this.frame / 10), colour, {
+        ghost: 0.14, flash: ex.phase === 'active' ? 1 : 0,
+      });
+      g.restore();
+      g.fillStyle = colour;
+      g.globalAlpha = 0.85;
+      g.font = '700 9px ui-monospace, monospace';
+      g.textAlign = 'center';
+      g.fillText(CHARS[ex.char].name.toUpperCase(), ex.x, GROUND - 116);
+      g.globalAlpha = 1;
     }
 
     g.fillStyle = '#33404f';

@@ -44,6 +44,7 @@
       <div class="side lt" id="p0">
         <div class="who"><span class="nm">Duelist</span> <span class="st"></span> <span class="rounds"></span></div>
         <div class="hp"><i style="width:100%"></i></div>
+        <div class="squadbars" hidden></div>
         <div class="pips">
           <span class="hpv">150</span>
           <span class="pip"></span><span class="pip"></span><span class="pip"></span>
@@ -60,6 +61,7 @@
       <div class="side rt" id="p1">
         <div class="who"><span class="rounds"></span> <span class="st"></span> <span class="nm">Rival</span></div>
         <div class="hp"><i style="width:100%"></i></div>
+        <div class="squadbars" hidden></div>
         <div class="pips">
           <span class="burst ready"><i style="width:100%"></i></span>
           <span class="pip"></span><span class="pip"></span><span class="pip"></span>
@@ -102,17 +104,31 @@
     <div class="rows" id="rows"></div>
   </aside>
 
-  <section class="moves" id="moves"></section>
+  <section class="moves">
+    <div class="assistbar" id="assistbar" hidden></div>
+    <div id="moves"></div>
+  </section>
 </div>
 
 <dialog id="select">
   <h2>Pick your fighter</h2>
+  <div class="modes" id="modewrap">
+    <button type="button" data-mode="solo" class="on">Solo — one on one</button>
+    <button type="button" data-mode="squad">Squad — three a side</button>
+  </div>
   <p class="lead">Three archetypes, one shared defensive skeleton. Guards, Parry, Dodge,
      movement and Burst work the same for everyone — what changes is where you sit on the
      speed, reach and damage triangle.</p>
   <div class="roster" id="roster"></div>
+
+  <div id="squadwrap" hidden>
+    <h3 class="lh">Your lineup</h3>
+    <div class="lineup" id="lineup"></div>
+    <p class="lnote" id="lineupnote"></p>
+  </div>
+
   <div class="selfoot">
-    <div class="ctl">
+    <div class="ctl" id="rivalwrap">
       <label for="rival">Rival plays</label>
       <select id="rival">
         <option value="random">Random</option>
@@ -165,9 +181,25 @@
     <li>At turn 70 it is time over, and whoever leads on health takes the round.</li>
   </ul>
 
+  <h3>Squad mode</h3>
+  <p>Three fighters a side, one on point and two on the bench. Every turn you order your
+     point fighter <em>and</em> may call one benched teammate, who runs in ahead of you and
+     performs their assist move a few frames later.</p>
+  <p>That delay is the whole feature: land a knockdown, call an assist into the stun, and the
+     two of them combo together — it counts as one string, so proration applies across both.
+     The cost is that your teammate arrives <em>in front</em> of you and is fully exposed, so
+     a call into a fast poke gets them hurt and puts them on a long cooldown.</p>
+  <ul>
+    <li><strong>Call teammate</strong> arms an assist; it folds into whichever move you press next.</li>
+    <li><strong>Tag</strong> swaps your point fighter. Twenty-four naked frames, so do it after a knockdown.</li>
+    <li>Benched fighters slowly recover health. A team loses when all three are down.</li>
+  </ul>
+
   <h3>Keys</h3>
   <p><kbd>1</kbd>–<kbd>5</kbd> strikes · <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> defence ·
      <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> footsies and meter ·
+     <kbd>Z</kbd> <kbd>X</kbd> tag ·
+     <kbd>C</kbd> <kbd>V</kbd> <kbd>B</kbd> assist call ·
      <kbd>Enter</kbd> continue · <kbd>?</kbd> this panel</p>
 
   <div class="close"><button class="primary" id="helpclose" type="button">Got it</button></div>

@@ -327,6 +327,57 @@ dialog .lead { margin: 0 0 16px; }
   .stat { grid-template-columns: 54px 1fr 30px; }
 }
 
+
+/* ------------------------------------------------------------ squad mode */
+
+.squadbars { display: grid; gap: 2px; width: 100%; }
+.squadbars[hidden] { display: none; }
+.sq { display: grid; grid-template-columns: 58px 1fr 22px; gap: 5px; align-items: center; opacity: .55; }
+.sq.point { opacity: 1; }
+.sq.out { opacity: .28; }
+.sq .sqn { font-size: 8.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; }
+.sq .sqb { height: 4px; border-radius: 2px; background: #0b0f14; overflow: hidden; }
+.sq .sqb i { display: block; height: 100%; transition: width .3s; }
+.sq .sqc { font-family: var(--mono); font-size: 8px; color: var(--ink-3); text-align: right; }
+.sq.point .sqc { color: var(--ink); }
+.side.rt .sq { grid-template-columns: 22px 1fr 58px; }
+.side.rt .sq .sqn { text-align: right; }
+.side.rt .sq .sqc { text-align: left; }
+
+.assistbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.assistbar[hidden] { display: none; }
+.assistbar .lbl {
+  font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3);
+  font-weight: 700; margin-right: 2px;
+}
+.as {
+  display: grid; gap: 1px; text-align: left; padding: 5px 10px; border-radius: 8px;
+  background: var(--panel); border: 1px solid var(--line);
+}
+.as.on { border-color: var(--gold); background: #2a2416; box-shadow: 0 0 0 1px var(--gold) inset; }
+.as .an { font-size: 12px; font-weight: 650; }
+.as .ad { font-family: var(--mono); font-size: 9px; color: var(--ink-3); }
+
+.modes { display: flex; gap: 6px; margin: 0 0 14px; }
+.modes button { flex: 1; padding: 9px; font-size: 12.5px; }
+.modes button.on { border-color: var(--you); background: #12292c; box-shadow: 0 0 0 1px var(--you) inset; }
+
+.lh { margin: 18px 0 8px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--you); }
+.lineup { display: grid; gap: 6px; }
+.lrow { display: grid; grid-template-columns: 18px 1fr 52px 1.4fr; gap: 8px; align-items: center; }
+.lrow .ln { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.lrow .lrole { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.lrow select { width: 100%; }
+.lnote { font-size: 11px; color: var(--ink-3); margin: 8px 0 0; }
+
+@media (max-width: 620px) {
+  .lrow { grid-template-columns: 16px 1fr; grid-auto-rows: auto; }
+  .lrow .lrole { grid-column: 2; }
+  .lrow .lmove { grid-column: 2; }
+  .sq { grid-template-columns: 46px 1fr 18px; }
+  .side.rt .sq { grid-template-columns: 18px 1fr 46px; }
+}
+
 </style>
 
 <!-- Dev entry point. `python3 build.py` inlines all of this into dist/. -->
@@ -366,6 +417,7 @@ dialog .lead { margin: 0 0 16px; }
       <div class="side lt" id="p0">
         <div class="who"><span class="nm">Duelist</span> <span class="st"></span> <span class="rounds"></span></div>
         <div class="hp"><i style="width:100%"></i></div>
+        <div class="squadbars" hidden></div>
         <div class="pips">
           <span class="hpv">150</span>
           <span class="pip"></span><span class="pip"></span><span class="pip"></span>
@@ -382,6 +434,7 @@ dialog .lead { margin: 0 0 16px; }
       <div class="side rt" id="p1">
         <div class="who"><span class="rounds"></span> <span class="st"></span> <span class="nm">Rival</span></div>
         <div class="hp"><i style="width:100%"></i></div>
+        <div class="squadbars" hidden></div>
         <div class="pips">
           <span class="burst ready"><i style="width:100%"></i></span>
           <span class="pip"></span><span class="pip"></span><span class="pip"></span>
@@ -424,17 +477,31 @@ dialog .lead { margin: 0 0 16px; }
     <div class="rows" id="rows"></div>
   </aside>
 
-  <section class="moves" id="moves"></section>
+  <section class="moves">
+    <div class="assistbar" id="assistbar" hidden></div>
+    <div id="moves"></div>
+  </section>
 </div>
 
 <dialog id="select">
   <h2>Pick your fighter</h2>
+  <div class="modes" id="modewrap">
+    <button type="button" data-mode="solo" class="on">Solo — one on one</button>
+    <button type="button" data-mode="squad">Squad — three a side</button>
+  </div>
   <p class="lead">Three archetypes, one shared defensive skeleton. Guards, Parry, Dodge,
      movement and Burst work the same for everyone — what changes is where you sit on the
      speed, reach and damage triangle.</p>
   <div class="roster" id="roster"></div>
+
+  <div id="squadwrap" hidden>
+    <h3 class="lh">Your lineup</h3>
+    <div class="lineup" id="lineup"></div>
+    <p class="lnote" id="lineupnote"></p>
+  </div>
+
   <div class="selfoot">
-    <div class="ctl">
+    <div class="ctl" id="rivalwrap">
       <label for="rival">Rival plays</label>
       <select id="rival">
         <option value="random">Random</option>
@@ -487,9 +554,25 @@ dialog .lead { margin: 0 0 16px; }
     <li>At turn 70 it is time over, and whoever leads on health takes the round.</li>
   </ul>
 
+  <h3>Squad mode</h3>
+  <p>Three fighters a side, one on point and two on the bench. Every turn you order your
+     point fighter <em>and</em> may call one benched teammate, who runs in ahead of you and
+     performs their assist move a few frames later.</p>
+  <p>That delay is the whole feature: land a knockdown, call an assist into the stun, and the
+     two of them combo together — it counts as one string, so proration applies across both.
+     The cost is that your teammate arrives <em>in front</em> of you and is fully exposed, so
+     a call into a fast poke gets them hurt and puts them on a long cooldown.</p>
+  <ul>
+    <li><strong>Call teammate</strong> arms an assist; it folds into whichever move you press next.</li>
+    <li><strong>Tag</strong> swaps your point fighter. Twenty-four naked frames, so do it after a knockdown.</li>
+    <li>Benched fighters slowly recover health. A team loses when all three are down.</li>
+  </ul>
+
   <h3>Keys</h3>
   <p><kbd>1</kbd>–<kbd>5</kbd> strikes · <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> defence ·
      <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> footsies and meter ·
+     <kbd>Z</kbd> <kbd>X</kbd> tag ·
+     <kbd>C</kbd> <kbd>V</kbd> <kbd>B</kbd> assist call ·
      <kbd>Enter</kbd> continue · <kbd>?</kbd> this panel</p>
 
   <div class="close"><button class="primary" id="helpclose" type="button">Got it</button></div>
@@ -526,10 +609,19 @@ const RULES = {
   STALL_GRACE: 8,        // turns of refusing to engage before the ring starts biting
   TURN_LIMIT: 70,        // per round; whoever leads on health takes it at time over
   PARRY_STUN: 24,
-  COUNTER_SCALE: 1.4,    // damage bonus for interrupting an opponent's wind-up
+  COUNTER_SCALE: 1.28,    // damage bonus for interrupting an opponent's wind-up
   COUNTER_STUN: 6,       // extra hitstun on a counter-hit
   ARMOUR_TAX: 0.72,      // damage you keep after powering through a hit on armour
   ROUNDS_TO_WIN: 2,      // best of three
+  BENCH_HEAL: 1,         // health a benched teammate recovers per turn
+  BENCH_HEAL_CAP: 0.5,   // ...but only back up to half. Tagging out is a plan, not a reset
+  SQUAD_HP_SCALE: 0.78,  // three lives a side would otherwise never run out inside the clock
+  ASSIST_DELAY: 6,       // frames before a called teammate arrives
+  ASSIST_LEAD: 44,       // how far in front of you they arrive — which is why they are hittable
+  ASSIST_VULN: 1.5,      // damage an exposed assist takes
+  ASSIST_COOLDOWN: 5,    // turns before that teammate can be called again
+  ASSIST_PUNISHED: 9,    // ...or after they got hit on the way in
+  SQUAD_TURN_LIMIT: 110, // squad matches run long; three lives a side
 };
 
 /* ------------------------------------------------------------------ moves */
@@ -612,6 +704,18 @@ const UNIVERSAL = {
     blurb: 'Drift away while stunned. Their next move may not reach.',
     tag: 'drift',
   }),
+  tag1: M({
+    id: 'tag1', name: 'Tag →', cat: 'tag', key: 'z',
+    recovery: 24,
+    blurb: 'Swap your point fighter. Twenty-four naked frames — do it after a knockdown.',
+    tag: 'swap point',
+  }),
+  tag2: M({
+    id: 'tag2', name: 'Tag ⇒', cat: 'tag', key: 'x',
+    recovery: 24,
+    blurb: 'Swap to your third. Same cost, different body.',
+    tag: 'swap point',
+  }),
   quickRise: M({
     id: 'quickRise', name: 'Quick Rise', cat: 'wake', key: '1',
     recovery: 10,
@@ -642,7 +746,7 @@ const CHARS = {
     strikes: {
       jab: M({
         id: 'jab', name: 'Jab', cat: 'strike', key: '1',
-        startup: 4, active: 2, recovery: 6, range: 95, level: 'mid',
+        startup: 4, active: 2, recovery: 6, range: 105, level: 'mid',
         dmg: 7, hitstun: 12, blockstun: 8, pushHit: 30, pushBlock: 22, gain: 6,
         blurb: 'Fastest thing you own. Beats anything slower to the punch.', tag: 'fast',
       }),
@@ -687,7 +791,7 @@ const CHARS = {
   },
 
   bruiser: {
-    id: 'bruiser', name: 'Bruiser', accent: '#ff9f43', hp: 158,
+    id: 'bruiser', name: 'Bruiser', accent: '#ff9f43', hp: 172,
     tagline: 'Slow, armoured, enormous. Nothing you own is fast, so stop trying to be.',
     tweaks: {
       closeIn: { dash: { from: 0, to: 12, dist: 118, toward: true } },
@@ -697,7 +801,7 @@ const CHARS = {
     strikes: {
       hook: M({
         id: 'hook', name: 'Hook', cat: 'strike', key: '1',
-        startup: 6, active: 2, recovery: 8, range: 88, level: 'mid',
+        startup: 5, active: 2, recovery: 8, range: 88, level: 'mid',
         dmg: 9, hitstun: 14, blockstun: 8, pushHit: 34, pushBlock: 24, gain: 6,
         blurb: 'Your "fast" button, and it still loses the speed war. It hits like a truck.',
         tag: 'heavy poke',
@@ -743,7 +847,7 @@ const CHARS = {
   },
 
   blade: {
-    id: 'blade', name: 'Blade', accent: '#a78bfa', hp: 137,
+    id: 'blade', name: 'Blade', accent: '#a78bfa', hp: 124,
     tagline: 'Fastest and longest, made of glass. You win the exchange or you lose the round.',
     tweaks: {
       closeIn: { dash: { from: 0, to: 11, dist: 150, toward: true } },
@@ -754,21 +858,21 @@ const CHARS = {
       flick: M({
         id: 'flick', name: 'Flick', cat: 'strike', key: '1',
         startup: 3, active: 2, recovery: 7, range: 108, level: 'mid',
-        dmg: 9, hitstun: 11, blockstun: 7, pushHit: 26, pushBlock: 20, gain: 6,
+        dmg: 7, hitstun: 11, blockstun: 7, pushHit: 26, pushBlock: 20, gain: 6,
         blurb: 'Three frames. Nothing in the game beats it to the punch — it just barely hurts.',
         tag: 'fastest',
       }),
       slice: M({
         id: 'slice', name: 'Slice', cat: 'strike', key: '2',
         startup: 7, active: 3, recovery: 12, range: 128, level: 'low',
-        dmg: 15, hitstun: 22, blockstun: 9, pushHit: 36, pushBlock: 28, gain: 8,
+        dmg: 13, hitstun: 22, blockstun: 9, pushHit: 36, pushBlock: 28, gain: 8,
         knockdown: true,
         blurb: 'Low, long, and quick. Your main way to make High Guard a mistake.', tag: 'low',
       }),
       crescent: M({
         id: 'crescent', name: 'Crescent', cat: 'strike', key: '3',
         startup: 11, active: 3, recovery: 15, range: 138, level: 'high',
-        dmg: 18, hitstun: 25, blockstun: 13, pushHit: 42, pushBlock: 30, gain: 10,
+        dmg: 16, hitstun: 25, blockstun: 13, pushHit: 42, pushBlock: 30, gain: 10,
         blurb: 'High, and faster than most overheads. Still too slow for a Parry to catch.',
         tag: 'high',
       }),
@@ -880,11 +984,19 @@ function availableMoves(state, i) {
   });
 }
 
-const cloneState = (s) => ({
-  turn: s.turn, round: s.round, wins: [...s.wins],
-  over: s.over, roundOver: s.roundOver, stall: s.stall,
-  fighters: s.fighters.map((f) => ({ ...f })),
-});
+const cloneState = (s) => (Array.isArray(s.teams)
+  ? {
+    turn: s.turn, round: s.round, wins: [...s.wins],
+    over: s.over, roundOver: s.roundOver, stall: s.stall,
+    teams: s.teams.map((t) => t.map((f) => ({ ...f }))),
+    point: [...s.point],
+    cooldown: s.cooldown.map((c) => [...c]),
+  }
+  : {
+    turn: s.turn, round: s.round, wins: [...s.wins],
+    over: s.over, roundOver: s.roundOver, stall: s.stall,
+    fighters: s.fighters.map((f) => ({ ...f })),
+  });
 
 /* -------------------------------------------------------------- simulation */
 
@@ -909,74 +1021,94 @@ function dashOffset(m, f) {
  * Conflating them is what makes trades resolve wrong, so they stay separate all the way
  * out to the summary.
  */
-function resolveTurn(state, moveIds) {
-  const s = cloneState(state);
-  s.roundOver = null;
-  const sides = [0, 1].map((i) => {
-    const f = s.fighters[i];
-    return {
-      i, f, m: moveOf(f.char, moveIds[i]),
-      x0: f.x, x: f.x, push: 0, dir: 0,
-      atk: null, def: null, armourUsed: false, counter: false,
-      contactAt: null, cutAt: null,
-      dmgDealt: 0, gainPts: 0, spent: moveOf(f.char, moveIds[i]).cost,
-    };
-  });
-  sides[0].dir = sides[0].x0 <= sides[1].x0 ? 1 : -1;
-  sides[1].dir = -sides[0].dir;
+/*
+ * The frame loop is written against a flat list of *actors*, not two fighters. In a solo
+ * duel that list is exactly the two point fighters and everything below reduces to the
+ * original 1v1 rules. In squad mode it also carries called assists, which is what lets a
+ * team combo exist at all: a second attacker landing inside the stun your first one caused.
+ */
+function makeActor(team, role, f, m, delay = 0, xOffset = 0) {
+  return {
+    team, role, f, m, delay,
+    x0: f.x + xOffset, x: f.x + xOffset, push: 0, dir: 0,
+    atk: null, def: null, armourUsed: false, counter: false,
+    contactAt: null, cutAt: null,
+    dmgDealt: 0, gainPts: 0, spent: m.cost,
+  };
+}
 
-  const startCombo = [s.fighters[0].combo, s.fighters[1].combo];
-  const total = Math.max(moveDuration(sides[0].m), moveDuration(sides[1].m), 1);
+const isPoint = (a) => a.role === 'point';
+/** Local frame for this actor — assists start their move a few frames late. */
+const lf = (a, f) => f - a.delay;
+
+/**
+ * Play one turn out, frame by frame, over an arbitrary set of actors.
+ *
+ * Two distinct results are tracked per actor and they are not the same thing:
+ *   `atk` — what my own move did   ('hit' | 'block' | 'armoured' | 'parried' | 'clash' | 'whiff')
+ *   `def` — what happened to me    ('cut' | 'guarded' | 'parry' | 'armour' | 'clash')
+ * Conflating them is what makes trades resolve wrong, so they stay separate throughout.
+ */
+function simulate(s, actors, startCombo) {
+  const points = [actors.find((a) => a.team === 0 && isPoint(a)), actors.find((a) => a.team === 1 && isPoint(a))];
+  points[0].dir = points[0].x0 <= points[1].x0 ? 1 : -1;
+  points[1].dir = -points[0].dir;
+  for (const a of actors) if (!isPoint(a)) a.dir = points[a.team].dir;
+
+  const total = Math.max(...actors.map((a) => a.delay + moveDuration(a.m)), 1);
   const timeline = [];
   const events = [];
 
-  const cutBefore = (sd, f) => sd.cutAt !== null && sd.cutAt < f;
-  const iframed = (sd, f) => !cutBefore(sd, f) && within(f, sd.m.invuln);
+  const cutBefore = (a, f) => a.cutAt !== null && a.cutAt < f;
+  const active = (a, f) => lf(a, f) >= 0 && lf(a, f) <= moveDuration(a.m) && !cutBefore(a, f);
+  const iframed = (a, f) => !cutBefore(a, f) && within(lf(a, f), a.m.invuln);
 
   for (let f = 0; f <= total; f++) {
-    // 1. movement. A fighter interrupted at frame k freezes where they were at frame k.
-    for (const sd of sides) {
-      const upto = sd.cutAt === null ? f : sd.cutAt;
-      const sign = sd.m.dash && sd.m.dash.toward === false ? -1 : 1;
-      sd.x = clampX(sd.x0 + sd.dir * sign * dashOffset(sd.m, upto) + sd.push);
+    // 1. movement. An actor interrupted at frame k freezes where they were at frame k.
+    for (const a of actors) {
+      const upto = a.cutAt === null ? lf(a, f) : lf(a, a.cutAt);
+      const sign = a.m.dash && a.m.dash.toward === false ? -1 : 1;
+      a.x = clampX(a.x0 + a.dir * sign * dashOffset(a.m, Math.max(0, upto)) + a.push);
     }
-    separate(sides);
+    separate(points);
 
-    // 2. contact. Both hitboxes are tested against the same frame, so real trades happen
-    //    rather than one side silently winning every tie.
+    // 2. contact. Every live hitbox is tested against the same frame, so genuine trades
+    //    happen rather than one side silently winning every tie.
     const pending = [];
-    for (const atk of sides) {
+    for (const atk of actors) {
       if (atk.atk || cutBefore(atk, f)) continue;
+      const k = lf(atk, f);
       const m = atk.m;
-      if (!m.dmg) continue;
-      if (f < m.startup || f >= m.startup + m.active) continue;
-      if (Math.abs(atk.x - sides[1 - atk.i].x) > m.range) continue;
+      if (!m.dmg || k < m.startup || k >= m.startup + m.active) continue;
+      if (!targetFor(actors, atk, f)) continue;
       pending.push(atk);
     }
 
     for (const atk of pending) {
       if (atk.atk) continue;                       // already settled by a clash this frame
-      const def = sides[1 - atk.i];
+      const def = targetFor(actors, atk, f);
+      if (!def) continue;
       const m = atk.m;
       const dm = def.m;
-      const defLive = !cutBefore(def, f);
+      const defLive = !cutBefore(def, f) && active(def, f);
+      const dk = lf(def, f);
 
       // grab vs grab — nobody wins, both bounce off
       if (m.cat === 'grab' && dm.cat === 'grab' && defLive && pending.includes(def)) {
         atk.atk = 'clash'; atk.def = 'clash'; atk.contactAt = f;
         def.atk = 'clash'; def.def = 'clash'; def.contactAt = f;
         atk.push += -atk.dir * 70; def.push += -def.dir * 70;
-        events.push({ f, type: 'clash', by: atk.i });
+        events.push({ f, type: 'clash', by: atk.team });
         continue;
       }
 
-      if (iframed(def, f)) { events.push({ f, type: 'iframe', by: atk.i, at: def.i }); continue; }
+      if (iframed(def, f)) { events.push({ f, type: 'iframe', by: atk.team, at: def.team }); continue; }
 
-      // parry window. Grabs are unparryable, which is what keeps Parry an honest gamble.
-      if (defLive && dm.parry && within(f, [dm.parry.from, dm.parry.to]) && m.parryable) {
+      // parry window. Grabs are unparryable, which keeps Parry an honest gamble.
+      if (defLive && dm.parry && within(dk, [dm.parry.from, dm.parry.to]) && m.parryable) {
         atk.atk = 'parried'; atk.contactAt = f; atk.cutAt = f;
         def.def = 'parry'; def.contactAt = f; def.gainPts += dm.gain;
-        events.push({ f, type: 'parry', by: def.i });
+        events.push({ f, type: 'parry', by: def.team });
         continue;
       }
 
@@ -990,15 +1122,15 @@ function resolveTurn(state, moveIds) {
         def.gainPts += dm.gain + 6;
         atk.gainPts += Math.round(m.gain * 0.4);
         def.push += def.dir * -m.pushBlock * 0.55;
-        events.push({ f, type: 'block', by: atk.i, dmg: chip });
+        events.push({ f, type: 'block', by: atk.team, dmg: chip });
         continue;
       }
 
       // Super-armour: absorbs one strike on the way in, at reduced damage and without
-      // being interrupted. Grabs go straight through it, which is what keeps the
-      // approach game honest — armour beats pokes, Grab beats armour, Dodge beats Grab.
-      if (defLive && def.m.armour && !def.armourUsed && within(f, def.m.armour) && m.cat !== 'grab') {
-        const soak = Math.max(1, Math.round(scaleDamage(m.dmg, def.f, startCombo[atk.i]) * 0.5));
+      // being interrupted. Grabs go straight through it, which keeps the approach game
+      // honest — armour beats pokes, Grab beats armour, Dodge beats Grab.
+      if (defLive && dm.armour && !def.armourUsed && within(dk, dm.armour) && m.cat !== 'grab') {
+        const soak = Math.max(1, Math.round(scaleDamage(m.dmg, def.f, startCombo[atk.team]) * 0.5));
         def.f.hp = Math.max(0, def.f.hp - soak);
         def.f.burst = Math.min(RULES.BURST_FULL, def.f.burst + soak);
         def.armourUsed = true;
@@ -1006,18 +1138,21 @@ function resolveTurn(state, moveIds) {
         atk.dmgDealt += soak;
         atk.atk = 'armoured'; atk.contactAt = f;
         atk.gainPts += Math.round(m.gain * 0.5);
-        events.push({ f, type: 'armour', by: def.i, dmg: soak });
+        events.push({ f, type: 'armour', by: def.team, dmg: soak });
         continue;
       }
 
-      // Counter-hit: catching someone in the wind-up of their own attack pays extra.
-      // This is what makes raw speed worth having — the fastest button in the game is
-      // only a 3-frame poke until it starts interrupting people, and then it is a threat.
-      const counter = def.m.dmg > 0 && f < def.m.startup;
+      // Counter-hit: catching someone in the wind-up of their own attack pays extra. This
+      // is what makes raw speed worth having — the fastest button in the game is only a
+      // 3-frame poke until it starts interrupting people, and then it is a threat.
+      const counter = dm.dmg > 0 && active(def, f) && dk < dm.startup;
       // Powering through a hit on armour costs you some of your own follow-through.
       const armourTax = atk.armourUsed ? RULES.ARMOUR_TAX : 1;
+      // An assist caught in the open is exposed — that is the price of calling one early.
+      const exposed = isPoint(def) ? 1 : RULES.ASSIST_VULN;
       const dealt = Math.round(
-        scaleDamage(m.dmg, def.f, startCombo[atk.i]) * (counter ? RULES.COUNTER_SCALE : 1) * armourTax,
+        scaleDamage(m.dmg, def.f, startCombo[atk.team])
+        * (counter ? RULES.COUNTER_SCALE : 1) * armourTax * exposed,
       );
       if (counter) atk.counter = true;
       def.f.hp = Math.max(0, def.f.hp - dealt);
@@ -1027,89 +1162,352 @@ function resolveTurn(state, moveIds) {
       atk.atk = 'hit'; atk.contactAt = f;
       def.def = 'cut'; def.cutAt = f;
       def.push += def.dir * -m.pushHit * 0.55;
-      events.push({ f, type: 'hit', by: atk.i, dmg: dealt, level: m.level, kd: m.knockdown, counter });
+      events.push({
+        f, type: 'hit', by: atk.team, dmg: dealt, level: m.level,
+        kd: m.knockdown, counter, onAssist: !isPoint(def), fromAssist: !isPoint(atk),
+      });
     }
 
     timeline.push({
       f,
-      x: [sides[0].x, sides[1].x],
-      hp: [s.fighters[0].hp, s.fighters[1].hp],
-      phase: sides.map((sd) => phaseOf(sd, f)),
+      x: [points[0].x, points[1].x],
+      hp: [points[0].f.hp, points[1].f.hp],
+      phase: points.map((a) => phaseOf(a, lf(a, f))),
+      extras: actors.filter((a) => !isPoint(a) && lf(a, f) <= moveDuration(a.m))
+        .map((a) => ({
+          team: a.team, char: a.f.char, x: a.x,
+          phase: lf(a, f) < 0 ? 'move' : phaseOf(a, lf(a, f)),
+        })),
       events: events.filter((e) => e.f === f),
     });
   }
 
-  for (const sd of sides) if (!sd.atk && sd.m.dmg) sd.atk = 'whiff';
+  for (const a of actors) if (!a.atk && a.m.dmg) a.atk = 'whiff';
+  return { points, total, timeline, events };
+}
 
-  // 3. settle — when does each fighter get to act again?
-  const actionable = sides.map((sd) => {
-    const other = sides[1 - sd.i];
-    if (sd.def === 'parry') return (sd.contactAt ?? 0) + 1;
-    if (sd.def === 'guarded') return (sd.contactAt ?? 0) + (other.m.blockstun || 8);
-    if (sd.def === 'cut') return (sd.cutAt ?? 0) + other.m.hitstun + (other.counter ? RULES.COUNTER_STUN : 0);
-    if (sd.atk === 'parried') return (sd.cutAt ?? 0) + RULES.PARRY_STUN;
-    if (sd.def === 'clash') return (sd.contactAt ?? 0) + 12;
-    return moveDuration(sd.m);
-  });
-  const adv = [actionable[1] - actionable[0], actionable[0] - actionable[1]];
-
-  // 4. commit to the real state
-  for (const sd of sides) {
-    const f = sd.f;
-    f.x = clampX(sd.x);
-    f.meterPts += sd.gainPts;
-    let levels = Math.floor(f.meterPts / RULES.METER_PER_LEVEL);
-    f.meterPts -= levels * RULES.METER_PER_LEVEL;
-    if (sd.m.cat === 'hustle' && sd.def === null) levels += 2;   // uncontested Hustle
-    if (sd.m.cat === 'burst') f.burst = 0;
-    f.meter = Math.max(0, Math.min(RULES.MAX_METER, f.meter - sd.spent + levels));
-  }
-  separateFighters(s.fighters, sides[0].dir === 1 ? 0 : 1);
-
-  // A trade resets both fighters to neutral: neither earned the pressure.
-  const traded = sides[0].def === 'cut' && sides[1].def === 'cut';
-  for (const sd of sides) {
-    const other = sides[1 - sd.i];
-    sd.f.state = (sd.def === 'cut' && !traded)
-      ? (other.m.knockdown ? 'down' : 'stunned')
-      : 'neutral';
-    sd.f.combo = (sd.atk === 'hit' && !traded) ? startCombo[sd.i] + 1 : 0;
-  }
-
-  // Sadness, borrowed from the source game: refusing to engage costs you health. It is
-  // tracked per fighter rather than globally, so the one running away is the one who
-  // bleeds — otherwise two passive fighters just tie on health and the round is a draw.
-  const anyDamage = sides.some((sd) => sd.dmgDealt > 0);
-  s.stall = anyDamage ? 0 : s.stall + 1;
-  const gapBefore = Math.abs(state.fighters[0].x - state.fighters[1].x);
-  const gapAfter = Math.abs(s.fighters[0].x - s.fighters[1].x);
-  const closing = gapAfter < gapBefore - 5;
-  const stallDmg = [0, 0];
-  for (const sd of sides) {
-    const f = sd.f;
-    const engaged = anyDamage || (closing && sd.m.dash?.toward === true);
-    f.sad = engaged ? Math.max(0, f.sad - 2) : f.sad + 1;
-    if (f.sad > RULES.STALL_GRACE) {
-      stallDmg[sd.i] = Math.min(8, (f.sad - RULES.STALL_GRACE) * 2);
-      f.hp = Math.max(0, f.hp - stallDmg[sd.i]);
+/** Who does this attack connect with? The nearest enemy inside its reach. */
+function targetFor(actors, atk, f) {
+  let best = null, bestD = Infinity;
+  for (const d of actors) {
+    if (d.team === atk.team) continue;
+    if (lf(d, f) > moveDuration(d.m)) continue;                   // already left the field
+    const dist = Math.abs(atk.x - d.x);
+    if (dist > atk.m.range) continue;
+    // Ties go to the point fighter: an assist standing on top of them is not a shield.
+    if (dist < bestD - 0.001 || (Math.abs(dist - bestD) <= 0.001 && isPoint(d))) {
+      best = d; bestD = dist;
     }
   }
+  return best;
+}
 
+/** When can this point fighter act again? */
+function actionableAt(a, enemyPoint, actors) {
+  if (a.def === 'parry') return (a.contactAt ?? 0) + 1;
+  // Whoever actually connected decides the stun, which in squad mode may be an assist.
+  const hitter = actors.find((o) => o.team !== a.team && o.contactAt === (a.contactAt ?? a.cutAt)
+    && (o.atk === 'hit' || o.atk === 'block')) ?? enemyPoint;
+  if (a.def === 'guarded') return (a.contactAt ?? 0) + (hitter.m.blockstun || 8);
+  if (a.def === 'cut') return (a.cutAt ?? 0) + hitter.m.hitstun + (hitter.counter ? RULES.COUNTER_STUN : 0);
+  if (a.atk === 'parried') return (a.cutAt ?? 0) + RULES.PARRY_STUN;
+  if (a.def === 'clash') return (a.contactAt ?? 0) + 12;
+  return a.delay + moveDuration(a.m);
+}
+
+/** Bank meter, spend costs, and apply the uncontested-Hustle bonus. */
+function commitMeter(a) {
+  const f = a.f;
+  f.meterPts += a.gainPts;
+  let levels = Math.floor(f.meterPts / RULES.METER_PER_LEVEL);
+  f.meterPts -= levels * RULES.METER_PER_LEVEL;
+  if (a.m.cat === 'hustle' && a.def === null) levels += 2;
+  if (a.m.cat === 'burst') f.burst = 0;
+  f.meter = Math.max(0, Math.min(RULES.MAX_METER, f.meter - a.spent + levels));
+}
+
+function resolveTurn(state, moveIds) {
+  const s = cloneState(state);
+  s.roundOver = null;
+  const startCombo = [s.fighters[0].combo, s.fighters[1].combo];
+  const actors = [0, 1].map((i) => makeActor(i, 'point', s.fighters[i], moveOf(s.fighters[i].char, moveIds[i])));
+
+  const { points, total, timeline, events } = simulate(s, actors, startCombo);
+  const actionable = points.map((a) => actionableAt(a, points[1 - a.team], actors));
+  const adv = [actionable[1] - actionable[0], actionable[0] - actionable[1]];
+
+  for (const a of actors) { a.f.x = clampX(a.x); commitMeter(a); }
+  separateFighters(s.fighters, points[0].dir === 1 ? 0 : 1);
+
+  // A trade resets both fighters to neutral: neither earned the pressure.
+  const traded = points[0].def === 'cut' && points[1].def === 'cut';
+  for (const a of points) {
+    const other = points[1 - a.team];
+    a.f.state = (a.def === 'cut' && !traded) ? (other.m.knockdown ? 'down' : 'stunned') : 'neutral';
+    a.f.combo = (a.atk === 'hit' && !traded) ? startCombo[a.team] + 1 : 0;
+  }
+
+  const stallDmg = applySadness(s, state, points);
   s.turn += 1;
   settleRound(s);
 
-  const summary = sides.map((sd, i) => ({
-    move: sd.m,
-    outcome: sd.atk ?? 'idle',
-    defence: sd.def,
-    dmgDealt: sd.dmgDealt,
-    dmgTaken: sides[1 - i].dmgDealt,
+  const summary = points.map((a, i) => ({
+    move: a.m,
+    outcome: a.atk ?? 'idle',
+    defence: a.def,
+    dmgDealt: a.dmgDealt,
+    dmgTaken: points[1 - i].dmgDealt,
     adv: adv[i],
-    counter: sd.counter,
-    contactAt: sd.contactAt,
+    counter: a.counter,
+    contactAt: a.contactAt,
   }));
 
   return { state: s, timeline, events, summary, adv, actionable, total, traded, stallDmg };
+}
+
+/*
+ * Sadness, borrowed from the source game: refusing to engage costs you health. It is
+ * tracked per fighter rather than globally, so the one running away is the one who bleeds —
+ * otherwise two passive fighters just tie on health and the round is a draw.
+ */
+function applySadness(s, before, points) {
+  const anyDamage = points.some((a) => a.dmgDealt > 0);
+  s.stall = anyDamage ? 0 : s.stall + 1;
+  const beforeFs = before.fighters ?? before.teams.map((t, i) => t[before.point[i]]);
+  const afterFs = s.fighters ?? s.teams.map((t, i) => t[s.point[i]]);
+  const gapBefore = Math.abs(beforeFs[0].x - beforeFs[1].x);
+  const gapAfter = Math.abs(afterFs[0].x - afterFs[1].x);
+  const closing = gapAfter < gapBefore - 5;
+  const stallDmg = [0, 0];
+  for (const a of points) {
+    const f = a.f;
+    const engaged = anyDamage || (closing && a.m.dash?.toward === true);
+    f.sad = engaged ? Math.max(0, f.sad - 2) : f.sad + 1;
+    if (f.sad > RULES.STALL_GRACE) {
+      stallDmg[a.team] = Math.min(8, (f.sad - RULES.STALL_GRACE) * 2);
+      f.hp = Math.max(0, f.hp - stallDmg[a.team]);
+    }
+  }
+  return stallDmg;
+}
+
+
+/* ------------------------------------------------------------------ squad */
+
+/*
+ * Squad mode: three fighters a side, one on point and two on the bench.
+ *
+ * Every turn you order your point fighter *and* may call one benched teammate, who runs in
+ * ahead of you and performs their chosen assist move a few frames later. That delay is the
+ * whole feature: land a knockdown, call an assist into the stun, and the two of them combo
+ * together. The cost is that the assist arrives in front of you and is fully exposed, so a
+ * call into a fast poke gets your teammate hurt and puts them on a long cooldown.
+ */
+
+function newSquadMatch(teamA, teamB) {
+  const mid = (RULES.ARENA_MIN + RULES.ARENA_MAX) / 2;
+  const build = (team, side) => team.map((slot, n) => {
+    const f = newFighter(mid + (side === 0 ? -1 : 1) * RULES.START_GAP / 2, `P${side + 1}-${n + 1}`, slot.char);
+    f.assist = slot.assist ?? Object.values(CHARS[slot.char].strikes)[0].id;
+    // Three fighters a side share the round, so each carries a smaller pool. Otherwise a
+    // squad match simply never finishes inside the clock.
+    f.maxHp = Math.round(f.maxHp * RULES.SQUAD_HP_SCALE);
+    f.hp = f.maxHp;
+    return f;
+  });
+  return {
+    turn: 1, round: 1, wins: [0, 0], over: null, roundOver: null, stall: 0,
+    teams: [build(teamA, 0), build(teamB, 1)],
+    point: [0, 0],
+    cooldown: [[0, 0, 0], [0, 0, 0]],
+  };
+}
+
+const isSquad = (s) => Array.isArray(s.teams);
+const pointOf = (s, i) => (isSquad(s) ? s.teams[i][s.point[i]] : s.fighters[i]);
+const teamAlive = (s, i) => s.teams[i].filter((f) => f.hp > 0).length;
+
+/** Living teammates who are not currently on point, in slot order. */
+const benchOf = (s, i) => s.teams[i]
+  .map((f, n) => ({ f, n }))
+  .filter(({ f, n }) => n !== s.point[i] && f.hp > 0);
+
+/** A squad choice is "<moveId>" or "<moveId>|<slot>" when a teammate is called with it. */
+const encodeChoice = (moveId, assistSlot) => (assistSlot == null ? moveId : `${moveId}|${assistSlot}`);
+function decodeChoice(id) {
+  const bar = id.indexOf('|');
+  return bar < 0 ? { moveId: id, assist: null } : { moveId: id.slice(0, bar), assist: Number(id.slice(bar + 1)) };
+}
+
+/** Point-fighter moves available in squad mode, including the tag options. */
+function squadMoves(s, i) {
+  const f = pointOf(s, i);
+  const bench = benchOf(s, i);
+  if (f.hp <= 0) return bench.map((b, k) => moveOf(f.char, k === 0 ? 'tag1' : 'tag2'));   // forced swap
+  const ids = f.state === 'down' ? ['quickRise', 'rollAway', 'wakeSuper']
+    : f.state === 'stunned' ? ['burst', 'diIn', 'diOut']
+      : neutralSet(f.char);
+  const table = moveTable(f.char);
+  const list = ids.map((id) => table[id]).filter((m) => {
+    if (m.cost > f.meter) return false;
+    if (m.cat === 'burst' && f.burst < RULES.BURST_FULL) return false;
+    return true;
+  });
+  // Tagging is only legal from neutral — you cannot swap out of hitstun.
+  if (f.state === 'neutral') bench.forEach((b, k) => list.push(table[k === 0 ? 'tag1' : 'tag2']));
+  return list;
+}
+
+/**
+ * Every legal choice for this side: each point move on its own, plus the same move paired
+ * with each teammate who is off cooldown. Solo states return their moves unchanged, so the
+ * threat board, the yomi chain and the AI all work in both modes without knowing which.
+ */
+function optionsFor(state, i) {
+  if (!isSquad(state)) {
+    return availableMoves(state, i).map((m) => ({ id: m.id, move: m, assist: null }));
+  }
+  const out = [];
+  const callable = benchOf(state, i).filter(({ n }) => state.cooldown[i][n] === 0);
+  for (const m of squadMoves(state, i)) {
+    out.push({ id: m.id, move: m, assist: null });
+    if (m.cat === 'tag') continue;                     // you cannot swap and call at once
+    for (const { n, f } of callable) {
+      out.push({ id: encodeChoice(m.id, n), move: m, assist: n, assistFighter: f });
+    }
+  }
+  return out;
+}
+
+/** Resolve a turn in whichever mode this state is. */
+const resolve = (state, ids) => (isSquad(state) ? resolveSquadTurn(state, ids) : resolveTurn(state, ids));
+
+function resolveSquadTurn(state, choiceIds) {
+  const s = cloneState(state);
+  s.roundOver = null;
+  const picks = choiceIds.map(decodeChoice);
+  const points = [0, 1].map((i) => pointOf(s, i));
+  const startCombo = [points[0].combo, points[1].combo];
+
+  const actors = [];
+  const called = [null, null];
+  for (const i of [0, 1]) {
+    const f = points[i];
+    actors.push(makeActor(i, 'point', f, moveOf(f.char, picks[i].moveId)));
+    const slot = picks[i].assist;
+    if (slot != null && s.teams[i][slot]?.hp > 0 && s.cooldown[i][slot] === 0) {
+      const mate = s.teams[i][slot];
+      mate.x = f.x;
+      const lead = (f.x <= points[1 - i].x ? 1 : -1) * RULES.ASSIST_LEAD;
+      actors.push(makeActor(i, 'assist', mate, moveOf(mate.char, mate.assist), RULES.ASSIST_DELAY, lead));
+      called[i] = slot;
+    }
+  }
+
+  const sim = simulate(s, actors, startCombo);
+  const pts = sim.points;
+  const actionable = pts.map((a) => actionableAt(a, pts[1 - a.team], actors));
+  const adv = [actionable[1] - actionable[0], actionable[0] - actionable[1]];
+
+  for (const a of actors) { if (isPoint(a)) a.f.x = clampX(a.x); commitMeter(a); }
+  keepApart(...(pts[0].dir === 1 ? [pts[0].f, pts[1].f] : [pts[1].f, pts[0].f]));
+
+  const traded = pts[0].def === 'cut' && pts[1].def === 'cut';
+  for (const a of pts) {
+    const hitter = actors.find((o) => o.team !== a.team && o.cutAt === null && o.contactAt === a.cutAt && o.atk === 'hit')
+      ?? pts[1 - a.team];
+    a.f.state = (a.def === 'cut' && !traded) ? (hitter.m.knockdown ? 'down' : 'stunned') : 'neutral';
+    a.f.combo = (a.atk === 'hit' && !traded) ? startCombo[a.team] + 1 : 0;
+  }
+  // A team combo is one combo. Two attackers connecting in the same turn is a two-hit
+  // string, so the count climbs by both and proration applies across the pair.
+  for (const i of [0, 1]) {
+    const hits = actors.filter((a) => a.team === i && a.atk === 'hit').length;
+    if (hits && !traded) pts[i].f.combo = startCombo[i] + hits;
+    // An assist that lands leaves the victim stunned even if the point fighter whiffed.
+    const lander = actors.filter((a) => a.team === i && a.atk === 'hit' && !isPoint(a)).pop();
+    const victim = pts[1 - i];
+    if (lander && !traded && victim.f.hp > 0 && victim.def !== 'parry') {
+      victim.f.state = lander.m.knockdown ? 'down' : 'stunned';
+    }
+  }
+
+  const stallDmg = applySadness(s, state, pts);
+
+  // Cooldowns tick down; a called teammate goes on ice, longer if they got caught.
+  for (const i of [0, 1]) {
+    s.cooldown[i] = s.cooldown[i].map((c) => Math.max(0, c - 1));
+    if (called[i] != null) {
+      const assist = actors.find((a) => a.team === i && !isPoint(a));
+      s.cooldown[i][called[i]] = assist?.def === 'cut' ? RULES.ASSIST_PUNISHED : RULES.ASSIST_COOLDOWN;
+    }
+  }
+
+  // Tagging, and the forced swap when your point fighter is down.
+  for (const i of [0, 1]) {
+    const pick = picks[i];
+    const bench = benchOf(state, i);
+    if (pick.moveId === 'tag1' || pick.moveId === 'tag2') {
+      const target = bench[pick.moveId === 'tag1' ? 0 : 1];
+      if (target) swapPoint(s, i, target.n);
+    } else if (pointOf(s, i).hp <= 0) {
+      const next = benchOf(s, i)[0];
+      if (next) swapPoint(s, i, next.n);
+    }
+  }
+
+  // Benched fighters catch their breath — but only back up to half health. Uncapped, two
+  // benched teammates regenerate faster than a fight deals damage, and every match runs
+  // to the clock instead of to a knockout.
+  for (const i of [0, 1]) {
+    s.teams[i].forEach((f, n) => {
+      if (n === s.point[i] || f.hp <= 0) return;
+      const cap = f.maxHp * RULES.BENCH_HEAL_CAP;
+      if (f.hp < cap) f.hp = Math.min(cap, f.hp + RULES.BENCH_HEAL);
+    });
+  }
+
+  s.turn += 1;
+  settleSquad(s);
+
+  const summary = pts.map((a, i) => ({
+    move: a.m,
+    outcome: a.atk ?? 'idle',
+    defence: a.def,
+    dmgDealt: actors.filter((o) => o.team === i).reduce((n, o) => n + o.dmgDealt, 0),
+    dmgTaken: actors.filter((o) => o.team !== i).reduce((n, o) => n + o.dmgDealt, 0),
+    adv: adv[i],
+    counter: a.counter,
+    contactAt: a.contactAt,
+    assist: actors.find((o) => o.team === i && !isPoint(o)) ?? null,
+  }));
+
+  return {
+    state: s, timeline: sim.timeline, events: sim.events, summary, adv, actionable,
+    total: sim.total, traded, stallDmg, called,
+  };
+}
+
+function swapPoint(s, i, slot) {
+  const out = s.teams[i][s.point[i]];
+  const inc = s.teams[i][slot];
+  inc.x = out.x;
+  inc.state = 'neutral';
+  inc.combo = 0;
+  s.point[i] = slot;
+}
+
+/** Squad matches have no rounds — the three lives are the rounds. */
+function settleSquad(s) {
+  const alive = [teamAlive(s, 0), teamAlive(s, 1)];
+  if (alive[0] === 0 || alive[1] === 0) {
+    s.over = { winner: alive[0] === 0 && alive[1] === 0 ? null : (alive[0] === 0 ? 1 : 0), by: 'ko' };
+    return;
+  }
+  if (s.turn > RULES.SQUAD_TURN_LIMIT) {
+    const share = [0, 1].map((i) => s.teams[i].reduce((n, f) => n + f.hp, 0) / s.teams[i].reduce((n, f) => n + f.maxHp, 0));
+    s.over = { winner: share[0] === share[1] ? null : (share[0] > share[1] ? 0 : 1), by: 'time' };
+  }
 }
 
 /** Decide whether this round (and then the match) has ended. */
@@ -1134,6 +1532,7 @@ function settleRound(s) {
 }
 
 function phaseOf(sd, f) {
+  if (sd.m.cat === 'tag') return 'move';
   if (sd.cutAt !== null && f >= sd.cutAt) return sd.atk === 'parried' ? 'parried' : 'stun';
   const m = sd.m;
   if (m.cat === 'guard') return sd.def === 'guarded' && f >= (sd.contactAt ?? 1e9) ? 'blockstun' : 'guard';
@@ -1177,8 +1576,8 @@ function separateFighters(fs, leftIdx) {
 function scoreFor(result, i) {
   const me = result.summary[i];
   const them = result.summary[1 - i];
-  const myF = result.state.fighters[i];
-  const theirF = result.state.fighters[1 - i];
+  const myF = pointOf(result.state, i);
+  const theirF = pointOf(result.state, 1 - i);
 
   let v = 0;
   // Damage is weighed against each fighter's own health pool, so a Bruiser and a Blade
@@ -1191,18 +1590,35 @@ function scoreFor(result, i) {
   if (myF.state === 'down') v -= 7;
   if (theirF.state === 'stunned') v += 5;
   if (myF.state === 'stunned') v -= 5;
-  if (result.state.roundOver?.winner === i) v += 500;
-  if (result.state.roundOver?.winner === 1 - i) v -= 500;
+  const ended = result.state.over ?? result.state.roundOver;
+  if (ended?.winner === i) v += 500;
+  if (ended?.winner === 1 - i) v -= 500;
+
+  // Squad mode: the point fighter's health is not the whole picture. Chipping a teammate
+  // off the board is worth real value, and losing your own assist to a poke is not free.
+  if (isSquad(result.state)) {
+    const share = (n) => result.state.teams[n].reduce((a, f) => a + f.hp, 0)
+      / result.state.teams[n].reduce((a, f) => a + f.maxHp, 0);
+    // Weighted lightly on purpose. Valuing team health too highly makes both sides turtle,
+    // and every squad match ends on the clock at three-quarters health instead of with a
+    // knockout. The point-fighter damage terms above already carry the exchange.
+    v += (share(i) - share(1 - i)) * 12;
+    v += (teamAlive(result.state, 1 - i) < teamAlive(result.state, i) ? 12 : 0);
+  }
 
   // Being cornered is a genuine loss of options, so hold the middle.
   const wall = Math.min(myF.x - RULES.ARENA_MIN, RULES.ARENA_MAX - myF.x);
   v += Math.min(wall, 180) * 0.012;
 
   // A one-turn lookahead cannot see that closing the gap is what makes damage possible
-  // later, so spacing gets a small explicit nudge toward the range where strikes reach.
-  // The target is per character: a Blade wants to sit where a Bruiser cannot touch it.
+  // later, so spacing needs an explicit pull toward the range where strikes reach. The
+  // target is per character: a Blade wants to sit where a Bruiser cannot touch it.
+  //
+  // This weight matters more than it looks. Too low and both sides drift to a 270-unit
+  // stand-off where nothing reaches, only 4% of turns land, and every match is decided by
+  // the clock. At 9 the AI holds a real fighting range and roughly a fifth of turns connect.
   const g = Math.abs(myF.x - theirF.x);
-  v += Math.max(0, 1 - Math.abs(g - preferredGap(myF.char)) / 200) * 3.0;
+  v += Math.max(0, 1 - Math.abs(g - preferredGap(myF.char)) / 200) * 9.0;
 
   // A whiffed attack is a wasted commitment. Without this the AI is happy to throw pokes
   // into thin air forever, because at max range a whiff costs it nothing at all.
@@ -1245,7 +1661,16 @@ function pair(state, aIdx, aMove, bMove) {
   const ids = [];
   ids[aIdx] = aMove;
   ids[1 - aIdx] = bMove;
-  return resolveTurn(state, ids);
+  return resolve(state, ids);
+}
+
+/** Display name for a choice — squad choices carry the teammate they call. */
+function choiceLabel(state, i, id) {
+  const { moveId, assist } = decodeChoice(id);
+  const f = pointOf(state, i);
+  const name = moveOf(f.char, moveId)?.name ?? moveId;
+  if (assist == null || !isSquad(state)) return name;
+  return `${name} + ${CHARS[state.teams[i][assist].char].name}`;
 }
 
 /**
@@ -1255,10 +1680,13 @@ function pair(state, aIdx, aMove, bMove) {
  */
 function threatBoard(state, myIdx, myMoveId) {
   const themIdx = 1 - myIdx;
-  const rows = availableMoves(state, themIdx).map((m) => {
-    const result = pair(state, myIdx, myMoveId, m.id);
+  const rows = optionsFor(state, themIdx).map((opt) => {
+    const m = opt.move;
+    const result = pair(state, myIdx, myMoveId, opt.id);
     return {
       move: m,
+      option: opt,
+      label: choiceLabel(state, themIdx, opt.id),
       score: scoreFor(result, themIdx),
       mine: scoreFor(result, myIdx),
       verdict: verdictFor(result, myIdx),
@@ -1277,8 +1705,8 @@ function threatBoard(state, myIdx, myMoveId) {
   // to actually spend it. Being minus at full screen costs you nothing and is not counted.
   const bad = rows.filter((r) => {
     if (r.dmgTaken > 0) return true;
-    const after = r.result.state.fighters;
-    return r.adv <= -8 && Math.abs(after[0].x - after[1].x) <= 220;
+    const gapAfter = Math.abs(pointOf(r.result.state, 0).x - pointOf(r.result.state, 1).x);
+    return r.adv <= -8 && gapAfter <= 220;
   }).length;
   return { rows, best: rows[0], risk: rows.length ? bad / rows.length : 0 };
 }
@@ -1286,11 +1714,15 @@ function threatBoard(state, myIdx, myMoveId) {
 /** The single best reply `responder` has to a move the other side has committed to. */
 function bestAnswer(state, responder, committedMove) {
   let best = null;
-  for (const m of availableMoves(state, responder)) {
-    const result = pair(state, 1 - responder, committedMove, m.id);
+  for (const opt of optionsFor(state, responder)) {
+    const result = pair(state, 1 - responder, committedMove, opt.id);
     const score = scoreFor(result, responder);
     if (!best || score > best.score) {
-      best = { move: m, score, result, verdict: verdictFor(result, responder) };
+      best = {
+        move: opt.move, id: opt.id, option: opt, score, result,
+        label: choiceLabel(state, responder, opt.id),
+        verdict: verdictFor(result, responder),
+      };
     }
   }
   return best;
@@ -1308,7 +1740,12 @@ function bestAnswer(state, responder, committedMove) {
  * that repeat is the point where the read loops and you are back to a coin flip.
  */
 function yomiChain(state, myIdx, myMoveId, depth = 4) {
-  const chain = [{ side: myIdx, move: moveOf(state.fighters[myIdx].char, myMoveId), label: 'You commit' }];
+  const chain = [{
+    side: myIdx,
+    move: moveOf(pointOf(state, myIdx).char, decodeChoice(myMoveId).moveId),
+    name: choiceLabel(state, myIdx, myMoveId),
+    label: 'You commit',
+  }];
   const seen = [new Set([myMoveId]), new Set()];
   let side = myIdx;
   let committed = myMoveId;
@@ -1317,18 +1754,19 @@ function yomiChain(state, myIdx, myMoveId, depth = 4) {
     const responder = 1 - side;
     const answer = bestAnswer(state, responder, committed);
     if (!answer) break;
-    const loops = seen[responder].has(answer.move.id);
+    const loops = seen[responder].has(answer.id);
     chain.push({
       side: responder,
       move: answer.move,
+      name: answer.label,
       verdict: answer.verdict,
       label: responder === myIdx ? 'So you' : 'They answer',
       loops,
     });
     if (loops) break;
-    seen[responder].add(answer.move.id);
+    seen[responder].add(answer.id);
     side = responder;
-    committed = answer.move.id;
+    committed = answer.id;
   }
   return chain;
 }
@@ -1338,10 +1776,13 @@ function yomiChain(state, myIdx, myMoveId, depth = 4) {
  * The threat board teaches you before the guess; this teaches you after it.
  */
 function postMortem(preState, myIdx, myMoveId, theirMoveId) {
-  const rows = availableMoves(preState, myIdx).map((m) => {
-    const result = pair(preState, myIdx, m.id, theirMoveId);
+  const rows = optionsFor(preState, myIdx).map((opt) => {
+    const m = opt.move;
+    const result = pair(preState, myIdx, opt.id, theirMoveId);
     return {
       move: m,
+      id: opt.id,
+      label: choiceLabel(preState, myIdx, opt.id),
       score: scoreFor(result, myIdx),
       verdict: verdictFor(result, myIdx),
       dmgDealt: result.summary[myIdx].dmgDealt,
@@ -1350,23 +1791,30 @@ function postMortem(preState, myIdx, myMoveId, theirMoveId) {
     };
   });
   rows.sort((a, b) => b.score - a.score);
-  const played = rows.find((r) => r.move.id === myMoveId) ?? null;
+  const played = rows.find((r) => r.id === myMoveId) ?? null;
   const best = rows[0];
   return {
     best,
     played,
-    wasBest: !!played && !!best && played.move.id === best.move.id,
+    wasBest: !!played && !!best && played.id === best.id,
     rank: played ? rows.indexOf(played) + 1 : null,
     total: rows.length,
   };
 }
 
-/** Risk rating for every move you could pick — drives the dots on the buttons. */
-function riskProfile(state, myIdx) {
+/**
+ * Risk rating for the moves you could pick — drives the bars on the buttons.
+ *
+ * In squad mode the assist call is a separate toggle in the UI rather than 38 separate
+ * buttons, so pass the currently selected teammate and only those options get scored. That
+ * keeps the per-turn cost near the solo game's instead of tripling it.
+ */
+function riskProfile(state, myIdx, assistSlot = undefined) {
   const out = {};
-  for (const m of availableMoves(state, myIdx)) {
-    const b = threatBoard(state, myIdx, m.id);
-    out[m.id] = { risk: b.risk, best: b.best, rows: b.rows };
+  for (const opt of optionsFor(state, myIdx)) {
+    if (assistSlot !== undefined && opt.assist !== assistSlot && opt.move.cat !== 'tag') continue;
+    const b = threatBoard(state, myIdx, opt.id);
+    out[opt.id] = { risk: b.risk, best: b.best, rows: b.rows, option: opt };
   }
   return out;
 }
@@ -1375,8 +1823,8 @@ function riskProfile(state, myIdx) {
 
 function payoffMatrix(state, aiIdx) {
   const humanIdx = 1 - aiIdx;
-  const mine = availableMoves(state, aiIdx);
-  const theirs = availableMoves(state, humanIdx);
+  const mine = optionsFor(state, aiIdx);
+  const theirs = optionsFor(state, humanIdx);
   const M2 = mine.map((am) => theirs.map((hm) => scoreFor(pair(state, aiIdx, am.id, hm.id), aiIdx)));
   return { mine, theirs, M: M2 };
 }
@@ -1489,7 +1937,7 @@ const COL = { ink: '#e9eef4', dim: '#3a4653', floor: '#131a22' };
 // Player one always reads cool, player two always reads warm, whichever characters are
 // picked — you should never have to work out which fighter is yours.
 const SIDE_TINT = ['#3fe0cf', '#ff5f78'];
-const sideColour = (state, i) => (state ? mixHex(CHARS[state.fighters[i].char].accent, SIDE_TINT[i], 0.55) : SIDE_TINT[i]);
+const sideColour = (state, i) => (state ? mixHex(CHARS[pointOf(state, i).char].accent, SIDE_TINT[i], 0.55) : SIDE_TINT[i]);
 
 function mixHex(a, b, t) {
   const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -1836,7 +2284,7 @@ class Stage {
 
   drawPreview(g) {
     const { state, myMove, theirBestMove, showThreat } = this.preview;
-    const [a, b] = state.fighters;
+    const [a, b] = [pointOf(state, 0), pointOf(state, 1)];
     const facing = a.x <= b.x ? 1 : -1;
 
     if (myMove?.range) {
@@ -1884,6 +2332,27 @@ class Stage {
         g.beginPath(); g.arc(tl.x[i], GROUND - 62, 26, 0, Math.PI * 2); g.stroke();
         g.globalAlpha = 1;
       }
+    }
+
+    // Called assists. Drawn a touch smaller and tinted to their own character, so it is
+    // obvious at a glance that a second body just arrived and whose it is.
+    for (const ex of tl.extras ?? []) {
+      const face = ex.team === 0 ? facing : -facing;
+      const colour = mixHex(CHARS[ex.char].accent, SIDE_TINT[ex.team], 0.3);
+      g.save();
+      g.translate(ex.x, GROUND);
+      g.scale(0.86, 0.86);
+      g.translate(-ex.x, -GROUND);
+      drawFighter(g, ex.x, face, poseFor(ex.phase, { id: '', level: 'mid' }, this.frame / 10), colour, {
+        ghost: 0.14, flash: ex.phase === 'active' ? 1 : 0,
+      });
+      g.restore();
+      g.fillStyle = colour;
+      g.globalAlpha = 0.85;
+      g.font = '700 9px ui-monospace, monospace';
+      g.textAlign = 'center';
+      g.fillText(CHARS[ex.char].name.toUpperCase(), ex.x, GROUND - 116);
+      g.globalAlpha = 1;
     }
 
     g.fillStyle = '#33404f';
@@ -1959,6 +2428,13 @@ const game = {
   difficulty: 'fighter',
   oracle: 'full',              // 'full' | 'chain' | 'risk' | 'off'
   chars: ['duelist', 'blade'],
+  mode: 'solo',                // 'solo' | 'squad'
+  squad: [                     // your lineup; slot 0 starts on point
+    { char: 'duelist', assist: 'sweep' },
+    { char: 'blade', assist: 'slice' },
+    { char: 'bruiser', assist: 'hammer' },
+  ],
+  assistPick: null,            // teammate slot currently armed, or null
   rand: rng((Date.now() ^ 0x9e3779b9) >>> 0),
   log: [],
   lastResult: null,
@@ -1971,34 +2447,52 @@ let stage, sfx;
 
 const fmtAdv = (n) => (n > 0 ? `+${n}` : `${n}`);
 const pct = (n) => `${Math.round(n * 100)}%`;
-const myChar = () => game.state.fighters[ME].char;
-const theirChar = () => game.state.fighters[THEM].char;
+const myChar = () => pointOf(game.state, ME).char;
+const theirChar = () => pointOf(game.state, THEM).char;
+const squadMode = () => isSquad(game.state);
+/** The choice id for a move, folding in the teammate currently armed. */
+const choiceId = (moveId) => {
+  if (!squadMode() || game.assistPick == null) return moveId;
+  const m = moveOf(myChar(), moveId);
+  if (m?.cat === 'tag') return moveId;              // cannot swap and call at once
+  return encodeChoice(moveId, game.assistPick);
+};
 
 function riskColour(r) {
   if (r < 0.25) return 'var(--good)';
   if (r < 0.55) return 'var(--warn)';
   return 'var(--bad)';
 }
-const myMoves = () => availableMoves(game.state, ME);
+/** Distinct point-fighter moves available now — assists are a separate toggle. */
+function myMoves() {
+  if (!squadMode()) return availableMoves(game.state, ME);
+  const seen = new Set();
+  return optionsFor(game.state, ME)
+    .filter((o) => o.assist === null && !seen.has(o.move.id) && seen.add(o.move.id))
+    .map((o) => o.move);
+}
 
 /** Move groups are derived from the character's own set, so every roster stays in sync. */
 function groupsFor(charId, fighterState) {
   if (fighterState === 'stunned') return [{ title: 'Escape', ids: ['burst', 'diIn', 'diOut'] }];
   if (fighterState === 'down') return [{ title: 'Wake-up', ids: ['quickRise', 'rollAway', 'wakeSuper'] }];
   const strikes = Object.values(CHARS[charId].strikes).map((m) => m.id);
-  return [
+  const groups = [
     { title: 'Strikes', ids: strikes },
     { title: 'Defence', ids: ['highGuard', 'lowGuard', 'parry', 'dodge'] },
     { title: 'Footsies & Meter', ids: ['closeIn', 'backOff', 'hustle', CHARS[charId].superMove.id] },
   ];
+  if (squadMode()) groups.push({ title: 'Tag', ids: ['tag1', 'tag2'] });
+  return groups;
 }
 
 /* ------------------------------------------------------------------ HUD */
 
 function renderHud() {
-  const [me, them] = game.state.fighters;
-  for (const [side, f] of [['#p0', me], ['#p1', them]]) {
-    const root = $(side);
+  for (const i of [ME, THEM]) {
+    const f = pointOf(game.state, i);
+    const root = $(i === ME ? '#p0' : '#p1');
+    renderSquadBars(root, i);
     root.querySelector('.hp i').style.width = `${(f.hp / f.maxHp) * 100}%`;
     root.querySelector('.hpv').textContent = Math.max(0, Math.round(f.hp));
     root.querySelector('.nm').textContent = CHARS[f.char].name;
@@ -2012,14 +2506,44 @@ function renderHud() {
         : f.sad > RULES.STALL_GRACE ? 'SADNESS' : '';
     const rounds = root.querySelector('.rounds');
     rounds.textContent = '';
-    for (let i = 0; i < RULES.ROUNDS_TO_WIN; i++) {
-      rounds.append(el('span', `rd${i < game.state.wins[side === '#p0' ? 0 : 1] ? ' won' : ''}`));
+    if (!squadMode()) {
+      for (let n = 0; n < RULES.ROUNDS_TO_WIN; n++) {
+        rounds.append(el('span', `rd${n < game.state.wins[i] ? ' won' : ''}`));
+      }
     }
   }
-  const left = Math.max(0, RULES.TURN_LIMIT - game.state.turn + 1);
+  const limit = squadMode() ? RULES.SQUAD_TURN_LIMIT : RULES.TURN_LIMIT;
+  const left = Math.max(0, limit - game.state.turn + 1);
   $('#clock .t').textContent = left;
-  $('#clock .l').textContent = `round ${game.state.round} · turns left`;
+  $('#clock .l').textContent = squadMode()
+    ? `${teamAlive(game.state, ME)} v ${teamAlive(game.state, THEM)} · turns left`
+    : `round ${game.state.round} · turns left`;
   $('#clock').classList.toggle('low', left <= 10);
+}
+
+/** Three slim bars a side in squad mode: who is on point, who is hurt, who is out. */
+function renderSquadBars(root, i) {
+  const host = root.querySelector('.squadbars');
+  host.hidden = !squadMode();
+  host.textContent = '';
+  if (!squadMode()) return;
+  game.state.teams[i].forEach((f, n) => {
+    const row = el('div', `sq${n === game.state.point[i] ? ' point' : ''}${f.hp <= 0 ? ' out' : ''}`);
+    const name = el('span', 'sqn', CHARS[f.char].name);
+    name.style.color = CHARS[f.char].accent;
+    const bar = el('span', 'sqb');
+    const fill = el('i');
+    fill.style.width = `${Math.max(0, (f.hp / f.maxHp) * 100)}%`;
+    fill.style.background = CHARS[f.char].accent;
+    bar.append(fill);
+    const cd = game.state.cooldown[i][n];
+    const badge = el('span', 'sqc', f.hp <= 0 ? 'OUT'
+      : n === game.state.point[i] ? 'PT' : (cd ? `${cd}` : '●'));
+    // The right-hand side mirrors, so build it in reverse rather than flipping text
+    // direction — `direction: rtl` reorders the glyphs and the labels collide.
+    row.append(...(i === ME ? [name, bar, badge] : [badge, bar, name]));
+    host.append(row);
+  });
 }
 
 /* ------------------------------------------------------------- move grid */
@@ -2029,7 +2553,8 @@ function renderMoves() {
   host.textContent = '';
   const avail = new Map(myMoves().map((m) => [m.id, m]));
 
-  for (const grp of groupsFor(myChar(), game.state.fighters[ME].state)) {
+  renderAssistBar();
+  for (const grp of groupsFor(myChar(), pointOf(game.state, ME).state)) {
     const box = el('div', 'movegroup');
     box.append(el('h3', null, grp.title));
     const grid = el('div', 'grid');
@@ -2039,7 +2564,7 @@ function renderMoves() {
       const b = el('button', 'mv');
       b.type = 'button';
       b.disabled = !avail.has(id) || game.phase !== 'choosing';
-      b.setAttribute('aria-pressed', String(game.picked === id));
+      b.setAttribute('aria-pressed', String(game.picked === choiceId(id)));
       b.dataset.id = id;
 
       const n = el('div', 'n');
@@ -2050,11 +2575,11 @@ function renderMoves() {
 
       const risk = el('div', 'risk');
       const fill = el('i');
-      const p = game.profile?.[id];
+      const p = game.profile?.[choiceId(id)];
       if (p && game.oracle !== 'off') {
         fill.style.width = pct(p.risk);
         fill.style.background = riskColour(p.risk);
-        b.title = `${m.blurb}\nRisk ${pct(p.risk)} — best answer: ${p.best.move.name}`;
+        b.title = `${m.blurb}\nRisk ${pct(p.risk)} — best answer: ${p.best.label ?? p.best.move.name}`;
       } else {
         fill.style.width = '0%';
         b.title = m.blurb;
@@ -2062,14 +2587,46 @@ function renderMoves() {
       risk.append(fill);
       b.append(risk);
 
-      b.addEventListener('mouseenter', () => setHover(id));
-      b.addEventListener('focus', () => setHover(id));
+      b.addEventListener('mouseenter', () => setHover(choiceId(id)));
+      b.addEventListener('focus', () => setHover(choiceId(id)));
       b.addEventListener('mouseleave', () => setHover(null));
-      b.addEventListener('click', () => commit(id));
+      b.addEventListener('click', () => commit(choiceId(id)));
       grid.append(b);
     }
     box.append(grid);
     host.append(box);
+  }
+}
+
+/**
+ * The assist toggle. Arming a teammate here folds them into whichever move you press next,
+ * which keeps the grid at thirteen buttons instead of thirty-eight while still letting you
+ * order two of your three fighters in the same turn.
+ */
+function renderAssistBar() {
+  const bar = $('#assistbar');
+  bar.hidden = !squadMode();
+  if (!squadMode()) return;
+  bar.textContent = '';
+  bar.append(el('span', 'lbl', 'Call teammate'));
+
+  const mk = (slot, label, sub, disabled) => {
+    const b = el('button', `as${game.assistPick === slot ? ' on' : ''}`);
+    b.type = 'button';
+    b.disabled = disabled || game.phase !== 'choosing';
+    b.append(el('span', 'an', label));
+    if (sub) b.append(el('span', 'ad', sub));
+    b.addEventListener('click', () => {
+      game.assistPick = slot;
+      refreshProfile();
+      renderMoves(); renderBoard(); paintStage();
+    });
+    return b;
+  };
+  bar.append(mk(null, 'Solo', 'no call', false));
+  for (const { f, n } of benchOf(game.state, ME)) {
+    const cd = game.state.cooldown[ME][n];
+    bar.append(mk(n, CHARS[f.char].name, cd ? `${cd} turn${cd > 1 ? 's' : ''}` : moveOf(f.char, f.assist).name, cd > 0));
   }
 }
 
@@ -2106,9 +2663,10 @@ function renderBoard() {
     return;
   }
 
-  const m = moveOf(myChar(), focusId);
   const p = game.profile[focusId];
-  sub.innerHTML = `If you throw <b>${m.name}</b>, their options rank like this:`;
+  if (!p) { rowsHost.append(el('div', 'empty', 'Pick a move to see their answers.')); return; }
+  const m = p.option?.move ?? moveOf(myChar(), decodeChoice(focusId).moveId);
+  sub.innerHTML = `If you throw <b>${choiceLabel(game.state, ME, focusId)}</b>, their options rank like this:`;
 
   $('#riskwrap').hidden = false;
   $('#riskval').textContent = `${pct(p.risk)} of their answers beat it`;
@@ -2128,7 +2686,7 @@ function renderBoard() {
   p.rows.forEach((row, i) => {
     const r = el('div', `row${i === 0 ? ' best' : ''}`);
     const nm = el('div', 'nm');
-    nm.append(el('span', null, row.move.name));
+    nm.append(el('span', null, row.label ?? row.move.name));
     if (i === 0) nm.append(el('span', 'crown', 'BEST ANSWER'));
     r.append(nm);
     r.append(el('span', `vd ${row.verdict.key}`, row.verdict.label));
@@ -2156,7 +2714,7 @@ function renderChain(host, focusId) {
     const node = el('div', `link ${link.side === ME ? 'mine' : 'theirs'}${link.loops ? ' loops' : ''}`);
     node.append(el('div', 'depth', i === 0 ? 'YOU COMMIT' : `LAYER ${i}`));
     const nm = el('div', 'nm');
-    nm.append(el('span', null, link.move.name));
+    nm.append(el('span', null, link.name ?? link.move.name));
     nm.style.color = CHARS[link.side === ME ? myChar() : theirChar()].accent;
     node.append(nm);
     node.append(el('div', 'who', link.side === ME ? 'your read' : 'their read'));
@@ -2180,16 +2738,27 @@ function setHover(id) {
 function paintStage() {
   if (game.phase !== 'choosing') return;
   const focusId = game.hovered || game.picked;
-  const mine = focusId ? moveOf(myChar(), focusId) : null;
+  const mine = focusId ? moveOf(myChar(), decodeChoice(focusId).moveId) : null;
   const showThreat = game.oracle === 'full' || game.oracle === 'chain';
-  const best = focusId && showThreat ? game.profile[focusId].best.move : null;
+  const best = focusId && showThreat ? game.profile[focusId]?.best.move ?? null : null;
   stage.setPreview(game.state, mine, best, showThreat);
+}
+
+function refreshProfile() {
+  game.profile = squadMode()
+    ? riskProfile(game.state, ME, game.assistPick)
+    : riskProfile(game.state, ME);
 }
 
 function refreshTurn() {
   game.picked = null;
   game.hovered = null;
-  game.profile = riskProfile(game.state, ME);
+  // An armed teammate who is now on cooldown (or on point) cannot be called any more.
+  if (squadMode() && game.assistPick != null
+    && !benchOf(game.state, ME).some(({ n }) => n === game.assistPick && game.state.cooldown[ME][n] === 0)) {
+    game.assistPick = null;
+  }
+  refreshProfile();
   renderHud();
   renderMoves();
   renderBoard();
@@ -2198,7 +2767,7 @@ function refreshTurn() {
 
 function commit(id) {
   if (game.phase !== 'choosing') return;
-  if (!myMoves().some((m) => m.id === id)) return;
+  if (!optionsFor(game.state, ME).some((o) => o.id === id)) return;
 
   sfx.click();
   game.picked = id;
@@ -2207,9 +2776,9 @@ function commit(id) {
   game.preTurn = game.state;
 
   const theirId = chooseAiMove(game.state, THEM, game.difficulty, game.history, game.rand)
-    ?? availableMoves(game.state, THEM)[0].id;
+    ?? optionsFor(game.state, THEM)[0].id;
 
-  const result = resolveTurn(game.state, [id, theirId]);
+  const result = resolve(game.state, [id, theirId]);
   game.lastResult = result;
 
   renderMoves();
@@ -2224,7 +2793,7 @@ function commit(id) {
   stage.onEnd = () => finishTurn(result, id, theirId);
   stage.play(result, game.state);
 
-  showBanner(`${moveOf(myChar(), id).name}  vs  ${moveOf(theirChar(), theirId).name}`);
+  showBanner(`${choiceLabel(game.state, ME, id)}  vs  ${choiceLabel(game.state, THEM, theirId)}`);
 }
 
 function finishTurn(result, myId, theirId) {
@@ -2232,8 +2801,8 @@ function finishTurn(result, myId, theirId) {
   showBanner(`${v.label}   ·   ${fmtAdv(result.summary[ME].adv)}f`, v.key);
   renderCoach(myId, theirId);
 
-  const bits = [`T${game.state.turn}`, moveOf(myChar(), myId).name, 'vs',
-    moveOf(theirChar(), theirId).name, '→', v.label];
+  const bits = [`T${game.state.turn}`, choiceLabel(game.state, ME, myId), 'vs',
+    choiceLabel(game.state, THEM, theirId), '→', v.label];
   if (result.stallDmg?.some((d) => d > 0)) bits.push(`(sadness ${result.stallDmg.join('/')})`);
   game.log.unshift(bits.join(' '));
   game.log.length = Math.min(game.log.length, 30);
@@ -2259,18 +2828,18 @@ function renderCoach(myId, theirId) {
   const box = $('#coach');
   box.hidden = false;
   box.textContent = '';
-  const them = moveOf(theirChar(), theirId).name;
+  const them = choiceLabel(game.preTurn, THEM, theirId);
 
   if (pm.wasBest) {
     box.className = 'coach good';
     box.append(el('b', null, 'Best answer available. '));
-    box.append(document.createTextNode(`They played ${them} and nothing beat it harder than ${pm.played.move.name}.`));
+    box.append(document.createTextNode(`They played ${them} and nothing beat it harder than ${pm.played.label}.`));
     return;
   }
   box.className = 'coach';
   box.append(el('b', null, `They played ${them}. `));
   box.append(document.createTextNode(
-    `${pm.best.move.name} was the answer — ${pm.best.verdict.label.toLowerCase()}, `
+    `${pm.best.label} was the answer — ${pm.best.verdict.label.toLowerCase()}, `
     + `you end ${fmtAdv(pm.best.adv)}f. Yours ranked ${pm.rank} of ${pm.total}.`,
   ));
 }
@@ -2305,10 +2874,13 @@ function endMatch() {
   const ov = $('#overlay');
   ov.hidden = false;
   const won = o.winner === ME;
-  ov.querySelector('h2').textContent = won ? 'YOU WIN' : 'YOU LOSE';
-  ov.querySelector('h2').style.color = won ? 'var(--you)' : 'var(--them)';
-  ov.querySelector('p').textContent =
-    `Match over, ${game.state.wins[0]}–${game.state.wins[1]}. ${o.by === 'time' ? 'Took the last round on time.' : 'Closed it with a knockout.'}`;
+  ov.querySelector('h2').textContent = o.winner === null ? 'DRAW' : won ? 'YOU WIN' : 'YOU LOSE';
+  ov.querySelector('h2').style.color = o.winner === null ? 'var(--warn)' : won ? 'var(--you)' : 'var(--them)';
+  ov.querySelector('p').textContent = squadMode()
+    ? `Squad match over, ${teamAlive(game.state, ME)} fighter(s) left to ${teamAlive(game.state, THEM)}. `
+      + (o.by === 'time' ? 'Decided on team health.' : 'A whole team went down.')
+    : `Match over, ${game.state.wins[0]}–${game.state.wins[1]}. `
+      + (o.by === 'time' ? 'Took the last round on time.' : 'Closed it with a knockout.');
   $('#playagain').textContent = 'Fight again';
   renderMoves();
 }
@@ -2330,11 +2902,21 @@ function advance() {
 function openSelect() {
   game.phase = 'select';
   const dlg = $('#select');
+  renderRoster();
+  renderLineup();
+  $('#modewrap').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mode === game.mode));
+  $('#squadwrap').hidden = game.mode !== 'squad';
+  $('#rivalwrap').hidden = game.mode === 'squad';
+  if (!dlg.open) dlg.showModal();
+}
+
+function renderRoster() {
   const host = $('#roster');
   host.textContent = '';
   for (const id of CHAR_IDS) {
     const c = CHARS[id];
-    const card = el('button', `card${game.chars[ME] === id ? ' picked' : ''}`);
+    const chosen = game.mode === 'squad' ? game.squad.some((s) => s.char === id) : game.chars[ME] === id;
+    const card = el('button', `card${chosen ? ' picked' : ''}`);
     card.type = 'button';
     card.dataset.id = id;
     const h = el('h3', null, c.name);
@@ -2359,21 +2941,82 @@ function openSelect() {
     }
     card.append(stats);
     card.addEventListener('click', () => {
-      game.chars[ME] = id;
-      host.querySelectorAll('.card').forEach((n) => n.classList.toggle('picked', n.dataset.id === id));
+      if (game.mode === 'squad') {
+        // Clicking a card sets your point fighter; the rest of the lineup shuffles down.
+        game.squad = [
+          { char: id, assist: defaultAssist(id) },
+          ...game.squad.filter((s) => s.char !== id),
+        ].slice(0, 3);
+        renderLineup();
+      } else {
+        game.chars[ME] = id;
+      }
+      renderRoster();
     });
     host.append(card);
   }
-  if (!dlg.open) dlg.showModal();
+}
+
+const defaultAssist = (charId) => Object.values(CHARS[charId].strikes)[1]?.id
+  ?? Object.values(CHARS[charId].strikes)[0].id;
+
+/**
+ * The lineup editor. Slot 1 starts on point; the other two are your assists, and the move
+ * you pick here is the one they run in and perform when you call them.
+ */
+function renderLineup() {
+  const host = $('#lineup');
+  host.textContent = '';
+  game.squad.forEach((slot, n) => {
+    const row = el('div', 'lrow');
+    row.append(el('span', 'ln', String(n + 1)));
+    const pick = el('select', 'lchar');
+    for (const id of CHAR_IDS) {
+      const o = el('option', null, CHARS[id].name);
+      o.value = id;
+      if (id === slot.char) o.selected = true;
+      pick.append(o);
+    }
+    pick.addEventListener('change', () => {
+      game.squad[n] = { char: pick.value, assist: defaultAssist(pick.value) };
+      renderLineup(); renderRoster();
+    });
+    row.append(pick);
+    row.append(el('span', 'lrole', n === 0 ? 'point' : 'assist'));
+
+    const amove = el('select', 'lmove');
+    for (const m of Object.values(CHARS[slot.char].strikes)) {
+      const o = el('option', null, `${m.name} · ${m.startup}f · ${m.dmg}`);
+      o.value = m.id;
+      if (m.id === slot.assist) o.selected = true;
+      amove.append(o);
+    }
+    amove.disabled = n === 0;
+    amove.addEventListener('change', () => { game.squad[n].assist = amove.value; });
+    row.append(amove);
+    host.append(row);
+  });
+  const dupes = new Set(game.squad.map((s) => s.char)).size !== game.squad.length;
+  $('#lineupnote').textContent = dupes
+    ? 'Duplicates are allowed — two of the same fighter is a legitimate plan.'
+    : 'Slot 1 starts on point. The other two are assists; their move is what they run in and do.';
 }
 
 function startMatch() {
   $('#select').close();
-  const rivalPick = $('#rival').value;
-  game.chars[THEM] = rivalPick === 'random'
-    ? CHAR_IDS[Math.floor(game.rand() * CHAR_IDS.length)]
-    : rivalPick;
-  game.state = newMatch(game.chars[ME], game.chars[THEM]);
+  const roll = () => CHAR_IDS[Math.floor(game.rand() * CHAR_IDS.length)];
+  if (game.mode === 'squad') {
+    const rival = [0, 1, 2].map(() => {
+      const c = roll();
+      return { char: c, assist: defaultAssist(c) };
+    });
+    game.state = newSquadMatch(game.squad.map((s) => ({ ...s })), rival);
+  } else {
+    const rivalPick = $('#rival').value;
+    game.chars[THEM] = rivalPick === 'random' ? roll() : rivalPick;
+    game.state = newMatch(game.chars[ME], game.chars[THEM]);
+  }
+  game.assistPick = null;
   game.phase = 'choosing';
   game.history = [];
   game.log = [];
@@ -2409,6 +3052,12 @@ function boot() {
   $('#helpbtn').addEventListener('click', () => $('#help').showModal());
   $('#helpclose').addEventListener('click', () => $('#help').close());
   $('#startfight').addEventListener('click', startMatch);
+  $('#modewrap').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-mode]');
+    if (!b) return;
+    game.mode = b.dataset.mode;
+    openSelect();
+  });
   $('#replay').addEventListener('click', () => {
     if (game.lastResult) { stage.play(game.lastResult); stage.onEnd = () => {}; }
   });
@@ -2420,8 +3069,19 @@ function boot() {
     if ($('#select').open) { if (e.key === 'Enter') startMatch(); return; }
     if (e.key === 'Enter' && (game.phase === 'over' || game.phase === 'roundover')) { advance(); return; }
     if (game.phase !== 'choosing') return;
-    const hit = myMoves().find((m) => m.key === e.key.toLowerCase());
-    if (hit) { e.preventDefault(); commit(hit.id); }
+    const k = e.key.toLowerCase();
+    if (squadMode() && (k === 'c' || k === 'v' || k === 'b')) {
+      e.preventDefault();
+      const bench = benchOf(game.state, ME);
+      const want = k === 'c' ? null : bench[k === 'v' ? 0 : 1]?.n ?? null;
+      if (want === null || game.state.cooldown[ME][want] === 0) {
+        game.assistPick = want;
+        refreshProfile(); renderMoves(); renderBoard(); paintStage();
+      }
+      return;
+    }
+    const hit = myMoves().find((m) => m.key === k);
+    if (hit) { e.preventDefault(); commit(choiceId(hit.id)); }
   });
 
   $('#diffnote').textContent = DIFFICULTY[game.difficulty].note;
