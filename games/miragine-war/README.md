@@ -48,13 +48,12 @@ against light, one against armoured. Armour then subtracts flat damage from ever
 
 That's the whole rock-paper-scissors:
 
-- A **Ninja** does 98 to light and 9 to armoured — it butchers cheap infantry and cannot dent plate.
-- A **Monk** is the reverse (26 / 152) — it exists to delete armoured units.
-- An **Iron Knight** has 14 armour, so a Newbie's 5 damage lands as the minimum chip of 2. Swarms
-  literally cannot kill it — but a **Vampire** hits it for 150 and heals 75% of that back.
-- The **Dread Lord** is deliberately LIGHT. If the whole top of the ladder were armoured, every
-  anti-light unit would be dead weight late game, so the second-most-expensive unit is a fast
-  unarmoured demon that Ninjas and Samurai can actually punish.
+- A **light-killer** (Ninja, Berserker, Headhunter, Gladiator) does 98 to light and 9 to armoured —
+  it butchers fodder and cannot dent plate.
+- An **armour-breaker** (Monk, Runecaster, Bone Mage, Oracle) is the reverse at 26 / 152 — it exists
+  to delete walls.
+- A **wall** (Iron Ox, Ice Giant, Mammoth, Minotaur) has 14 armour, so fodder's 5 damage lands as the
+  minimum chip of 2. Swarms literally cannot kill it; you need the breaker.
 
 Press <kbd>H</kbd> in game for the counter chart.
 
@@ -99,35 +98,43 @@ if you can hold the field. `Space` pauses, `-`/`=` set game speed (1–3×), `H`
 chart, `` ` `` mutes. Tapping a card selects it; tapping it again stops recruiting; hovering one
 picks that unit type out of the melee.
 
-## The roster
+## Armies
 
-A straight price ladder, cheapest to most expensive:
+Each player picks one of four armies on the menu — they can be different, and the CPU uses whichever
+you assign to P2.
 
-| # | Unit | Price | Income | HP | Armour | Type | vs Light | vs Armored | Range |
-|---|---|---|---|---|---|---|---|---|---|
-| 1 | Newbie | 15 | 2 | 70 | 0 | light | 12 | 5 | 40 |
-| 2 | Veteran | 40 | 4 | 140 | 1 | light | 21 | 10 | 44 |
-| 3 | Zombie | 65 | 5 | 320 | 2 | light | 18 | 13 | 40 |
-| 4 | Samurai | 130 | 7 | 190 | 2 | light | 58 | 14 | 48 |
-| 5 | Sword Man | 135 | 9 | 260 | 4 | **armored** | 33 | 24 | 48 |
-| 6 | Ninja | 230 | 11 | 170 | 1 | light | 98 | 9 | 44 |
-| 7 | Novice | 250 | 14 | 200 | 2 | light | 36 | 36 | 260 |
-| 8 | Heavy Sword | 360 | 17 | 540 | 8 | **armored** | 43 | 43 | 56 |
-| 9 | Monk | 570 | 20 | 260 | 3 | light | 26 | 152 | 208 |
-| 10 | Vampire | 880 | 24 | 460 | 4 | light | 58 | 150 | 52 |
-| 11 | Cavalry | 1020 | 28 | 620 | 6 | **armored** | 76 | 38 | 56 |
-| 12 | Immortal | 1050 | 33 | 1150 | 12 | **armored** | 51 | 51 | 56 |
-| 13 | Mage | 1330 | 38 | 300 | 2 | light | 78 | 78 | 316 |
-| 14 | Iron Knight | 2240 | 44 | 1700 | 14 | **armored** | 78 | 58 | 64 |
-| 15 | Dread Lord | 3200 | 52 | 1500 | 4 | light | 128 | 110 | 66 |
-| 16 | High Lord | 5700 | 62 | 2200 | 12 | **armored** | 130 | 108 | 74 |
+| Army | Character | Signature perk | Champion |
+|---|---|---|---|
+| **TRIBE** | Bone and muscle | Mammoth: +320 HP | **Chieftain** — every ally within 340 hits 30% harder |
+| **LEGION** | Shields and reach | Hoplite: +2 armour | **Zeus** — long-range splash that arcs to five more enemies |
+| **NORSE** | Everything charges at once | Berserker: swings 10% faster | **Thor** — a 190-radius cleave |
+| **DYNASTY** | Fire from range | Fire Archer: looses 5% faster | **Monkey King** — very fast, drains 38% of damage dealt |
 
-Mage and Cavalry carry the widest cleave — they are the answer to swarms. Dread Lord and High Lord
-cleave a little; the Iron Knight is a pure wall with none. Vampire drains. There is no unit cap —
-gold is the only limit.
+**Champions are limited to one on the field at a time.** They cost 5,600–6,100, they announce
+themselves when they arrive and when they die, and they are worth roughly their price in troops —
+three of the four hold against ~42 shield-line soldiers bought with the same gold.
+
+### The eight roles
+
+Every army fields the same eight jobs at the same stats. That is deliberate: simulated round-robins
+showed that even small per-faction stat tilts swung entire matchups — range worst of all, since a
+ranged unit fires from behind a screen and takes almost nothing back — so making one army "the
+long-ranged one" quietly made it the best one. Identity lives in the art, the names, the perk and the
+champion instead.
+
+| Role | Price | HP | Armour | Type | vs Light | vs Armored | Range | Job |
+|---|---|---|---|---|---|---|---|---|
+| fodder | 15 | 70 | 0 | light | 12 | 5 | 40 | cheap bodies, and what actually breaks a crystal |
+| shield line | 135 | 260 | 4 | armored | 33 | 24 | 48 | holds the middle |
+| light-killer | 230 | 170 | 1 | light | 98 | 9 | 44 | butchers fodder, cannot dent plate |
+| skirmisher | 250 | 200 | 2 | light | 36 | 36 | 260 | steady ranged damage |
+| armour-breaker | 570 | 260 | 3 | light | 26 | 152 | 208 | the answer to walls |
+| flanker | 1020 | 620 | 6 | armored | 76 | 38 | 56 | fast, cleaves 53 |
+| artillery | 1330 | 300 | 2 | light | 78 | 78 | 316 | longest reach, cleaves 99 |
+| wall | 2240 | 1700 | 14 | armored | 78 | 58 | 64 | swarms literally cannot hurt it |
 
 **Elites win the field, cheap troops break the crystal.** Siege damage is mostly per-body rather
-than per-power, so a High Lord is not also the best battering ram. Winning the fight and cashing it
+than per-power, so a champion is not also the best battering ram. Winning the fight and cashing it
 in are two different jobs.
 
 ## Notes on the build
@@ -147,6 +154,12 @@ in are two different jobs.
   a 50/50 enemy composition and caps itself at cheap units), normal reads the enemy through noise,
   hard reads it exactly. Benchmarked against a *strong* scripted player — one that counter-picks by
   value every 0.4s — easy wins 0/6, normal 3/6, hard 5/6.
+- **Mirror matches were not 50/50.** Testing the factions turned up a fairness bug that had nothing
+  to do with them: attacks resolve in array order, so troops earlier in the list strike first and can
+  kill before being struck back — and team 0's troops are reliably earlier. The sweep now alternates
+  direction each frame. (The harness still shows swings between identical runs, so its noise floor is
+  above the effect of a single faction perk; that is why the rosters are equal by construction rather
+  than balanced by measurement.)
 - **Balance is simulated, not guessed.** A headless harness runs round-robin duels between
   strategies — blind teching, counter-picking, tech-rushing, cheap swarming — and reports win/loss.
   It has caught three real design faults so far: teching beating counter-play every time (the roster
