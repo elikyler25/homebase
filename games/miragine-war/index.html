@@ -188,13 +188,13 @@
    UNIT TYPES  —  cls drives the counter matrix
    ============================================================ */
 const UNITS = [
-  { id:"peasant",  name:"Peasant",  cls:"inf",    cost:60,  hp:60,   atk:7,   rng:22,  spd:44, cd:0.7,  size:12, col:"#b8b2a0" },
-  { id:"spearman", name:"Spearman", cls:"pike",   cost:130, hp:130,  atk:15,  rng:40,  spd:38, cd:0.85, size:13, col:"#c9a86a" },
-  { id:"sword",    name:"Swordsman",cls:"inf",    cost:190, hp:200,  atk:22,  rng:26,  spd:46, cd:0.7,  size:15, col:"#d9d9e2" },
-  { id:"archer",   name:"Archer",   cls:"ranged", cost:230, hp:95,   atk:24,  rng:210, spd:36, cd:1.05, size:12, col:"#8fd98f" },
-  { id:"knight",   name:"Knight",   cls:"cav",    cost:350, hp:300,  atk:36,  rng:30,  spd:82, cd:0.8,  size:19, col:"#e0c25a", splash:26 },
-  { id:"mage",     name:"Mage",     cls:"mage",   cost:490, hp:120,  atk:44,  rng:165, spd:32, cd:1.5,  size:13, col:"#c78fe0", splash:52 },
-  { id:"giant",    name:"Giant",    cls:"tank",   cost:720, hp:1500, atk:70,  rng:44,  spd:26, cd:1.3,  size:27, col:"#9c7b5a", splash:50 },
+  { id:"peasant",  name:"Peasant",  cls:"inf",    cost:60,  hp:60,   atk:11,   rng:22,  spd:44, cd:0.7,  size:12, col:"#b8b2a0" },
+  { id:"spearman", name:"Spearman", cls:"pike",   cost:130, hp:130,  atk:23,  rng:40,  spd:38, cd:0.85, size:13, col:"#c9a86a" },
+  { id:"sword",    name:"Swordsman",cls:"inf",    cost:190, hp:200,  atk:34,  rng:26,  spd:46, cd:0.7,  size:15, col:"#d9d9e2" },
+  { id:"archer",   name:"Archer",   cls:"ranged", cost:230, hp:95,   atk:37,  rng:210, spd:36, cd:1.05, size:12, col:"#8fd98f" },
+  { id:"knight",   name:"Knight",   cls:"cav",    cost:350, hp:300,  atk:56,  rng:30,  spd:82, cd:0.8,  size:19, col:"#e0c25a", splash:26 },
+  { id:"mage",     name:"Mage",     cls:"mage",   cost:490, hp:120,  atk:68,  rng:165, spd:32, cd:1.5,  size:13, col:"#c78fe0", splash:52 },
+  { id:"giant",    name:"Giant",    cls:"tank",   cost:720, hp:1500, atk:108,  rng:44,  spd:26, cd:1.3,  size:27, col:"#9c7b5a", splash:50 },
 ];
 
 // attacker class -> defender class -> damage multiplier
@@ -219,8 +219,7 @@ const P2_LBL  = ["U","I","O","P","[","]","\\"];
 const BASE_HP   = 2200;
 const START_GOLD= 1400;
 const DEPLOY_T  = 25;      // seconds of deploy phase before auto-start
-const BATTLE_T  = 40;      // hard cap on a battle
-const FATIGUE_T = 16;      // after this, everyone starts bleeding out so no fight stalls
+const BATTLE_T  = 40;      // hard cap on a round; ends the round, never kills a unit
 
 const G = {
   phase: "menu",           // menu | deploy | battle | over
@@ -376,7 +375,6 @@ function spawn(idx, team, x, y) {
 function startBattle() {
   G.phase = "battle";
   G.t = 0;
-  G.fatigued = false;
   deploy();
   banner("CHARGE!", 900);
   sfxHorn();
@@ -419,18 +417,6 @@ function hitBase(team, amt) {          // team = the side taking damage
 }
 
 function stepBattle(dt) {
-  // fatigue: once a battle drags on, every soldier starts bleeding out, harder
-  // and harder. Guarantees a round resolves instead of grinding to the timer.
-  if (G.t > FATIGUE_T) {
-    if (!G.fatigued) { G.fatigued = true; banner("EXHAUSTION", 1100); }
-    const bleed = (G.t - FATIGUE_T) * 9 * dt;
-    for (const a of G.units) {
-      if (a.dead) continue;
-      a.hp -= bleed;
-      if (a.hp <= 0) { a.dead = true; puff(a.x, a.y, a.team, a.u.size); }
-    }
-  }
-
   for (const a of G.units) {
     if (a.dead) continue;
     a.cool -= dt;
