@@ -228,21 +228,21 @@ const SPAWN_X = { p: 140, e: FIELD_W - 140 };
 /* ---------------- content tables ---------------- */
 
 const AGES = [
-  { name: "Stone Age",    sky: ["#2b2417", "#4a3d24"], ground: "#3a3020", baseHp: 2400,  xpNext: 500,
+  { name: "Stone Age",    sky: ["#2b2417", "#4a3d24"], ground: "#3a3020", baseHp: 3600,  xpNext: 500,
     turret: { cost: 150,  dmg: 9,   range: 150, cd: 1.4, name: "Rock Thrower" },
-    special: { name: "Meteor",      dmg: 220,  cost: 0 } },
-  { name: "Medieval",     sky: ["#1b2436", "#38506e"], ground: "#2f4030", baseHp: 4000,  xpNext: 1900,
+    special: { name: "Meteor",       dmg: 120,  cost: 0 } },
+  { name: "Medieval",     sky: ["#1b2436", "#38506e"], ground: "#2f4030", baseHp: 6000,  xpNext: 1900,
     turret: { cost: 400,  dmg: 20,  range: 178, cd: 1.25, name: "Ballista" },
-    special: { name: "Arrow Rain",  dmg: 480,  cost: 0 } },
-  { name: "Renaissance",  sky: ["#241d2e", "#5b4a63"], ground: "#3c3a2c", baseHp: 6000,  xpNext: 5200,
+    special: { name: "Arrow Rain",   dmg: 260,  cost: 0 } },
+  { name: "Renaissance",  sky: ["#241d2e", "#5b4a63"], ground: "#3c3a2c", baseHp: 9000,  xpNext: 5200,
     turret: { cost: 900,  dmg: 44,  range: 200, cd: 1.2, name: "Culverin" },
-    special: { name: "Cannonade",   dmg: 1000, cost: 0 } },
-  { name: "Modern",       sky: ["#151b22", "#3d4a58"], ground: "#33383a", baseHp: 8500, xpNext: 14000,
+    special: { name: "Cannonade",    dmg: 520,  cost: 0 } },
+  { name: "Modern",       sky: ["#151b22", "#3d4a58"], ground: "#33383a", baseHp: 12500, xpNext: 14000,
     turret: { cost: 1800, dmg: 78,  range: 215, cd: 1.1, name: "Machine Gun" },
-    special: { name: "Air Strike",  dmg: 2100, cost: 0 } },
-  { name: "Future",       sky: ["#0d1a22", "#1f4e5c"], ground: "#26333a", baseHp: 12000, xpNext: Infinity,
+    special: { name: "Air Strike",   dmg: 1400, cost: 0 } },
+  { name: "Future",       sky: ["#0d1a22", "#1f4e5c"], ground: "#26333a", baseHp: 18000, xpNext: Infinity,
     turret: { cost: 3400, dmg: 135, range: 232, cd: 1.0, name: "Ion Cannon" },
-    special: { name: "Orbital Beam", dmg: 4500, cost: 0 } },
+    special: { name: "Orbital Beam", dmg: 3100, cost: 0 } },
 ];
 
 // [name, cost, hp, dmg, range, speed, atkCd, gold, xp, kind, splash]
@@ -365,7 +365,7 @@ function emit(side, slot) {
   side.units.push({
     side, d, dir, pow, slot,
     x: side.isPlayer ? SPAWN_X.p : SPAWN_X.e,
-    lane: rnd(-17, 17),
+    lane: rnd(-30, 30),
     hp: d.hp * pow, maxHp: d.hp * pow,
     cd: rnd(0, 0.3),
     age: side.age,
@@ -459,7 +459,7 @@ function updateStrikes(dt) {
         im.hit = true;
         const other = foe(st.side);
         for (const u of other.units)
-          if (!u.dead && Math.abs(u.x - im.x) < 74) damage(u, st.dmg, st.side);
+          if (!u.dead && Math.abs(u.x - im.x) < 74) damage(u, st.dmg, st.side, true);
         const bx = other.isPlayer ? BASE_X.p : BASE_X.e;
         if (Math.abs(bx - im.x) < 74) hitBase(other, st.dmg * 0.5, st.side);
         G.fx.push({ x: im.x, y: GROUND_Y - 12, r: st.age === 4 ? 40 : 30,
@@ -478,11 +478,11 @@ function updateStrikes(dt) {
 // damage. Damage climbs after the opening so armies churn faster than they can
 // be replaced, and any local advantage turns into a push instead of dissolving.
 function intensity() {
-  return 1 + clamp((G.t - 90) / 130, 0, 2.5);
+  return 1 + clamp((G.t - 150) / 260, 0, 1.5);
 }
 
-function damage(u, amt, from) {
-  amt *= intensity();
+function damage(u, amt, from, raw) {
+  if (!raw) amt *= intensity();
   u.hp -= amt;
   u.flash = 0.12;
   if (u.hp <= 0 && !u.dead) {
@@ -628,13 +628,19 @@ function update(dt) {
       const reach = u.d.rng + 12;
       if (tgt.dist > reach) {
         // walk, but don't overlap a friendly ahead of you
-        let blocked = false;
+        let blocker = null;
         for (const f of side.units) {
           if (f === u || f.dead) continue;
           const gap = (f.x - u.x) * u.dir;
-          if (gap > 0 && gap < 17 && Math.abs(f.lane - u.lane) < 8) { blocked = true; break; }
+          if (gap > 0 && gap < 17 && Math.abs(f.lane - u.lane) < 7) { blocker = f; break; }
         }
-        if (!blocked) {
+        if (blocker) {
+          // step aside rather than queue up behind a friend: a rank that just
+          // stands there is an army fighting at a fraction of its strength
+          const away = blocker.lane > u.lane ? -1 : 1;
+          u.lane = clamp(u.lane + away * 34 * dt, -30, 30);
+        }
+        if (!blocker) {
           u.x += u.d.spd * u.dir * dt;
           u.step += dt * u.d.spd * 0.28;
         }
@@ -1727,7 +1733,7 @@ function endGame(result) {              // result "win" = P1 (blue) took the rig
 }
 
 function start() {
-  aiPower = mode === "2p" ? 1 : 0.75 + (difficulty - 1) * 1.9;
+  aiPower = mode === "2p" ? 1 : 0.72 + (difficulty - 1) * 2.4;
   reset();
   resize();
   running = true; paused = false;
