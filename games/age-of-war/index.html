@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Age of War</title>
+<style>
+  :root {
+    --bg: #10131a;
+    --panel: #1a1f2b;
+    --panel-hi: #232a39;
+    --line: #303a4d;
+    --gold: #f2c14e;
+    --xp: #6fc3df;
+    --hp: #5fd07a;
+    --foe: #e0645a;
+    --text: #e7ecf3;
+    --muted: #8d99ad;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+  }
+  #wrap { display: flex; flex-direction: column; height: 100%; }
+
+  /* ---- top status bar ---- */
+  #top {
+    display: flex; align-items: center; gap: 14px;
+    padding: 8px 12px; background: var(--panel);
+    border-bottom: 1px solid var(--line); flex-wrap: wrap;
+  }
+  .stat { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+  .stat .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .bars { display: flex; gap: 12px; flex: 1; min-width: 260px; }
+  .barbox { flex: 1; }
+  .barlabel { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+  .bar { height: 12px; background: #0c0f15; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+  .bar > i { display: block; height: 100%; width: 100%; transition: width .15s linear; }
+  .bar span { position: absolute; }
+
+  /* ---- battlefield ---- */
+  #stage { position: relative; flex: 1; min-height: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #overlay {
+    position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center; flex-direction: column;
+    background: rgba(8,10,15,.86); text-align: center; gap: 14px; z-index: 5;
+  }
+  #overlay h1 { margin: 0; font-size: 44px; letter-spacing: -.02em; }
+  #overlay p { margin: 0; color: var(--muted); max-width: 460px; line-height: 1.5; }
+  .bigbtn {
+    background: var(--gold); color: #1a1206; border: 0; border-radius: 8px;
+    padding: 12px 26px; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .bigbtn:hover { filter: brightness(1.1); }
+  .diffrow { display: flex; gap: 8px; }
+  .diffbtn {
+    background: var(--panel-hi); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .diffbtn.on { border-color: var(--gold); color: var(--gold); }
+
+  /* ---- bottom control deck ---- */
+  #deck {
+    display: flex; gap: 8px; padding: 10px 12px; background: var(--panel);
+    border-top: 1px solid var(--line); align-items: stretch; flex-wrap: wrap;
+  }
+  .group { display: flex; gap: 8px; }
+  .sep { width: 1px; background: var(--line); margin: 2px 4px; }
+  .btn {
+    position: relative; overflow: hidden;
+    background: var(--panel-hi); border: 1px solid var(--line); border-radius: 8px;
+    color: var(--text); padding: 8px 12px; min-width: 108px; text-align: left;
+    cursor: pointer; font-family: inherit; transition: border-color .1s, transform .05s;
+  }
+  .btn:hover:not(:disabled) { border-color: #4a586e; }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { opacity: .42; cursor: not-allowed; }
+  .btn .n { display: block; font-size: 13px; font-weight: 700; }
+  .btn .c { display: block; font-size: 11px; color: var(--gold); margin-top: 2px; }
+  .btn .k { position: absolute; top: 4px; right: 6px; font-size: 10px; color: var(--muted); }
+  .btn .cd {
+    position: absolute; left: 0; bottom: 0; height: 3px; background: var(--xp); width: 0%;
+  }
+  .btn.evo { border-color: #6a5a2a; }
+  .btn.evo .c { color: var(--xp); }
+  .btn.spec { border-color: #5a2a2a; }
+  .btn.spec .c { color: var(--foe); }
+  #hint { font-size: 11px; color: var(--muted); align-self: center; margin-left: auto; }
+  @media (max-width: 760px) {
+    .btn { min-width: 84px; padding: 6px 8px; }
+    .btn .n { font-size: 11px; }
+    #hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="top">
+    <div class="stat"><span class="dot" style="background:var(--gold)"></span><span id="goldTxt">0</span></div>
+    <div class="stat" id="ageTxt">Stone Age</div>
+    <div class="bars">
+      <div class="barbox">
+        <div class="barlabel">Your Base <span id="hpTxt"></span></div>
+        <div class="bar"><i id="hpBar" style="background:var(--hp)"></i></div>
+      </div>
+      <div class="barbox">
+        <div class="barlabel">XP to next age <span id="xpTxt"></span></div>
+        <div class="bar"><i id="xpBar" style="background:var(--xp)"></i></div>
+      </div>
+      <div class="barbox">
+        <div class="barlabel">Enemy Base <span id="ehpTxt"></span></div>
+        <div class="bar"><i id="ehpBar" style="background:var(--foe)"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="overlay">
+      <h1 id="ovTitle">Age of War</h1>
+      <p id="ovText">Spawn units, earn gold from kills, bank XP to evolve through five ages, and smash the enemy base before they smash yours.</p>
+      <div class="diffrow" id="diffRow">
+        <button class="diffbtn" data-d="0.8">Easy</button>
+        <button class="diffbtn on" data-d="1">Normal</button>
+        <button class="diffbtn" data-d="1.3">Hard</button>
+      </div>
+      <button class="bigbtn" id="ovBtn">Start War</button>
+    </div>
+  </div>
+
+  <div id="deck">
+    <div class="group" id="unitBtns"></div>
+    <div class="sep"></div>
+    <div class="group">
+      <button class="btn" id="turretBtn"><span class="k">T</span><span class="n">Turret</span><span class="c"></span></button>
+      <button class="btn evo" id="evoBtn"><span class="k">E</span><span class="n">Evolve</span><span class="c"></span></button>
+      <button class="btn spec" id="specBtn"><span class="k">Q</span><span class="n">Special</span><span class="c"></span><i class="cd" id="specCd"></i></button>
+    </div>
+    <div id="hint">1 / 2 / 3 spawn &nbsp;·&nbsp; E evolve &nbsp;·&nbsp; T turret &nbsp;·&nbsp; Q special &nbsp;·&nbsp; P pause</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Age of War — single-file canvas game.
+   Field is a fixed 1200x420 logical space, scaled to fit.
+   ============================================================ */
+
+const FIELD_W = 1200, FIELD_H = 420, GROUND_Y = 340;
+const BASE_X = { p: 78, e: FIELD_W - 78 };   // base centres
+const SPAWN_X = { p: 140, e: FIELD_W - 140 };
+
+/* ---------------- content tables ---------------- */
+
+const AGES = [
+  { name: "Stone Age",    sky: ["#2b2417", "#4a3d24"], ground: "#3a3020", baseHp: 2400,  xpNext: 500,
+    turret: { cost: 150,  dmg: 9,   range: 150, cd: 1.4, name: "Rock Thrower" },
+    special: { name: "Meteor",      dmg: 220,  cost: 0 } },
+  { name: "Medieval",     sky: ["#1b2436", "#38506e"], ground: "#2f4030", baseHp: 4000,  xpNext: 1900,
+    turret: { cost: 400,  dmg: 20,  range: 178, cd: 1.25, name: "Ballista" },
+    special: { name: "Arrow Rain",  dmg: 480,  cost: 0 } },
+  { name: "Renaissance",  sky: ["#241d2e", "#5b4a63"], ground: "#3c3a2c", baseHp: 6000,  xpNext: 5200,
+    turret: { cost: 900,  dmg: 44,  range: 200, cd: 1.2, name: "Bombard" },
+    special: { name: "Cannonade",   dmg: 1000, cost: 0 } },
+  { name: "Modern",       sky: ["#151b22", "#3d4a58"], ground: "#33383a", baseHp: 8500, xpNext: 14000,
+    turret: { cost: 1800, dmg: 78,  range: 215, cd: 1.1, name: "Machine Gun" },
+    special: { name: "Air Strike",  dmg: 2100, cost: 0 } },
+  { name: "Future",       sky: ["#0d1a22", "#1f4e5c"], ground: "#26333a", baseHp: 12000, xpNext: Infinity,
+    turret: { cost: 3400, dmg: 135, range: 232, cd: 1.0, name: "Ion Cannon" },
+    special: { name: "Orbital Beam", dmg: 4500, cost: 0 } },
+];
+
+// [name, cost, hp, dmg, range, speed, atkCd, gold, xp, kind, splash]
+const UNITS = [
+  [ // Stone
+    { n: "Clubman",   cost: 30,  hp: 60,   dmg: 10,  rng: 26,  spd: 40, cd: 0.85, gold: 22,  xp: 16,  kind: "melee" },
+    { n: "Slinger",   cost: 60,  hp: 45,   dmg: 13,  rng: 165, spd: 34, cd: 1.35, gold: 38,  xp: 26,  kind: "shot" },
+    { n: "Dino Rider",cost: 130, hp: 190,  dmg: 24,  rng: 30,  spd: 32, cd: 1.15, gold: 78,  xp: 52,  kind: "melee" },
+  ],
+  [ // Medieval
+    { n: "Swordsman", cost: 90,  hp: 160,  dmg: 22,  rng: 28,  spd: 44, cd: 0.8,  gold: 55,  xp: 38,  kind: "melee" },
+    { n: "Archer",    cost: 150, hp: 105,  dmg: 28,  rng: 205, spd: 38, cd: 1.25, gold: 88,  xp: 60,  kind: "shot" },
+    { n: "Knight",    cost: 260, hp: 420,  dmg: 46,  rng: 32,  spd: 34, cd: 1.05, gold: 155, xp: 105, kind: "melee" },
+  ],
+  [ // Renaissance
+    { n: "Duelist",   cost: 260, hp: 380,  dmg: 48,  rng: 30,  spd: 50, cd: 0.75, gold: 150, xp: 100, kind: "melee" },
+    { n: "Musketeer", cost: 340, hp: 280,  dmg: 62,  rng: 225, spd: 39, cd: 1.2,  gold: 195, xp: 130, kind: "shot" },
+    { n: "Cannon",    cost: 560, hp: 640,  dmg: 105, rng: 260, spd: 26, cd: 1.9,  gold: 320, xp: 215, kind: "shot", splash: 46 },
+  ],
+  [ // Modern
+    { n: "Rifleman",  cost: 520, hp: 520,  dmg: 82,  rng: 235, spd: 44, cd: 0.85, gold: 290, xp: 195, kind: "shot" },
+    { n: "Grenadier", cost: 760, hp: 620,  dmg: 135, rng: 205, spd: 38, cd: 1.5,  gold: 410, xp: 280, kind: "shot", splash: 52 },
+    { n: "Tank",      cost: 1300,hp: 1900, dmg: 215, rng: 190, spd: 28, cd: 1.45, gold: 700, xp: 470, kind: "shot", splash: 58 },
+  ],
+  [ // Future
+    { n: "Laser Trp", cost: 1100,hp: 1000, dmg: 165, rng: 255, spd: 46, cd: 0.7,  gold: 600, xp: 400, kind: "shot" },
+    { n: "Mech",      cost: 1800,hp: 2400, dmg: 270, rng: 220, spd: 34, cd: 1.15, gold: 980, xp: 660, kind: "shot", splash: 55 },
+    { n: "Titan",     cost: 3000,hp: 4600, dmg: 430, rng: 245, spd: 26, cd: 1.4,  gold: 1600,xp: 1100,kind: "shot", splash: 70 },
+  ],
+];
+
+const SPAWN_CD    = [1.0, 1.2, 1.6];       // per-slot cooldown seconds
+const TURRET_SLOTS = [2, 2, 3, 3, 4];      // slots unlocked per age
+const SPECIAL_CD   = 50;                   // seconds
+const MAX_UNITS    = 14;                   // per side, keeps the field readable
+const BASE_DMG_MULT = 2.6;                 // siege bonus: bases fall to a real push
+
+/* ---------------- game state ---------------- */
+
+let G = null;
+let difficulty = 1;
+let aiPower = 1;              // enemy unit hp/dmg multiplier, set by difficulty
+let running = false, paused = false;
+
+function newSide(isPlayer) {
+  return {
+    isPlayer,
+    age: 0,
+    gold: 250,
+    xp: 0,
+    hp: AGES[0].baseHp,
+    maxHp: AGES[0].baseHp,
+    units: [],
+    turrets: [],
+    cds: [0, 0, 0],
+    specialCd: 0,
+    aiTimer: 0,
+    income: 0,
+  };
+}
+
+function reset() {
+  G = {
+    p: newSide(true),
+    e: newSide(false),
+    shots: [],
+    fx: [],
+    t: 0,
+    over: null,
+    shake: 0,
+  };
+}
+
+/* ---------------- helpers ---------------- */
+
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const rnd   = (a, b) => a + Math.random() * (b - a);
+const foe   = s => s === G.p ? G.e : G.p;
+
+function spec(side, slot) { return UNITS[side.age][slot]; }
+
+function spawn(side, slot) {
+  const d = spec(side, slot);
+  if (side.gold < d.cost) return false;
+  if (side.cds[slot] > 0) return false;
+  if (side.units.length >= MAX_UNITS) return false;
+  side.gold -= d.cost;
+  side.cds[slot] = SPAWN_CD[slot];
+  const dir = side.isPlayer ? 1 : -1;
+  const pow = side.isPlayer ? 1 : aiPower;
+  side.units.push({
+    side, d, dir, pow,
+    x: side.isPlayer ? SPAWN_X.p : SPAWN_X.e,
+    lane: rnd(-17, 17),
+    hp: d.hp * pow, maxHp: d.hp * pow,
+    cd: rnd(0, 0.3),
+    age: side.age,
+    step: Math.random() * 6,
+    flash: 0,
+  });
+  beep(side.isPlayer ? 320 : 200, 0.05, 0.03);
+  return true;
+}
+
+function buyTurret(side) {
+  const t = AGES[side.age].turret;
+  if (side.gold < t.cost) return false;
+  if (side.turrets.length >= TURRET_SLOTS[side.age]) return false;
+  side.gold -= t.cost;
+  side.turrets.push({ side, def: t, cd: 0, slot: side.turrets.length, age: side.age });
+  beep(520, 0.09, 0.04);
+  return true;
+}
+
+function evolve(side) {
+  if (side.age >= AGES.length - 1) return false;
+  if (side.xp < AGES[side.age].xpNext) return false;
+  side.xp -= AGES[side.age].xpNext;
+  side.age++;
+  const ratio = side.hp / side.maxHp;
+  side.maxHp = AGES[side.age].baseHp;
+  side.hp = Math.max(side.maxHp * ratio, side.maxHp * 0.5);
+  side.cds = [0, 0, 0];
+  // turrets upgrade with the age they sit in
+  side.turrets.forEach(t => { t.def = AGES[side.age].turret; t.age = side.age; });
+  const bx = side.isPlayer ? BASE_X.p : BASE_X.e;
+  for (let i = 0; i < 26; i++) burst(bx + rnd(-40, 40), GROUND_Y - rnd(0, 90), "#f2c14e");
+  G.shake = Math.max(G.shake, 10);
+  beep(660, 0.25, 0.05);
+  return true;
+}
+
+function useSpecial(side) {
+  if (side.specialCd > 0) return false;
+  side.specialCd = SPECIAL_CD;
+  const sp = AGES[side.age].special;
+  const other = foe(side);
+  other.units.forEach(u => damage(u, sp.dmg, side));
+  for (let i = 0; i < 40; i++) {
+    const x = side.isPlayer ? rnd(FIELD_W * 0.35, FIELD_W - 60) : rnd(60, FIELD_W * 0.65);
+    G.fx.push({ x, y: GROUND_Y - rnd(0, 60), r: rnd(14, 34), life: rnd(0.3, 0.7), max: 0.7, c: "#ffb35c", ring: true });
+  }
+  G.shake = 22;
+  beep(120, 0.5, 0.07);
+  return true;
+}
+
+function damage(u, amt, from) {
+  u.hp -= amt;
+  u.flash = 0.12;
+  if (u.hp <= 0 && !u.dead) {
+    u.dead = true;
+    from.gold += u.d.gold;
+    from.xp   += u.d.xp;
+    for (let i = 0; i < 8; i++) burst(u.x, GROUND_Y - 14 + u.lane, "#c1494a");
+  }
+}
+
+function burst(x, y, c) {
+  G.fx.push({ x, y, vx: rnd(-70, 70), vy: rnd(-120, -20), r: rnd(2, 5), life: rnd(0.25, 0.6), max: 0.6, c });
+}
+
+/* ---------------- combat targeting ---------------- */
+
+function nearestTarget(u) {
+  const other = foe(u.side);
+  let best = null, bd = Infinity;
+  for (const t of other.units) {
+    if (t.dead) continue;
+    // only look forward
+    const ahead = (t.x - u.x) * u.dir;
+    if (ahead < -20) continue;
+    const dist = Math.abs(t.x - u.x);
+    if (dist < bd) { bd = dist; best = t; }
+  }
+  const baseX = u.side.isPlayer ? BASE_X.e : BASE_X.p;
+  const bDist = Math.abs(baseX - u.x);
+  if (bDist < bd) return { base: true, x: baseX, dist: bDist };
+  return best ? { unit: best, x: best.x, dist: bd } : { base: true, x: baseX, dist: bDist };
+}
+
+function fire(from, tgt, def, isTurret) {
+  const y0 = GROUND_Y - (isTurret ? 78 : 20) + (from.lane || 0);
+  G.shots.push({
+    side: from.side, x: from.x, y: y0,
+    tx: tgt.x, ty: GROUND_Y - 16 + (tgt.unit ? tgt.unit.lane : 0),
+    target: tgt.unit || null, base: !!tgt.base,
+    dmg: def.dmg * (from.pow || 1), splash: def.splash || 0,
+    spd: 420 + (def.splash ? -60 : 0),
+    age: from.age || 0,
+  });
+  beep(isTurret ? 420 : 300, 0.04, 0.02);
+}
+
+// side = the side taking damage, from = the attacker. Landing hits on a base
+// pays out gold and xp, so a side that wins the field converts that lead into
+// a finish instead of grinding a permanent midfield stalemate.
+function hitBase(side, amt, from) {
+  const dealt = amt * BASE_DMG_MULT;
+  side.hp -= dealt;
+  if (from) { from.gold += dealt * 0.05; from.xp += dealt * 0.11; }
+  G.shake = Math.max(G.shake, 6);
+  const bx = side.isPlayer ? BASE_X.p : BASE_X.e;
+  G.fx.push({ x: bx + (side.isPlayer ? 26 : -26), y: GROUND_Y - rnd(20, 70), r: rnd(5, 11), life: 0.3, max: 0.3, c: "#ffd88a", ring: true });
+  if (side.hp <= 0) {
+    side.hp = 0;
+    endGame(side.isPlayer ? "lose" : "win");
+  }
+}
+
+/* ---------------- update loop ---------------- */
+
+function update(dt) {
+  G.t += dt;
+  G.shake *= Math.pow(0.001, dt);
+
+  for (const side of [G.p, G.e]) {
+    // passive income + cooldowns
+    // passive gold is the floor that keeps a losing side in the game; kill
+    // gold is the reward on top. Too little passive and the first lost fight
+    // snowballs into an unrecoverable deficit.
+    const inc = (13 + side.age * 9) * (side.isPlayer ? 1 : 1 + (difficulty - 1) * 0.5);
+    side.gold += inc * dt;
+    for (let i = 0; i < 3; i++) side.cds[i] = Math.max(0, side.cds[i] - dt);
+    side.specialCd = Math.max(0, side.specialCd - dt);
+
+    // turrets
+    for (const t of side.turrets) {
+      t.cd -= dt;
+      if (t.cd > 0) continue;
+      const other = foe(side);
+      const tx = side.isPlayer ? BASE_X.p : BASE_X.e;
+      let best = null, bd = t.def.range;
+      for (const u of other.units) {
+        if (u.dead) continue;
+        const d = Math.abs(u.x - tx);
+        if (d < bd) { bd = d; best = u; }
+      }
+      if (best) {
+        t.cd = t.def.cd;
+        fire({ x: tx + (side.isPlayer ? 26 : -26), side, lane: 0, age: t.age, pow: side.isPlayer ? 1 : aiPower },
+             { unit: best, x: best.x }, t.def, true);
+      }
+    }
+
+    // units
+    for (const u of side.units) {
+      if (u.dead) continue;
+      if (u.flash > 0) u.flash -= dt;
+      u.cd -= dt;
+      const tgt = nearestTarget(u);
+      const reach = u.d.rng + 12;
+      if (tgt.dist > reach) {
+        // walk, but don't overlap a friendly ahead of you
+        let blocked = false;
+        for (const f of side.units) {
+          if (f === u || f.dead) continue;
+          const gap = (f.x - u.x) * u.dir;
+          if (gap > 0 && gap < 17 && Math.abs(f.lane - u.lane) < 8) { blocked = true; break; }
+        }
+        if (!blocked) {
+          u.x += u.d.spd * u.dir * dt;
+          u.step += dt * u.d.spd * 0.28;
+        }
+      } else if (u.cd <= 0) {
+        u.cd = u.d.cd;
+        if (u.d.kind === "shot") {
+          fire(u, tgt, u.d, false);
+        } else {
+          if (tgt.unit) damage(tgt.unit, u.d.dmg * u.pow, side);
+          else hitBase(foe(side), u.d.dmg * u.pow, side);
+          G.fx.push({ x: u.x + u.dir * 16, y: GROUND_Y - 18 + u.lane, r: 8, life: 0.14, max: 0.14, c: "#fff2c4", ring: true });
+        }
+      }
+      u.x = clamp(u.x, 40, FIELD_W - 40);
+    }
+    side.units = side.units.filter(u => !u.dead);
+  }
+
+  // projectiles
+  for (const s of G.shots) {
+    const goalX = s.target && !s.target.dead ? s.target.x : s.tx;
+    const goalY = s.target && !s.target.dead ? GROUND_Y - 16 + s.target.lane : s.ty;
+    const dx = goalX - s.x, dy = goalY - s.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const move = s.spd * dt;
+    if (move >= dist) {
+      s.x = goalX; s.y = goalY; s.done = true;
+      const shooter = s.side, other = foe(shooter);
+      if (s.splash) {
+        for (const u of other.units) {
+          if (!u.dead && Math.abs(u.x - s.x) < s.splash) damage(u, s.dmg, shooter);
+        }
+        const bx = shooter.isPlayer ? BASE_X.e : BASE_X.p;
+        if (Math.abs(bx - s.x) < s.splash + 20) hitBase(other, s.dmg, shooter);
+        G.fx.push({ x: s.x, y: s.y, r: s.splash, life: 0.3, max: 0.3, c: "#ffb35c", ring: true });
+      } else if (s.target && !s.target.dead) {
+        damage(s.target, s.dmg, shooter);
+      } else if (s.base || !s.target) {
+        const bx = shooter.isPlayer ? BASE_X.e : BASE_X.p;
+        if (Math.abs(bx - s.x) < 60) hitBase(other, s.dmg, shooter);
+      }
+      for (let i = 0; i < 4; i++) burst(s.x, s.y, "#ffd88a");
+    } else {
+      s.x += dx / dist * move;
+      s.y += dy / dist * move;
+    }
+  }
+  G.shots = G.shots.filter(s => !s.done);
+
+  // particles
+  for (const f of G.fx) {
+    f.life -= dt;
+    if (f.vx !== undefined) {
+      f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 320 * dt;
+    }
+  }
+  G.fx = G.fx.filter(f => f.life > 0);
+
+  ai(dt);
+}
+
+/* ---------------- enemy AI ---------------- */
+
+function ai(dt) {
+  const e = G.e;
+  e.aiTimer -= dt;
+  if (e.aiTimer > 0) return;
+  e.aiTimer = rnd(0.5, 1.0) / difficulty;
+
+  // evolve as soon as it can — but hold gold if it's starving for units
+  if (e.age < AGES.length - 1 && e.xp >= AGES[e.age].xpNext) { evolve(e); return; }
+
+  // special when the player has a real push going
+  if (e.specialCd <= 0 && G.p.units.length >= 5) { useSpecial(e); return; }
+
+  // turret when comfortably rich
+  const t = AGES[e.age].turret;
+  if (e.turrets.length < TURRET_SLOTS[e.age] && e.gold > t.cost * (1.8 - 0.4 * difficulty)) {
+    buyTurret(e); return;
+  }
+
+  if (e.units.length >= MAX_UNITS) return;
+  // prefer the strongest affordable unit, with a bias to cheap chaff when outnumbered
+  const outnumbered = G.p.units.length > e.units.length + 2;
+  const order = outnumbered ? [0, 1, 2] : [2, 1, 0];
+  for (const slot of order) {
+    if (e.cds[slot] > 0) continue;
+    const d = spec(e, slot);
+    const buffer = outnumbered ? 1 : 1.15;
+    if (e.gold >= d.cost * buffer) { spawn(e, slot); return; }
+  }
+}
+
+/* ---------------- rendering ---------------- */
+
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+let view = { s: 1, ox: 0, oy: 0, top: 0, bot: FIELD_H };
+
+// blend two "#rrggbb" colours; used for the age crossfade across the sky
+function mix(c1, c2, t) {
+  const p1 = parseInt(c1.slice(1), 16), p2 = parseInt(c2.slice(1), 16);
+  const r = Math.round((p1 >> 16) + ((p2 >> 16) - (p1 >> 16)) * t);
+  const g = Math.round(((p1 >> 8) & 255) + (((p2 >> 8) & 255) - ((p1 >> 8) & 255)) * t);
+  const b = Math.round((p1 & 255) + ((p2 & 255) - (p1 & 255)) * t);
+  return "rgb(" + r + "," + g + "," + b + ")";
+}
+
+function resize() {
+  const r = cv.parentElement.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.floor(r.width * dpr);
+  cv.height = Math.floor(r.height * dpr);
+  // Always show the full width — you must be able to see both bases. Height is
+  // then whatever that scale gives; the ground line is parked low in frame and
+  // sky/earth are painted past the field box so there are never letterbox bars.
+  let s = r.width / FIELD_W;
+  if (FIELD_H * s > r.height) s = r.height / FIELD_H;   // very short viewport
+  // park the ground line ~76% down the frame: sky above, a shallow strip of
+  // earth below, and the fighting where the eye already is
+  const groundOnScreen = clamp(r.height * 0.76, r.height * 0.5, r.height - 30);
+  view.s = s * dpr;
+  view.ox = (r.width - FIELD_W * s) / 2 * dpr;
+  view.oy = (groundOnScreen - GROUND_Y * s) * dpr;
+  view.top = -view.oy / view.s;                          // field y at screen top
+  view.bot = (cv.height - view.oy) / view.s;             // field y at screen bottom
+}
+window.addEventListener("resize", resize);
+
+function draw() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = "#0a0d12";
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  const sh = G ? G.shake : 0;
+  ctx.setTransform(view.s, 0, 0, view.s,
+    view.ox + (sh ? rnd(-sh, sh) : 0) * view.s,
+    view.oy + (sh ? rnd(-sh, sh) : 0) * view.s);
+  ctx.beginPath(); ctx.rect(0, view.top, FIELD_W, view.bot - view.top); ctx.clip();
+
+  if (!G) return;
+
+  // Sky crossfades from your age on the left to theirs on the right. Drawn as
+  // lerped vertical strips — a two-rect split leaves a visible seam box.
+  const a = AGES[G.p.age], b = AGES[G.e.age];
+  const top = view.top, bot = view.bot;
+  if (G.p.age === G.e.age) {
+    const g = ctx.createLinearGradient(0, top, 0, GROUND_Y);
+    g.addColorStop(0, a.sky[0]); g.addColorStop(1, a.sky[1]);
+    ctx.fillStyle = g; ctx.fillRect(0, top, FIELD_W, GROUND_Y - top);
+  } else {
+    const N = 48, sw = FIELD_W / N;
+    for (let i = 0; i < N; i++) {
+      const t = i / (N - 1);
+      const g = ctx.createLinearGradient(0, top, 0, GROUND_Y);
+      g.addColorStop(0, mix(a.sky[0], b.sky[0], t));
+      g.addColorStop(1, mix(a.sky[1], b.sky[1], t));
+      ctx.fillStyle = g;
+      ctx.fillRect(i * sw - 0.5, top, sw + 1, GROUND_Y - top);
+    }
+  }
+
+  // distant hills
+  ctx.fillStyle = "rgba(0,0,0,.22)";
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y);
+  for (let x = 0; x <= FIELD_W; x += 60) {
+    ctx.lineTo(x, GROUND_Y - 40 - Math.sin(x * 0.011) * 26 - Math.cos(x * 0.023) * 14);
+  }
+  ctx.lineTo(FIELD_W, GROUND_Y); ctx.closePath(); ctx.fill();
+
+  // ground — extends past the field box so tall viewports show earth, not bars
+  const gg = ctx.createLinearGradient(0, GROUND_Y, 0, Math.max(FIELD_H, bot));
+  gg.addColorStop(0, mix(a.ground, b.ground, 0.5)); gg.addColorStop(1, "#14171c");
+  ctx.fillStyle = gg; ctx.fillRect(0, GROUND_Y, FIELD_W, bot - GROUND_Y);
+  ctx.fillStyle = "rgba(255,255,255,.05)";
+  ctx.fillRect(0, GROUND_Y, FIELD_W, 2);
+
+  drawBase(G.p);
+  drawBase(G.e);
+
+  const all = G.p.units.concat(G.e.units).sort((u, v) => u.lane - v.lane);
+  for (const u of all) drawUnit(u);
+
+  for (const s of G.shots) drawShot(s);
+  for (const f of G.fx) drawFx(f);
+}
+
+function drawBase(side) {
+  const x = side.isPlayer ? BASE_X.p : BASE_X.e;
+  const flip = side.isPlayer ? 1 : -1;
+  const age = side.age;
+  ctx.save();
+  ctx.translate(x, GROUND_Y);
+  ctx.scale(flip, 1);
+
+  const body = side.isPlayer ? "#4d5a6e" : "#6e4d4d";
+  const dark = side.isPlayer ? "#394453" : "#523a3a";
+  const h = 96 + age * 12;
+  const w = 62 + age * 4;
+
+  // silhouette shifts with age: cave → castle → fort → bunker → spire
+  ctx.fillStyle = dark;
+  ctx.fillRect(-w / 2 - 6, -14, w + 12, 14);
+  ctx.fillStyle = body;
+  if (age === 0) {
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, 0); ctx.lineTo(-w / 2 + 8, -h * 0.7);
+    ctx.lineTo(0, -h); ctx.lineTo(w / 2 - 6, -h * 0.65); ctx.lineTo(w / 2, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#1b1712";
+    ctx.beginPath(); ctx.ellipse(6, -12, 15, 24, 0, Math.PI, 0); ctx.fill();
+  } else if (age === 1) {
+    ctx.fillRect(-w / 2, -h, w, h);
+    ctx.fillStyle = dark;
+    for (let i = 0; i < 4; i++) ctx.fillRect(-w / 2 + i * (w / 4), -h - 10, w / 8, 10);
+    ctx.fillStyle = "#1b1712";
+    ctx.fillRect(-4, -34, 22, 34);
+  } else if (age === 2) {
+    ctx.fillRect(-w / 2, -h * 0.8, w, h * 0.8);
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.moveTo(-w / 2 - 8, -h * 0.8); ctx.lineTo(0, -h - 12); ctx.lineTo(w / 2 + 8, -h * 0.8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#1b1712"; ctx.fillRect(-2, -36, 24, 36);
+  } else if (age === 3) {
+    ctx.fillRect(-w / 2, -h * 0.62, w, h * 0.62);
+    ctx.fillStyle = dark;
+    ctx.fillRect(-w / 2 + 6, -h * 0.9, w * 0.42, h * 0.3);
+    ctx.fillStyle = "#8fa2b8"; ctx.fillRect(-w / 2 + 12, -h * 0.86, 12, 8);
+    ctx.fillStyle = "#1b1712"; ctx.fillRect(0, -34, 26, 34);
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, 0); ctx.lineTo(-w / 2 + 10, -h); ctx.lineTo(w / 2 - 14, -h - 26);
+    ctx.lineTo(w / 2, -h * 0.5); ctx.lineTo(w / 2, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#59e3ff";
+    ctx.globalAlpha = 0.55 + Math.sin(G.t * 3) * 0.25;
+    ctx.fillRect(-w / 2 + 14, -h * 0.82, w * 0.5, 5);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#0e2a33"; ctx.fillRect(2, -32, 24, 32);
+  }
+
+  // turrets on the roof
+  side.turrets.forEach((t, i) => {
+    const tx = -w / 2 + 12 + i * ((w - 20) / Math.max(1, TURRET_SLOTS[age] - 1 || 1));
+    const ty = -h - 6;
+    ctx.fillStyle = "#2c3442";
+    ctx.fillRect(tx - 7, ty, 14, 12);
+    ctx.fillStyle = side.isPlayer ? "#93a7c4" : "#c49393";
+    ctx.fillRect(tx - 2, ty - 9, 20, 5);
+  });
+  ctx.restore();
+}
+
+function drawUnit(u) {
+  const x = u.x, y = GROUND_Y + u.lane * 0.35;
+  const p = u.side.isPlayer;
+  const scale = 0.82 + u.d.hp / 2600;
+  const bob = Math.sin(u.step) * 1.6;
+  ctx.save();
+  ctx.translate(x, y + u.lane * 0.12);
+  ctx.scale(u.dir, 1);
+
+  // shadow
+  ctx.fillStyle = "rgba(0,0,0,.32)";
+  ctx.beginPath(); ctx.ellipse(0, 1, 13 * scale, 4 * scale, 0, 0, 7); ctx.fill();
+
+  const skin = p ? "#7fb2e0" : "#e08a7f";
+  const kit  = p ? "#3f6a99" : "#99453f";
+  const trim = p ? "#cfe4f7" : "#f7d2cf";
+  ctx.globalAlpha = 1;
+  const H = 30 * scale;
+
+  // legs
+  ctx.strokeStyle = kit; ctx.lineWidth = 3.4 * scale; ctx.lineCap = "round";
+  const swing = Math.sin(u.step) * 5;
+  ctx.beginPath();
+  ctx.moveTo(0, -H * 0.42); ctx.lineTo(swing, 0);
+  ctx.moveTo(0, -H * 0.42); ctx.lineTo(-swing, 0);
+  ctx.stroke();
+  // body
+  ctx.fillStyle = kit;
+  ctx.beginPath();
+  ctx.roundRect(-5 * scale, -H * 0.82 + bob * .3, 10 * scale, H * 0.44, 3);
+  ctx.fill();
+  // head
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.arc(1.5 * scale, -H * 0.92 + bob * .3, 4.4 * scale, 0, 7); ctx.fill();
+  // weapon, keyed to unit kind + age
+  ctx.strokeStyle = trim; ctx.lineWidth = 2.6 * scale;
+  const armY = -H * 0.66 + bob * .3;
+  ctx.beginPath();
+  if (u.d.kind === "shot") {
+    ctx.moveTo(2 * scale, armY); ctx.lineTo(15 * scale, armY - 2 * scale);
+  } else {
+    const sw = u.cd > u.d.cd * 0.7 ? -6 : 0;   // wind-up on attack
+    ctx.moveTo(2 * scale, armY); ctx.lineTo(12 * scale, armY - 10 * scale + sw);
+  }
+  ctx.stroke();
+  if (u.d.splash) { // barrel end
+    ctx.fillStyle = trim;
+    ctx.fillRect(14 * scale, armY - 4.5 * scale, 5 * scale, 5 * scale);
+  }
+
+  if (u.flash > 0) {
+    ctx.globalAlpha = clamp(u.flash * 6, 0, .8);
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.roundRect(-7 * scale, -H, 14 * scale, H, 4); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+
+  // hp bar
+  if (u.hp < u.maxHp) {
+    const w = 26 * scale, hx = x - w / 2, hy = y - 40 * scale;
+    ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(hx, hy, w, 3.4);
+    ctx.fillStyle = p ? "#5fd07a" : "#e0645a";
+    ctx.fillRect(hx, hy, w * clamp(u.hp / u.maxHp, 0, 1), 3.4);
+  }
+}
+
+function drawShot(s) {
+  const c = s.side.isPlayer ? "#bfe0ff" : "#ffc0b8";
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, s.splash ? 4.5 : 2.6, 0, 7);
+  ctx.fill();
+  ctx.strokeStyle = c; ctx.globalAlpha = .35; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(s.x, s.y);
+  const dx = (s.target && !s.target.dead ? s.target.x : s.tx) - s.x;
+  ctx.lineTo(s.x - Math.sign(dx) * 10, s.y); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawFx(f) {
+  const a = clamp(f.life / f.max, 0, 1);
+  ctx.globalAlpha = a;
+  ctx.fillStyle = f.c;
+  if (f.ring) {
+    ctx.strokeStyle = f.c; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (1.4 - a * 0.6), 0, 7); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.r * a, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------------- audio (tiny blips, no assets) ---------------- */
+
+let ac = null;
+function beep(freq, dur, vol) {
+  try {
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === "suspended") ac.resume();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = "triangle"; o.frequency.value = freq;
+    g.gain.value = vol;
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(); o.stop(ac.currentTime + dur);
+  } catch (e) { /* audio is optional */ }
+}
+
+/* ---------------- UI ---------------- */
+
+const el = id => document.getElementById(id);
+const unitBtns = [];
+
+for (let i = 0; i < 3; i++) {
+  const b = document.createElement("button");
+  b.className = "btn";
+  b.innerHTML = `<span class="k">${i + 1}</span><span class="n"></span><span class="c"></span><i class="cd"></i>`;
+  b.onclick = () => { if (running && !paused) spawn(G.p, i); };
+  el("unitBtns").appendChild(b);
+  unitBtns.push(b);
+}
+el("turretBtn").onclick = () => { if (running && !paused) buyTurret(G.p); };
+el("evoBtn").onclick     = () => { if (running && !paused) evolve(G.p); };
+el("specBtn").onclick    = () => { if (running && !paused) useSpecial(G.p); };
+
+document.addEventListener("keydown", ev => {
+  if (!running) { if (ev.key === "Enter") start(); return; }
+  const k = ev.key.toLowerCase();
+  if (k === "p") { paused = !paused; return; }
+  if (paused) return;
+  if (k === "1") spawn(G.p, 0);
+  if (k === "2") spawn(G.p, 1);
+  if (k === "3") spawn(G.p, 2);
+  if (k === "e") evolve(G.p);
+  if (k === "t") buyTurret(G.p);
+  if (k === "q") useSpecial(G.p);
+});
+
+document.querySelectorAll(".diffbtn").forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll(".diffbtn").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    difficulty = parseFloat(b.dataset.d);
+  };
+});
+el("ovBtn").onclick = start;
+
+function syncUI() {
+  if (!G) return;
+  const p = G.p;
+  el("goldTxt").textContent = Math.floor(p.gold).toLocaleString();
+  el("ageTxt").textContent  = AGES[p.age].name;
+
+  el("hpBar").style.width  = (p.hp / p.maxHp * 100) + "%";
+  el("hpTxt").textContent  = Math.ceil(p.hp) + " / " + p.maxHp;
+  el("ehpBar").style.width = (G.e.hp / G.e.maxHp * 100) + "%";
+  el("ehpTxt").textContent = Math.ceil(G.e.hp) + " / " + G.e.maxHp;
+  el("ehpTxt").title = AGES[G.e.age].name;
+
+  const need = AGES[p.age].xpNext;
+  el("xpBar").style.width = (need === Infinity ? 100 : clamp(p.xp / need, 0, 1) * 100) + "%";
+  el("xpTxt").textContent = need === Infinity ? "(max age)" : Math.floor(p.xp) + " / " + need;
+
+  for (let i = 0; i < 3; i++) {
+    const d = spec(p, i), b = unitBtns[i];
+    b.querySelector(".n").textContent = d.n;
+    b.querySelector(".c").textContent = d.cost + "g";
+    b.disabled = p.gold < d.cost || p.cds[i] > 0 || p.units.length >= MAX_UNITS;
+    b.querySelector(".cd").style.width = (p.cds[i] / SPAWN_CD[i] * 100) + "%";
+  }
+
+  const t = AGES[p.age].turret;
+  const slotsLeft = TURRET_SLOTS[p.age] - p.turrets.length;
+  const tb = el("turretBtn");
+  tb.querySelector(".n").textContent = t.name;
+  tb.querySelector(".c").textContent = slotsLeft > 0 ? `${t.cost}g · ${slotsLeft} slot${slotsLeft > 1 ? "s" : ""}` : "no slots";
+  tb.disabled = slotsLeft <= 0 || p.gold < t.cost;
+
+  const eb = el("evoBtn");
+  const maxed = p.age >= AGES.length - 1;
+  eb.querySelector(".n").textContent = maxed ? "Max Age" : "→ " + AGES[p.age + 1].name;
+  eb.querySelector(".c").textContent = maxed ? "—" : Math.max(0, Math.ceil(need - p.xp)) + " xp";
+  eb.disabled = maxed || p.xp < need;
+
+  const sb = el("specBtn");
+  sb.querySelector(".n").textContent = AGES[p.age].special.name;
+  sb.querySelector(".c").textContent = p.specialCd > 0 ? Math.ceil(p.specialCd) + "s" : "READY";
+  sb.disabled = p.specialCd > 0;
+  el("specCd").style.width = (1 - p.specialCd / SPECIAL_CD) * 100 + "%";
+}
+
+function endGame(result) {
+  running = false;
+  el("overlay").style.display = "flex";
+  el("diffRow").style.display = "flex";
+  el("ovTitle").textContent = result === "win" ? "Victory" : "Defeat";
+  el("ovText").textContent = result === "win"
+    ? `You razed the enemy base in ${Math.floor(G.t)}s, ending in the ${AGES[G.p.age].name}.`
+    : `Your base fell after ${Math.floor(G.t)}s. The enemy reached the ${AGES[G.e.age].name}.`;
+  el("ovBtn").textContent = "Fight Again";
+  beep(result === "win" ? 780 : 130, 0.6, 0.06);
+}
+
+function start() {
+  aiPower = 0.92 + (difficulty - 1) * 1.35;
+  reset();
+  resize();
+  running = true; paused = false;
+  el("overlay").style.display = "none";
+  beep(440, 0.15, 0.05);
+}
+
+/* ---------------- main loop ---------------- */
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  if (running && !paused) update(dt);
+  draw();
+  if (paused && running) {
+    ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(0, view.top, FIELD_W, view.bot - view.top);
+    ctx.fillStyle = "#e7ecf3"; ctx.font = "bold 34px system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.fillText("PAUSED", FIELD_W / 2, FIELD_H / 2);
+    ctx.font = "14px system-ui, sans-serif"; ctx.fillStyle = "#8d99ad";
+    ctx.fillText("press P to resume", FIELD_W / 2, FIELD_H / 2 + 26);
+  }
+  syncUI();
+  requestAnimationFrame(frame);
+}
+
+reset();
+resize();
+el("overlay").style.display = "flex";
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
