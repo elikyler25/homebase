@@ -10,9 +10,13 @@ Also playable solo: pick **VS CPU** on the menu (easy / normal / hard).
 
 ## How it plays
 
-No turns and no waiting. Both sides buy troops whenever they can afford them, and each one marches
-out of their crystal the moment it's bought. Shatter the enemy crystal to win. Crystals shoot back,
-so a thin push gets picked apart before it lands.
+**Pick a troop and your crystal keeps making it.** One tap or one key sets your selection, and that
+troop marches out continuously for as long as your gold lasts — you never tap once per soldier.
+Pick a different troop to switch, or press the same one again to stop and save up. The selected card
+is outlined in gold and named in your HUD.
+
+No turns and no waiting. Shatter the enemy crystal to win. Crystals shoot back, so a thin push gets
+picked apart before it lands.
 
 ### Armour is the counter system
 
@@ -51,15 +55,15 @@ Combined with income, that makes an army you keep alive worth far more than one 
 ### Your army is your economy
 
 Every living unit pays **income** at each payday (every 10 seconds — that's the round counter), on
-top of a base that grows each round. Units you keep alive fund the next wave, so a bad trade costs
+top of a base that climbs steeply each round, so late armies get very large. Units you keep alive fund the next wave, so a bad trade costs
 you the fight and the bank at once.
 
 ## Controls
 
 | | Player 1 (blue, left) | Player 2 (red, right) |
 |---|---|---|
-| Buy row 1 | `1` `2` `3` `4` `Q` `W` `E` `R` | `7` `8` `9` `0` `U` `I` `O` `P` |
-| Buy row 2 | `A` `S` `D` `F` `Z` `X` `C` `V` | `J` `K` `L` `;` `M` `,` `.` `/` |
+| Select troop, row 1 | `1` `2` `3` `4` `Q` `W` `E` `R` | `7` `8` `9` `0` `U` `I` `O` `P` |
+| Select troop, row 2 | `A` `S` `D` `F` `Z` `X` `C` `V` | `J` `K` `L` `;` `M` `,` `.` `/` |
 | Spawn lane | `Left Shift` | `Right Shift` |
 | Mend crystal | `5` | `6` |
 | Stance | `T` | `'` |
@@ -69,7 +73,8 @@ grinder in the middle. Stance toggles ADVANCE / HOLD — on HOLD your troops fal
 half and fight under your crystal's guns instead of marching out, which is how you survive a bad
 patch. The cost is that your opponent takes the shrine while you sit. Mending costs ◆450 for 700 crystal HP — a gold sink that buys you a comeback
 if you can hold the field. `Space` pauses, `-`/`=` set game speed (1–3×), `H` shows the counter
-chart, `` ` `` mutes. Clicking a card buys it; hovering one picks that unit type out of the melee.
+chart, `` ` `` mutes. Tapping a card selects it; tapping it again stops recruiting; hovering one
+picks that unit type out of the melee.
 
 ## The roster
 
@@ -77,22 +82,22 @@ A straight price ladder, cheapest to most expensive:
 
 | # | Unit | Price | Income | HP | Armour | Type | vs Light | vs Armored | Range |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Newbie | 22 | 2 | 70 | 0 | light | 12 | 5 | 31 |
-| 2 | Veteran | 55 | 4 | 140 | 1 | light | 21 | 10 | 34 |
-| 3 | Zombie | 95 | 5 | 320 | 2 | light | 18 | 13 | 31 |
-| 4 | Samurai | 185 | 7 | 190 | 2 | light | 58 | 14 | 37 |
-| 5 | Sword Man | 190 | 9 | 260 | 4 | **armored** | 33 | 24 | 37 |
-| 6 | Ninja | 330 | 11 | 170 | 1 | light | 98 | 9 | 34 |
-| 7 | Novice | 360 | 14 | 200 | 2 | light | 36 | 36 | 200 |
-| 8 | Heavy Sword | 520 | 17 | 540 | 8 | **armored** | 43 | 43 | 43 |
-| 9 | Monk | 820 | 20 | 260 | 3 | light | 26 | 152 | 160 |
-| 10 | Vampire | 1250 | 24 | 460 | 4 | light | 58 | 150 | 40 |
-| 11 | Cavalry | 1450 | 28 | 620 | 6 | **armored** | 76 | 38 | 43 |
-| 12 | Immortal | 1500 | 33 | 1150 | 12 | **armored** | 51 | 51 | 43 |
-| 13 | Mage | 1900 | 38 | 300 | 2 | light | 78 | 78 | 243 |
-| 14 | Iron Knight | 3200 | 44 | 1700 | 14 | **armored** | 78 | 58 | 49 |
-| 15 | Dread Lord | 4600 | 52 | 1500 | 4 | light | 128 | 110 | 51 |
-| 16 | High Lord | 8200 | 62 | 2200 | 12 | **armored** | 130 | 108 | 57 |
+| 1 | Newbie | 15 | 2 | 70 | 0 | light | 12 | 5 | 40 |
+| 2 | Veteran | 40 | 4 | 140 | 1 | light | 21 | 10 | 44 |
+| 3 | Zombie | 65 | 5 | 320 | 2 | light | 18 | 13 | 40 |
+| 4 | Samurai | 130 | 7 | 190 | 2 | light | 58 | 14 | 48 |
+| 5 | Sword Man | 135 | 9 | 260 | 4 | **armored** | 33 | 24 | 48 |
+| 6 | Ninja | 230 | 11 | 170 | 1 | light | 98 | 9 | 44 |
+| 7 | Novice | 250 | 14 | 200 | 2 | light | 36 | 36 | 260 |
+| 8 | Heavy Sword | 360 | 17 | 540 | 8 | **armored** | 43 | 43 | 56 |
+| 9 | Monk | 570 | 20 | 260 | 3 | light | 26 | 152 | 208 |
+| 10 | Vampire | 880 | 24 | 460 | 4 | light | 58 | 150 | 52 |
+| 11 | Cavalry | 1020 | 28 | 620 | 6 | **armored** | 76 | 38 | 56 |
+| 12 | Immortal | 1050 | 33 | 1150 | 12 | **armored** | 51 | 51 | 56 |
+| 13 | Mage | 1330 | 38 | 300 | 2 | light | 78 | 78 | 316 |
+| 14 | Iron Knight | 2240 | 44 | 1700 | 14 | **armored** | 78 | 58 | 64 |
+| 15 | Dread Lord | 3200 | 52 | 1500 | 4 | light | 128 | 110 | 66 |
+| 16 | High Lord | 5700 | 62 | 2200 | 12 | **armored** | 130 | 108 | 74 |
 
 Mage and Cavalry carry the widest cleave — they are the answer to swarms. Dread Lord and High Lord
 cleave a little; the Iron Knight is a pure wall with none. Vampire drains. There is no unit cap —

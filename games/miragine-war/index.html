@@ -31,7 +31,7 @@
   .hpbar span { position: absolute; inset: 0; text-align: center; font-size: 11px;
                 line-height: 14px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000; }
   .stats { margin-top: 3px; font-size: 13px; font-weight: bold; text-shadow: 0 2px 3px #000; }
-  .gold { color: #ffd75e; } .inc { color: #8dff8d; } .army { color: #cfe8ff; } .lane { color: #ffb0e0; } .mend { color: #9fffd8; }
+  .gold { color: #ffd75e; } .inc { color: #8dff8d; } .army { color: #cfe8ff; } .lane { color: #ffb0e0; } .mend { color: #9fffd8; } .rec { color: #ffd75e; }
   #centre { flex: 0 0 auto; text-align: center; pointer-events: none; padding: 0 6px; }
   #round { background: #1c1710; border: 2px solid #4a3c22; border-radius: 5px;
            padding: 1px 14px; font-weight: bold; font-size: 17px; color: #ffd75e; box-shadow: 0 2px 0 #0007; }
@@ -48,6 +48,9 @@
   @media (hover: hover) { .card:hover { background: #33291a; border-color: #7d6738; } }
   .card.hit { transform: translateY(2px); background: #6b5a33; }
   .card.poor { opacity: .32; }
+  .card.sel { border-color: #ffd75e; background: #4a3c1c;
+              box-shadow: 0 0 0 2px rgba(255,215,94,.45), 0 0 12px rgba(255,215,94,.35); }
+  .card.sel .nm { color: #ffe9a8; }
   .card canvas { width: 100%; height: 32px; display: block; }
   .card .nm { font-size: 9px; font-weight: bold; line-height: 11px; white-space: nowrap;
               overflow: hidden; text-overflow: ellipsis; }
@@ -146,6 +149,7 @@
           <span class="inc">+<span id="i1">0</span></span> &nbsp;
           <span class="army"><span id="a1">0</span> troops</span> &nbsp;
           <span class="lane" id="l1"></span> &nbsp;
+          <span class="rec" id="rc1"></span> &nbsp;
           <span class="mend" id="rp1"></span>
         </div>
       </div>
@@ -157,6 +161,7 @@
       <div class="side right p2">
         <div class="stats" style="margin:0 0 3px">
           <span class="mend" id="rp2"></span> &nbsp;
+          <span class="rec" id="rc2"></span> &nbsp;
           <span class="lane" id="l2"></span> &nbsp;
           <span class="army"><span id="a2">0</span> troops</span> &nbsp;
           <span class="inc">+<span id="i2">0</span></span> &nbsp;
@@ -170,8 +175,9 @@
 
     <div id="overlay">
       <h1>MIRAGE WAR</h1>
-      <p><b>Buy troops whenever you can afford them</b> — they march out of your crystal immediately.
-      No turns, no waiting. Shatter the enemy crystal to win. Crystals shoot back at anything that closes.</p>
+      <p><b>Pick a troop and your crystal keeps making it</b> — one tap or one key, and they march out
+      continuously for as long as your gold holds. Pick a different troop to switch, or press the same
+      one again to stop and save up. No turns, no waiting. Shatter the enemy crystal to win.</p>
       <p><b>Armour is the counter system.</b> Every unit is <span style="color:#ffd0a0">LIGHT</span> or
       <span style="color:#9fd0ff">ARMORED</span> and has separate damage against each, and armour
       subtracts flat damage on top. A Ninja butchers light troops and cannot dent plate; a Monk is the
@@ -225,38 +231,38 @@ const U = (name, price, income, hp, armour, type, spd, dL, dA, rng, ws, size, co
   ({ name, price, income, hp, armour, type, spd, dL, dA, rng, ws, size, col, kind, art, ...(extra||{}) });
 
 const UNITS = [
-  U("Newbie",       22,  2,   70,  0, "light",     66,   12,   5,    31, 0.75, 17, "#b8b2a0", "melee",
+  U("Newbie",       15,  2,   70,  0, "light",     86,    12,   5,    40, 0.75, 20, "#b8b2a0", "melee",
     { head:"bare",  body:"tunic", weapon:"club" }),
-  U("Veteran",      55,  4,  140,  1, "light",     63,   21,  10,    34, 0.80, 19, "#c2a878", "melee",
+  U("Veteran",      40,  4,  140,  1, "light",     82,    21,  10,    44, 0.80, 22, "#c2a878", "melee",
     { head:"helm",  body:"tunic", weapon:"sword" }),
-  U("Zombie",       95,  5,  320,  2, "light",     37,   18,  13,    31, 1.00, 20, "#7fa86a", "melee",
+  U("Zombie",       65,  5,  320,  2, "light",     48,    18,  13,    40, 1.00, 23, "#7fa86a", "melee",
     { head:"bare",  body:"tatter", weapon:"claws", skin:"#93b87a", hunch:true }),
-  U("Samurai",     185,  7,  190,  2, "light",     74,   58,  14,    37, 0.70, 20, "#d96a6a", "melee",
+  U("Samurai",     130,  7,  190,  2, "light",     96,    58,  14,    48, 0.70, 23, "#d96a6a", "melee",
     { head:"kasa",  body:"tunic", weapon:"katana" }),
-  U("Sword Man",   190,  9,  260,  4, "armored",     63,   33,  24,    37, 0.80, 22, "#d9d9e2", "melee",
+  U("Sword Man",   135,  9,  260,  4, "armored",     82,    33,  24,    48, 0.80, 25, "#d9d9e2", "melee",
     { head:"helm",  body:"plate", weapon:"sword", shield:true }),
-  U("Ninja",       330, 11,  170,  1, "light",    137,   98,   9,    34, 0.55, 19, "#5f5f74", "melee",
+  U("Ninja",       230, 11,  170,  1, "light",    178,    98,   9,    44, 0.55, 22, "#5f5f74", "melee",
     { head:"mask",  body:"tunic", weapon:"daggers", scarf:true }),
-  U("Novice",      360, 14,  200,  2, "light",     57,   36,  36,   200, 1.10, 19, "#8fd98f", "ranged",
+  U("Novice",      250, 14,  200,  2, "light",     74,    36,  36,   260, 1.10, 22, "#8fd98f", "ranged",
     { head:"hood",  body:"tunic", weapon:"bow" }),
-  U("Heavy Sword", 520, 17,  540,  8, "armored",     51,   43,  43,    43, 0.90, 25, "#a9b4c2", "melee",
+  U("Heavy Sword", 360, 17,  540,  8, "armored",     66,    43,  43,    56, 0.90, 29, "#a9b4c2", "melee",
     { head:"visor", body:"plate", weapon:"greatsword", pauldrons:true }),
-  U("Monk",        820, 20,  260,  3, "light",     57,   26, 152,   160, 1.00, 20, "#e0c060", "ranged",
+  U("Monk",        570, 20,  260,  3, "light",     74,    26, 152,   208, 1.00, 23, "#e0c060", "ranged",
     { head:"bald",  body:"robe",  weapon:"staff", halo:true, skin:"#e8c9a0" }),
-  U("Vampire",    1250, 24,  460,  4, "light",     89,   58, 150,    40, 0.68, 22, "#a05ac0", "melee",
+  U("Vampire",     880, 24,  460,  4, "light",    116,    58, 150,    52, 0.68, 25, "#a05ac0", "melee",
     { head:"bare",  body:"robe",  weapon:"claws", cape:"#5a1030", wings:true, skin:"#e8dcea" }, { drain:0.75 }),
-  U("Cavalry",    1450, 28,  620,  6, "armored",    149,   76,  38,    43, 0.75, 28, "#e0c25a", "mount",
-    { head:"plume", body:"plate", weapon:"lance", mount:true }, { splash:46 }),
-  U("Immortal",   1500, 33, 1150, 12, "armored",     46,   51,  51,    43, 0.90, 28, "#c0a0d0", "melee",
+  U("Cavalry",    1020, 28,  620,  6, "armored",    194,    76,  38,    56, 0.75, 32, "#e0c25a", "mount",
+    { head:"plume", body:"plate", weapon:"lance", mount:true }, { splash:53 }),
+  U("Immortal",   1050, 33, 1150, 12, "armored",     60,    51,  51,    56, 0.90, 32, "#c0a0d0", "melee",
     { head:"visor", body:"plate", weapon:"spear", tower:true }),
-  U("Mage",       1900, 38,  300,  2, "light",     49,   78,  78,   243, 1.40, 22, "#c78fe0", "ranged",
-    { head:"wizhat", body:"robe", weapon:"staff", orb:"#d27bff" }, { splash:86 }),
-  U("Iron Knight",3200, 44, 1700, 14, "armored",     43,   78,  58,    49, 1.00, 35, "#8fa0b8", "melee",
+  U("Mage",       1330, 38,  300,  2, "light",     64,    78,  78,   316, 1.40, 25, "#c78fe0", "ranged",
+    { head:"wizhat", body:"robe", weapon:"staff", orb:"#d27bff" }, { splash:99 }),
+  U("Iron Knight",2240, 44, 1700, 14, "armored",     56,    78,  58,    64, 1.00, 40, "#8fa0b8", "melee",
     { head:"visor", body:"plate", weapon:"greatsword", pauldrons:true, tower:true, glow:"#ffd070" }, { splash:0 }),
-  U("Dread Lord", 4600, 52, 1500,  4, "light",     91,  128, 110,    51, 0.80, 31, "#8a3a3a", "melee",
-    { head:"horns", body:"plate", weapon:"axe", cape:"#2a0a10", aura:"#ff3a3a" }, { splash:36 }),
-  U("High Lord",  8200, 62, 2200, 12, "armored",     57,  130, 108,    57, 0.85, 41, "#e0d070", "melee",
-    { head:"crown", body:"plate", weapon:"greatsword", cape:"#6a5a10", aura:"#ffe66a", pauldrons:true }, { splash:41 }),
+  U("Dread Lord", 3200, 52, 1500,  4, "light",    118,   128, 110,    66, 0.80, 36, "#8a3a3a", "melee",
+    { head:"horns", body:"plate", weapon:"axe", cape:"#2a0a10", aura:"#ff3a3a" }, { splash:41 }),
+  U("High Lord",  5700, 62, 2200, 12, "armored",     74,   130, 108,    74, 0.85, 47, "#e0d070", "melee",
+    { head:"crown", body:"plate", weapon:"greatsword", cape:"#6a5a10", aura:"#ffe66a", pauldrons:true }, { splash:47 }),
 ].map((u, i) => (u.idx = i, u));
 
 const P1_KEYS = ["Digit1","Digit2","Digit3","Digit4","KeyQ","KeyW","KeyE","KeyR",
@@ -284,11 +290,12 @@ let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
 const REPAIR_COST = 450, REPAIR_HEAL = 700;
-const SHRINE_R = 193, SHRINE_GOLD = 240, SUDDEN_ROUND = 28;
+const AUTO_GAP = 0.30;      // seconds between automatic recruits
+const SHRINE_R = 251, SHRINE_GOLD = 240, SUDDEN_ROUND = 28;
 const shrineX = () => G.W/2, shrineY = () => crystalY();
 function mkPlayer(team) {
   return { team, gold: START_GOLD, hp: CRYSTAL_HP, cool: 0, kills: 0, lane: 0, spent: 0,
-           built: {}, mend: 0, stance: 0 };
+           built: {}, mend: 0, stance: 0, sel: null, autoT: 0 };
 }
 function repair(team) {
   if (!G.running || G.over || G.paused) return;
@@ -308,7 +315,7 @@ function repair(team) {
 const cv = document.getElementById("cv");
 let ctx = cv.getContext("2d");
 let DPR = 1;
-const WORLD_W = 2000;       // everything is authored in these units
+const WORLD_W = 2600;       // everything is authored in these units
 let VIEW = 1;               // world -> css pixels
 // static layers, painted once instead of every frame
 const bgCv = document.createElement("canvas"), bgCtx = bgCv.getContext("2d");
@@ -320,7 +327,7 @@ function resize() {
   const cssW = Math.max(300, r.width), cssH = Math.max(150, r.height);
   VIEW = cssW / WORLD_W;
   G.W = WORLD_W;
-  G.H = Math.max(430, cssH / VIEW);          // world height follows the aspect
+  G.H = Math.max(560, cssH / VIEW);          // world height follows the aspect
   cv.width = Math.round(cssW*DPR); cv.height = Math.round(cssH*DPR);
   const q = VIEW*DPR;
   ctx.setTransform(q, 0, 0, q, 0, 0);
@@ -335,9 +342,9 @@ window.addEventListener("resize", resize);
 let terrain = [];
 function buildTerrain() {
   terrain = [];
-  const n = Math.round(G.W*G.H/4500);
+  const n = Math.round(G.W*G.H/7600);
   for (let i = 0; i < n; i++)
-    terrain.push({ x: Math.random()*G.W, y: Math.random()*G.H, s: 3+Math.random()*6,
+    terrain.push({ x: Math.random()*G.W, y: Math.random()*G.H, s: 4+Math.random()*8,
                    k: Math.random() < .07 ? "rock" : (Math.random() < .06 ? "flower" : "grass"),
                    c: Math.random() });
 }
@@ -372,9 +379,9 @@ function paintBackground() {
   c.fillStyle=vg; c.fillRect(0,0,W,H);
 }
 
-const TOP = () => 111;
-const BOT = () => G.H - 66;                  // leaves room for the radar strip
-const crystalX = t => (t === 0 ? 89 : G.W - 89);
+const TOP = () => 144;
+const BOT = () => G.H - 86;                  // leaves room for the radar strip
+const crystalX = t => (t === 0 ? 116 : G.W - 116);
 const crystalY = () => (TOP()+BOT())/2;
 // fake depth: things lower on the field are nearer the camera
 const persp = y => 0.80 + 0.40 * ((y - TOP()) / Math.max(1, BOT() - TOP()));
@@ -432,10 +439,19 @@ function laneY(team) {
 function spawn(idx, team) {
   const u = UNITS[idx];
   return { uid:++UID, team, u,
-    x: crystalX(team) + (team===0?54:-54) + (Math.random()*14-7),
+    x: crystalX(team) + (team===0?70:-70) + (Math.random()*18-9),
     y: laneY(team),
     hp:u.hp, maxhp:u.hp, cool:Math.random()*u.ws, tgt:null, retarget:Math.random()*.3,
     swing:0, hurt:0, step:Math.random()*6.28, dust:0, vet:0, dead:false };
+}
+
+function select(team, idx) {
+  if (!G.running || G.over) return;
+  const p = P[team];
+  if (p.sel === idx) { p.sel = null; tone(300, .07, "square", .035, 200); return; }
+  p.sel = idx; p.autoT = 0;
+  if (!buy(team, idx)) { flashCard(team, idx); }      // still selects if you cannot afford it yet
+  markSelection(team);
 }
 
 function buy(team, idx) {
@@ -446,12 +462,13 @@ function buy(team, idx) {
   p.built[u.name] = (p.built[u.name] || 0) + 1;
   G.units.push(spawn(idx, team));
   flashCard(team, idx);
+  p.built[u.name] = p.built[u.name] || 0;
   if (!CPU || CPU.team !== team) sfxBuy();
   return true;
 }
 
 /* ---------- spatial hash ---------- */
-const CELL = 100;
+const CELL = 130;
 let grid = new Map();
 const gkey = (cx, cy) => cx*100000 + cy;
 function rebuildGrid() {
@@ -470,7 +487,7 @@ function nearby(x, y, r, fn) {
   }
 }
 
-const SIGHT = 430;
+const SIGHT = 560;
 function findTarget(a) {
   let best=null, bd=SIGHT*SIGHT;
   nearby(a.x, a.y, SIGHT, b => {
@@ -497,7 +514,7 @@ function hurt(target, amt, src) {
     puff(target.x, target.y, target.team, target.u.size);
     bleed(target.x, target.y, target.u.size);
     sfxDie();
-    if (target.u.size >= 18) { G.hitstop = .06; G.shake = Math.min(9, G.shake + 3); }
+    if (target.u.size >= 30) { G.hitstop = .06; G.shake = Math.min(9, G.shake + 3); }
   }
 }
 
@@ -597,7 +614,18 @@ function step(dt) {
   rebuildGrid();
   cpuThink(dt);
 
-  for (const p of P) if (p.mend > 0) p.mend -= dt;
+  for (const p of P) {
+    if (p.mend > 0) p.mend -= dt;
+    // your crystal keeps producing whatever you last selected, as long as the
+    // gold lasts - no tapping once per soldier
+    if (p.sel !== null && !(CPU && CPU.team === p.team)) {
+      p.autoT -= dt;
+      if (p.autoT <= 0) {
+        if (buy(p.team, p.sel)) p.autoT = AUTO_GAP;
+        else p.autoT = 0.15;                 // broke: check again shortly
+      }
+    }
+  }
 
   // contest the shrine: whoever has more troops standing on it drags it their way
   {
@@ -621,7 +649,7 @@ function step(dt) {
     G.tick += TICK_T; G.round++;
     const inc = [0,0];
     for (const a of G.units) if (!a.dead) inc[a.team] += a.u.income;
-    for (const t of [0,1]) P[t].gold += BASE_INCOME + 110*G.round + inc[t];
+    for (const t of [0,1]) P[t].gold += BASE_INCOME + 170*G.round + inc[t];
     if (G.shrine.owner >= 0) P[G.shrine.owner].gold += SHRINE_GOLD;
     banner("PAYDAY", 850); sfxPay();
     // no war lasts forever: past a point both crystals start crumbling on their own
@@ -651,7 +679,7 @@ function step(dt) {
     } else if (P[a.team].stance === 1) {                 // HOLD: fall back to your own half
       tx = holdX(a.team); ty = a.y; reach = 6; idle = true;
     } else {
-      tx = crystalX(1-a.team); ty = crystalY(); reach = a.u.rng + a.u.size + 46; isCrystal = true;
+      tx = crystalX(1-a.team); ty = crystalY(); reach = a.u.rng + a.u.size + 60; isCrystal = true;
     }
 
     const dx=tx-a.x, dy=ty-a.y, dist=Math.hypot(dx,dy)||1;
@@ -675,7 +703,7 @@ function step(dt) {
       } else if (a.u.kind === "ranged") {
         sfxBow();
         G.shots.push({ x:a.x, y:a.y-7, tx:a.tgt.x, ty:a.tgt.y-7, src:a, tgt:a.tgt,
-                       sp:a.u.splash?470:715, splash:a.u.splash||0, team:a.team, t:0,
+                       sp:a.u.splash?611:930, splash:a.u.splash||0, team:a.team, t:0,
                        col:a.u.splash ? "#e08fff" : "#f5e6b0" });
       } else {
         arc(a, a.tgt);
@@ -695,8 +723,8 @@ function step(dt) {
     if (p.hp <= 0) continue;
     p.cool -= dt;
     if (p.cool > 0) continue;
-    let best=null, bd=293*293;
-    nearby(crystalX(p.team), crystalY(), 293, b => {
+    let best=null, bd=381*381;
+    nearby(crystalX(p.team), crystalY(), 381, b => {
       if (b.dead || b.team === p.team) return;
       const d=(b.x-crystalX(p.team))**2 + (b.y-crystalY())**2;
       if (d < bd) { bd=d; best=b; }
@@ -704,7 +732,7 @@ function step(dt) {
     if (best) {
       p.cool = .75;
       G.shots.push({ x:crystalX(p.team), y:crystalY()-22, tx:best.x, ty:best.y, tgt:best,
-                     src:null, crystal:true, sp:670, splash:0, team:p.team, t:0, col:"#cff4ff" });
+                     src:null, crystal:true, sp:871, splash:0, team:p.team, t:0, col:"#cff4ff" });
     }
   }
 
@@ -841,7 +869,7 @@ function draw() {
       ctx.globalAlpha = k*.85; ctx.strokeStyle="#fff"; ctx.lineWidth=3.2; ctx.lineCap="round";
       ctx.beginPath(); ctx.arc(f.x, f.y, f.r*(1.4-k*.4), f.ang-1.15, f.ang+1.15); ctx.stroke();
     } else if (f.t === "txt") {
-      ctx.globalAlpha = k; ctx.font = "bold 18px 'Trebuchet MS', sans-serif";
+      ctx.globalAlpha = k; ctx.font = "bold 23px 'Trebuchet MS', sans-serif";
       ctx.textAlign = "center"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.75)";
       ctx.strokeText(f.s, f.x, f.y); ctx.fillStyle = f.c; ctx.fillText(f.s, f.x, f.y);
       ctx.textAlign = "left";
@@ -860,6 +888,9 @@ function draw() {
 function drawHelp() {
   const lines = [
     ["THE ONE RULE", "#ffd75e"],
+    ["Pick a troop once - your crystal keeps recruiting it until the gold runs out.", "#ffd75e"],
+    ["Press it again to stop, or pick another to switch.", "#e8e2d0"],
+    ["", ""],
     ["Every unit is LIGHT or ARMORED and has separate damage vs each.", "#e8e2d0"],
     ["Armour also subtracts flat damage from every hit.", "#e8e2d0"],
     ["", ""],
@@ -873,7 +904,7 @@ function drawHelp() {
     ["5 / 6  mend crystal      L-SHIFT / R-SHIFT  lane      T / '  advance or hold", "#9fffd8"],
     ["SPACE pause     - / =  speed     `  mute     H  close", "#cfc6ae"],
   ];
-  const w = 780, h = lines.length*30 + 38;
+  const w = 1014, h = lines.length*39 + 49;
   const x = (G.W-w)/2, y = (G.H-h)/2 - 20;
   ctx.fillStyle = "rgba(10,14,10,.92)";
   ctx.fillRect(x, y, w, h);
@@ -881,9 +912,9 @@ function drawHelp() {
   ctx.textAlign = "left";
   lines.forEach((l, i) => {
     if (!l[0]) return;
-    ctx.font = (i === 0 ? "bold 21px " : "18px ") + "'Trebuchet MS', sans-serif";
+    ctx.font = (i === 0 ? "bold 27px " : "23px ") + "'Trebuchet MS', sans-serif";
     ctx.fillStyle = l[1];
-    ctx.fillText(l[0], x+28, y+42+i*30);
+    ctx.fillText(l[0], x+36, y+55+i*39);
   });
 }
 
@@ -895,25 +926,25 @@ function drawShrine() {
   ctx.beginPath(); ctx.ellipse(x, y, SHRINE_R, SHRINE_R*.5, 0, 0, 6.29); ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = "rgba(0,0,0,.2)";
-  ctx.beginPath(); ctx.ellipse(x, y+48, 37, 13, 0, 0, 6.29); ctx.fill();
-  ctx.fillStyle = "#6b6255"; ctx.fillRect(x-31, y+31, 62, 17);
+  ctx.beginPath(); ctx.ellipse(x, y+62, 48, 17, 0, 0, 6.29); ctx.fill();
+  ctx.fillStyle = "#6b6255"; ctx.fillRect(x-40, y+40, 81, 22);
   ctx.fillStyle = "#514a3f";
   ctx.beginPath();
-  ctx.moveTo(x-16, y+34); ctx.lineTo(x+16, y+34);
-  ctx.lineTo(x+10, y-57); ctx.lineTo(x-10, y-57); ctx.closePath(); ctx.fill();
+  ctx.moveTo(x-21, y+44); ctx.lineTo(x+21, y+44);
+  ctx.lineTo(x+13, y-74); ctx.lineTo(x-13, y-74); ctx.closePath(); ctx.fill();
   ctx.fillStyle = col;
   ctx.globalAlpha = .85;
   ctx.beginPath();
-  ctx.moveTo(x, y-80); ctx.lineTo(x+11, y-60); ctx.lineTo(x, y-43); ctx.lineTo(x-11, y-60);
+  ctx.moveTo(x, y-104); ctx.lineTo(x+14, y-78); ctx.lineTo(x, y-56); ctx.lineTo(x-14, y-78);
   ctx.closePath(); ctx.fill();
-  ctx.globalAlpha = .13; ctx.beginPath(); ctx.arc(x, y-60, 43, 0, 6.29); ctx.fill();
+  ctx.globalAlpha = .13; ctx.beginPath(); ctx.arc(x, y-78, 56, 0, 6.29); ctx.fill();
   ctx.globalAlpha = 1;
   // capture ring
   const p = Math.abs(sh.prog)/100;
   if (p > .01) {
     ctx.strokeStyle = sh.prog > 0 ? "#7fc4ff" : "#ff8a6a";
     ctx.lineWidth = 4; ctx.lineCap = "butt";
-    ctx.beginPath(); ctx.arc(x, y-60, 29, -Math.PI/2, -Math.PI/2 + p*6.283); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y-78, 38, -Math.PI/2, -Math.PI/2 + p*6.283); ctx.stroke();
   }
 }
 
@@ -933,7 +964,7 @@ function drawLaneMarker(team) {
   const y = p.lane===1 ? top+span*.16 : p.lane===2 ? (top+bot)/2 : bot-span*.16;
   ctx.strokeStyle = team===0 ? "rgba(190,230,255,.35)" : "rgba(255,208,176,.35)";
   ctx.lineWidth = 2; ctx.setLineDash([5,6]);
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (team===0?214:-214), y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (team===0?278:-278), y); ctx.stroke();
   ctx.setLineDash([]);
 }
 
@@ -941,7 +972,7 @@ function drawCrystal(team) {
   const x=crystalX(team), y=crystalY();
   const p = P[team] || { hp:CRYSTAL_HP };
   const f = Math.max(0, p.hp/CRYSTAL_HP);
-  const h=160, w=66;
+  const h=208, w=86;
   const lite = team===0 ? "#7fc4ff" : "#ff8a6a";
   const dark = team===0 ? "#1d4278" : "#72281c";
   const t = performance.now()/600;
@@ -1394,8 +1425,8 @@ function drawUnit(a, q) {
 
 /* ---------- radar strip, like the original's ---------- */
 function drawRadar() {
-  const w = Math.min(430, G.W*.32), h = 30;
-  const x = (G.W-w)/2, y = G.H - h - 11;
+  const w = Math.min(560, G.W*.32), h = 39;
+  const x = (G.W-w)/2, y = G.H - h - 14;
   ctx.fillStyle = "rgba(10,8,6,.8)";
   ctx.fillRect(x-2, y-2, w+4, h+4);
   ctx.strokeStyle = "#4a3c22"; ctx.lineWidth = 2;
@@ -1406,7 +1437,7 @@ function drawRadar() {
   for (const a of G.units) {
     if (a.dead) continue;
     ctx.fillStyle = a.team===0 ? "#7fc4ff" : "#ff8a6a";
-    const r = a.u.size >= 22 ? 3.4 : 2.2;
+    const r = a.u.size >= 30 ? 4.4 : 2.9;
     ctx.fillRect(x + a.x*sx - r/2, y + (a.y-TOP())*sy - r/2, r, r);
   }
   for (const t of [0,1]) {
@@ -1416,7 +1447,7 @@ function drawRadar() {
   ctx.fillStyle = G.shrine.owner === 0 ? "#7fc4ff" : G.shrine.owner === 1 ? "#ff8a6a" : "#e8dcb0";
   ctx.fillRect(x + shrineX()*sx - 1.5, y + h/2 - 3, 3, 6);
   if (G.speed !== 1) {
-    ctx.fillStyle = "#ffd75e"; ctx.font = "bold 17px 'Trebuchet MS', sans-serif";
+    ctx.fillStyle = "#ffd75e"; ctx.font = "bold 22px 'Trebuchet MS', sans-serif";
     ctx.fillText(G.speed + "×", x + w + 10, y + 17);
   }
 }
@@ -1451,9 +1482,9 @@ function buildShops() {
       el.addEventListener("pointerdown", e => {
         e.preventDefault(); e.stopPropagation();
         const now = e.timeStamp || performance.now();
-        if (now - lastTap < 90) return;      // one buy per press, never a repeat storm
+        if (now - lastTap < 90) return;
         lastTap = now;
-        buy(team, i);
+        select(team, i);
       });
       el.addEventListener("contextmenu", e => e.preventDefault());
       el.addEventListener("mouseenter", () => { G.hi = { team, idx:i }; });
@@ -1474,6 +1505,11 @@ function drawIcon(c, i, team) {
   g.restore();
   ctx = real;
 }
+function markSelection(team) {
+  const sel = P[team].sel;
+  cards[team].forEach((el, i) => el.classList.toggle("sel", i === sel));
+}
+
 function flashCard(team, idx) {
   const el = cards[team][idx]; if (!el) return;
   el.classList.add("hit"); setTimeout(() => el.classList.remove("hit"), 80);
@@ -1531,10 +1567,14 @@ function updateHUD() {
     document.getElementById("hp"+n).style.width = Math.max(0,p.hp/CRYSTAL_HP*100)+"%";
     document.getElementById("hpt"+n).textContent = Math.ceil(p.hp)+" / "+CRYSTAL_HP;
     document.getElementById("g"+n).textContent = Math.floor(p.gold);
-    document.getElementById("i"+n).textContent = BASE_INCOME + 110*G.round + inc[t];
+    document.getElementById("i"+n).textContent = BASE_INCOME + 170*G.round + inc[t];
     document.getElementById("a"+n).textContent = cnt[t];
     document.getElementById("l"+n).textContent =
       (CPU && CPU.team===t ? "CPU · " : "") + LANES[p.lane] + " · " + STANCES[p.stance];
+    const rec = document.getElementById("rc"+n);
+    rec.textContent = (CPU && CPU.team===t) ? ""
+      : p.sel === null ? "no troop selected" : "▶ " + UNITS[p.sel].name;
+    rec.style.color = p.sel === null ? "#9e8b63" : "#ffd75e";
     UNITS.forEach((u,i) => cards[t][i].classList.toggle("poor", p.gold < u.price));
   }
   for (const t of [0,1]) {
@@ -1597,9 +1637,9 @@ window.addEventListener("keydown", e => {
   if (e.code === "ShiftLeft")  { if (!CPU || CPU.team!==0) P[0].lane=(P[0].lane+1)%4; return; }
   if (e.code === "ShiftRight") { if (!CPU || CPU.team!==1) P[1].lane=(P[1].lane+1)%4; return; }
   let i = P1_KEYS.indexOf(e.code);
-  if (i >= 0 && (!CPU || CPU.team !== 0)) { e.preventDefault(); buy(0,i); return; }
+  if (i >= 0 && (!CPU || CPU.team !== 0)) { e.preventDefault(); select(0,i); return; }
   i = P2_KEYS.indexOf(e.code);
-  if (i >= 0 && (!CPU || CPU.team !== 1)) { e.preventDefault(); buy(1,i); return; }
+  if (i >= 0 && (!CPU || CPU.team !== 1)) { e.preventDefault(); select(1,i); return; }
 });
 document.getElementById("startBtn").addEventListener("click", newGame);
 
@@ -1609,6 +1649,7 @@ function newGame() {
   G.units=[]; G.shots=[]; G.fx=[]; G.decals=0; decCtx.clearRect(0,0,G.W,G.H);
   G.round=1; G.tick=TICK_T; G.shake=0; G.speed=1;
   G.shrine={ owner:-1, prog:0 }; G.sudden=false; G.hi=null; G.help=false;
+  cards.forEach(row => row.forEach(el => el.classList.remove("sel")));
   G.running=true; G.over=false; G.paused=false;
   document.getElementById("overlay").classList.add("hide");
   banner("FIGHT!", 900);
