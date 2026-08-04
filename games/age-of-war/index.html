@@ -50,7 +50,12 @@
     background: rgba(20,25,34,.72); color: var(--muted); border: 1px solid var(--line);
     border-radius: 6px; padding: 4px 9px; font: 600 11px inherit; cursor: pointer;
   }
-  #muteBtn.off { color: var(--foe); border-color: #5a2a2a; }
+  #musicBtn {
+    position: absolute; top: 8px; right: 84px; z-index: 4;
+    background: rgba(20,25,34,.72); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px 9px; font: 600 11px inherit; cursor: pointer;
+  }
+  #muteBtn.off, #musicBtn.off { color: var(--foe); border-color: #5a2a2a; }
   #overlay {
     position: absolute; inset: 0; display: none;
     align-items: center; justify-content: center; flex-direction: column;
@@ -155,9 +160,10 @@
   <div id="stage">
     <canvas id="cv"></canvas>
     <button id="muteBtn">&#9834; sound</button>
+    <button id="musicBtn">&#9835; score</button>
     <div id="overlay">
       <h1 id="ovTitle">Age of War</h1>
-      <p id="ovText">Two players, one screen. P1 (blue) holds the left base, P2 (red) the right. Spawn troops, bank XP to evolve through five ages, and smash the other base.<br><b>P1:</b> 1 2 3 spawn &middot; E evolve &middot; T turret &middot; Q special<br><b>P2:</b> 7 8 9 spawn &middot; I evolve &middot; O turret &middot; U special<br>Or just tap the buttons &mdash; both sides are touch-friendly.<br><br><b>Light</b> beats <b>Ranged</b> beats <b>Heavy</b> beats <b>Light</b> &mdash; slots 1/2/3 in every age. Counter what they field.<br><span style="font-size:12px">P pauses &middot; M mutes</span></p>
+      <p id="ovText">Two players, one screen. P1 (blue) holds the left base, P2 (red) the right. Spawn troops, bank XP to evolve through five ages, and smash the other base.<br><b>P1:</b> 1 2 3 spawn &middot; E evolve &middot; T turret &middot; Q special<br><b>P2:</b> 7 8 9 spawn &middot; I evolve &middot; O turret &middot; U special<br>Or just tap the buttons &mdash; both sides are touch-friendly.<br><br><b>Light</b> beats <b>Ranged</b> beats <b>Heavy</b> beats <b>Light</b> &mdash; slots 1/2/3 in every age. Counter what they field.<br><span style="font-size:12px">P pauses &middot; M mutes &middot; N toggles the score</span></p>
       <div class="diffrow" id="modeRow">
         <button class="modebtn on" data-m="2p">2 Players</button>
         <button class="modebtn" data-m="ai">1 Player vs AI</button>
@@ -1329,10 +1335,77 @@ function sfx(kind) {
   } catch (e) { /* audio is optional — never let it break the game */ }
 }
 
+/* --- ambient score: slow pads, no melody, so it never competes with play --- */
+
+const MUSIC = [
+  { root: 110.0, chord: [0, 7, 12],     hold: 4.6 },   // Stone: bare fifth
+  { root: 116.5, chord: [0, 3, 7, 10],  hold: 4.2 },   // Medieval: minor
+  { root: 146.8, chord: [0, 4, 7, 11],  hold: 3.9 },   // Renaissance: major 7th
+  { root: 130.8, chord: [0, 3, 7, 14],  hold: 3.6 },   // Modern: tense minor
+  { root: 164.8, chord: [0, 5, 7, 14],  hold: 3.3 },   // Future: suspended
+];
+let musicOn = true, musicStep = 0;
+
+function pad(freq, dur, vol) {
+  const c = actx(), o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
+  o.type = "triangle"; o.frequency.value = freq;
+  f.type = "lowpass"; f.frequency.value = 820;
+  g.gain.setValueAtTime(0.0001, c.currentTime);
+  g.gain.exponentialRampToValueAtTime(vol, c.currentTime + dur * 0.4);
+  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+  o.connect(f); f.connect(g); g.connect(master);
+  o.start(); o.stop(c.currentTime + dur + 0.05);
+}
+
+// one scheduler for the whole session; it re-checks state each time rather
+// than being started and stopped, so timers can never stack up
+function musicTick() {
+  let wait = 1000;
+  try {
+    if (musicOn && !muted && running && !paused && G && !G.finishing) {
+      const m = MUSIC[Math.max(G.p.age, G.e.age)];
+      const semi = iv => m.root * Math.pow(2, iv / 12);
+      // drop the root an octave every other bar for a little movement
+      const bass = musicStep % 2 ? 0.5 : 1;
+      m.chord.forEach((iv, i) =>
+        setTimeout(() => {
+          if (musicOn && !muted && running && !paused) pad(semi(iv) * (i ? 1 : bass), m.hold, 0.03);
+        }, i * 70));
+      musicStep++;
+      wait = m.hold * 1000 * 0.85;
+    }
+  } catch (e) { /* score is optional */ }
+  setTimeout(musicTick, wait);
+}
+setTimeout(musicTick, 1200);
+
+/* --- preferences survive a reload --- */
+function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem("aow") || "{}");
+    if (typeof p.muted === "boolean") muted = p.muted;
+    if (typeof p.music === "boolean") musicOn = p.music;
+    if (typeof p.difficulty === "number") difficulty = p.difficulty;
+    if (p.mode === "2p" || p.mode === "ai") mode = p.mode;
+  } catch (e) { /* private mode or no storage: defaults are fine */ }
+}
+function savePrefs() {
+  try {
+    localStorage.setItem("aow", JSON.stringify({ muted, music: musicOn, difficulty, mode }));
+  } catch (e) { /* ignore */ }
+}
+
 function setMuted(v) {
   muted = v;
   const b = document.getElementById("muteBtn");
   if (b) { b.textContent = muted ? "\u2715 sound" : "\u266a sound"; b.classList.toggle("off", muted); }
+  savePrefs();
+}
+function setMusic(v) {
+  musicOn = v;
+  const b = document.getElementById("musicBtn");
+  if (b) { b.textContent = musicOn ? "\u266b score" : "\u2715 score"; b.classList.toggle("off", !musicOn); }
+  savePrefs();
 }
 
 /* ---------------- UI ---------------- */
@@ -1424,6 +1497,7 @@ document.addEventListener("keydown", ev => {
   const k = ev.key.toLowerCase();
   if (k === "p") { paused = !paused; return; }
   if (k === "m") { setMuted(!muted); return; }
+  if (k === "n") { setMusic(!musicOn); return; }
   if (paused) return;
   const map = { "1":["p",0], "2":["p",1], "3":["p",2], "e":["p","evo"], "t":["p","tur"], "q":["p","spc"] };
   if (mode === "2p") Object.assign(map,
@@ -1441,7 +1515,7 @@ document.querySelectorAll(".modebtn").forEach(b => {
   b.onclick = () => {
     document.querySelectorAll(".modebtn").forEach(x => x.classList.remove("on"));
     b.classList.add("on");
-    mode = b.dataset.m;
+    mode = b.dataset.m; savePrefs();
     el("diffRow").style.display = mode === "2p" ? "none" : "flex";
   };
 });
@@ -1449,11 +1523,12 @@ document.querySelectorAll(".diffbtn").forEach(b => {
   b.onclick = () => {
     document.querySelectorAll(".diffbtn").forEach(x => x.classList.remove("on"));
     b.classList.add("on");
-    difficulty = parseFloat(b.dataset.d);
+    difficulty = parseFloat(b.dataset.d); savePrefs();
   };
 });
 el("ovBtn").onclick = start;
 el("muteBtn").onclick = () => setMuted(!muted);
+el("musicBtn").onclick = () => setMusic(!musicOn);
 
 function endGame(result) {              // result "win" = P1 (blue) took the right base
   running = false;
@@ -1508,6 +1583,11 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+loadPrefs();
+setMuted(muted); setMusic(musicOn);
+document.querySelectorAll(".modebtn").forEach(b => b.classList.toggle("on", b.dataset.m === mode));
+document.querySelectorAll(".diffbtn").forEach(b => b.classList.toggle("on", +b.dataset.d === difficulty));
+el("diffRow").style.display = mode === "2p" ? "none" : "flex";
 reset();
 resize();
 el("overlay").style.display = "flex";
