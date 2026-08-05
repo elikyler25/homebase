@@ -38,8 +38,8 @@ interface Championship {
 
 const CHAMPIONSHIPS: Championship[] = [
   { tier: 1, name: "Rookie Cup", blurb: "Learn the line", needs: 0 },
-  { tier: 2, name: "National Series", blurb: "Loose surfaces, faster cars", needs: 4 },
-  { tier: 3, name: "World League", blurb: "Everything you have", needs: 10 },
+  { tier: 2, name: "National Series", blurb: "Loose surfaces, faster cars", needs: 6 },
+  { tier: 3, name: "World League", blurb: "Everything you have", needs: 15 },
 ];
 
 interface Progress {
@@ -250,9 +250,13 @@ export class Game {
     const list = $("track-list");
     list.innerHTML = "";
     const won = this.medalCount;
-    const golds = TRACKS.filter((t) => this.bestMedalFor(t.id) === "gold").length;
-    $("career-progress").textContent =
-      `${won}/${TRACKS.length} medals · ${golds} gold`;
+    // Skill events are medalled too, so they belong in the denominator — with
+    // circuits alone the counter reads 32/30 once the balloon runs are done.
+    const total = TRACKS.length + SKILL_EVENTS.length;
+    const golds = [...TRACKS.map((t) => t.id), ...SKILL_EVENTS.map((e) => e.id)].filter(
+      (id) => this.bestMedalFor(id) === "gold",
+    ).length;
+    $("career-progress").textContent = `${won}/${total} medals · ${golds} gold`;
 
     for (const champ of CHAMPIONSHIPS) {
       const defs = TRACKS.filter((t) => t.tier === champ.tier);

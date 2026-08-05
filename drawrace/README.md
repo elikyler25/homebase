@@ -24,7 +24,7 @@ to be at that speed, there, with the grip it actually has.
 - **Smoke is diegetic.** Tyre smoke appears exactly when the grip budget is blown, off the
   rear wheels — it is the feedback, not a decoration on top of it.
 
-**Sixteen circuits and three balloon skill events across three championships**, three car classes,
+**Thirty circuits and six balloon skill events across three championships**, three car classes,
 medals scaled off a simulated ideal lap. Later championships unlock on medals won, so the loose
 surfaces and the formula cars arrive once your drawing hand has had some practice. Where a
 circuit admits more than one class you pick before drawing, and results are filed per class —
@@ -67,7 +67,7 @@ npm run dev        # unminified
 ```
 
 Open `dist/index.html` in any browser, or add it to your iPhone home screen for full-screen
-play. No CDN, no external requests, no network at runtime. The whole game is ~82 kB.
+play. No CDN, no external requests, no network at runtime. The whole game is ~86 kB.
 
 ## Verification
 
@@ -136,7 +136,7 @@ cut the slip-angle visual — at its old coefficient an understeering car plough
 |------|------|
 | `src/math.ts` | vectors, damping, deterministic PRNG |
 | `src/track.ts` | closed spline, arc-length resampling, surfaces, spatial-grid projection |
-| `src/tracks.ts` | the sixteen circuits |
+| `src/tracks.ts` | the thirty circuits |
 | `src/ghost.ts` | saving and replaying your best stroke |
 | `src/carart.ts` | per-class car sprites, baked offscreen |
 | `src/line.ts` | pointer input → arc-length path with a speed at every node |
@@ -162,9 +162,28 @@ time-spent-drawing to time-spent-racing: draw a lap in 5 s and the car takes ~17
 It is also device-independent — a larger screen scales the path length and the finger's world
 speed by the same factor, so the mapping holds on a phone and a desktop alike.
 
+## Laying out a circuit
+
+Thirty of them exist now and the same three mistakes accounted for nearly every failure, so they
+are worth writing down.
+
+**A pinch entered off the fastest part of the lap is a wall, not a corner.** The stroke arrives
+far too fast and grinds almost to a halt; `where` shows it as three seconds lost in one twelfth
+while the other eleven look perfectly normal. Sandhills was fixed without moving a single point —
+the lap now *starts* just after its pinch, so the pinch arrives at the end of the lap with the
+corners before it having already taken the speed out.
+
+**A notch must go inwards.** Every feature that works — Nordic, Fjord, Marina, Autodrome — cuts
+into the infield and comes back out. Midnight Sun spent four attempts oscillating around a knife
+edge because its "notch" was actually an outward kink, an S, and no amount of adjusting the depth
+of the wrong shape makes it the right one.
+
+**Opening a corner up can make it worse.** Counterintuitive until you see why: a wobbly stroke
+demands lateral acceleration proportional to *v²*, so a faster corner punishes finger wobble
+harder than a slower one does. Twice the fix was to tighten, not loosen.
+
 ## Not yet built
 
-The original shipped 180 challenges across 30 tracks. This has sixteen circuits, three balloon
-skill events, a three-tier career, ghosts and hot seat. The remaining fourteen layouts are
-content on top of a core that is already doing the hard part — though "content" undersells it:
-every new circuit has to survive `npm run tune`, and the sixteenth took five rebuilds.
+The original shipped 180 challenges across its 30 tracks. This has the thirty, six balloon skill
+events, a three-tier career, ghosts and hot seat. What is left is depth per circuit rather than
+more circuits: multiple challenge types on each layout, and a proper endurance format.

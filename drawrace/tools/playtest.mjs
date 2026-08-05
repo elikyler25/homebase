@@ -36,20 +36,49 @@ page.on("console", (m) => {
   if (m.type() === "error") errors.push(`console: ${m.text()}`);
 });
 
+// Asking for a specific circuit means asking to drive it, and most of them are
+// behind a championship gate. Seed a profile with enough medals to open the
+// career — a virgin profile is still what the default (no-argument) run sees.
+if (trackId) {
+  await page.addInitScript(() => {
+    const medals = {};
+    for (let i = 0; i < 20; i++) medals[`unlock-${i}:gt`] = "bronze";
+    localStorage.setItem(
+      "drawrace.progress.v2",
+      JSON.stringify({ best: {}, medals, balloons: {} }),
+    );
+  });
+}
+
 await page.goto(`file://${resolve(root, "dist/index.html")}`);
 await page.waitForSelector("#track-list .track-card", { timeout: 10000 });
 await page.screenshot({ path: join(shots, "1-menu.png") });
 
-// Pick the track.
-const index = await page.evaluate((id) => {
-  if (!id) return 0;
-  const names = [...document.querySelectorAll("#track-list .track-card")].map((el) =>
-    el.querySelector(".tc-name").textContent.trim().toLowerCase(),
+// Pick the track. A locked card cannot be clicked, and silently falling back to
+// track 0 would quietly test the wrong circuit — so say so and stop.
+const pick = await page.evaluate((id) => {
+  const cards = [...document.querySelectorAll("#track-list .track-card")];
+  if (!id) return { index: 0, name: cards[0]?.querySelector(".tc-name").textContent.trim() };
+  const i = cards.findIndex((el) =>
+    el.querySelector(".tc-name").textContent.trim().toLowerCase().includes(id.toLowerCase()),
   );
-  const hit = names.findIndex((n) => n.includes(id.toLowerCase()));
-  return hit < 0 ? 0 : hit;
+  if (i < 0) return { index: -1 };
+  return {
+    index: i,
+    name: cards[i].querySelector(".tc-name").textContent.trim(),
+    locked: cards[i].disabled,
+  };
 }, trackId);
-await page.locator("#track-list .track-card").nth(index).click();
+if (pick.index < 0) {
+  console.log(`no circuit matching "${trackId}"`);
+  process.exit(1);
+}
+if (pick.locked) {
+  console.log(`"${pick.name}" is still locked even with a seeded profile`);
+  process.exit(1);
+}
+console.log(`circuit: ${pick.name}`);
+await page.locator("#track-list .track-card").nth(pick.index).click();
 await page.waitForSelector("#screen-draw:not(.hidden)", { timeout: 5000 });
 await page.waitForTimeout(400);
 await page.screenshot({ path: join(shots, "2-draw-empty.png") });
