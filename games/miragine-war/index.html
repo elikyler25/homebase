@@ -1,0 +1,2943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Mirage War — Crystal Battle</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --ink:#eae4d3; --dim:#9e8b63; --gold:#ffd75e;
+    --blue:#8fc4ff; --red:#ff9a7a; --edge:#4a3c22;
+  }
+  html, body {
+    margin: 0; padding: 0;
+    position: fixed; inset: 0; height: 100%; width: 100%;
+    background: #0b100d; color: #eae4d3;
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    overflow: hidden; user-select: none; -webkit-user-select: none;
+    overscroll-behavior: none; -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+  }
+  /* Pinned to the *visual* viewport by fit() below, not the layout viewport —
+     otherwise a mobile browser's toolbar or a stray zoom leaves a black band at
+     the top and pushes the shop off the bottom. */
+  #wrap {
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    transform-origin: 0 0;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  #stage { position: relative; flex: 1 1 auto; min-height: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: absolute; top: 0; left: 0; right: 0;
+         display: flex; align-items: flex-start; gap: 8px; padding: 6px 10px; pointer-events: none; }
+  .side { flex: 1 1 0; min-width: 0; }
+  .side.right { text-align: right; }
+  .hpbar { height: 18px; border: 2px solid #1d1810; border-radius: 3px;
+           background: #2a1d16; overflow: hidden; position: relative; box-shadow: 0 2px 0 #0007; }
+  .hpfill { height: 100%; width: 100%; transition: width .15s linear; }
+  .p1 .hpfill { background: linear-gradient(#bfe6ff, #2b6fd6); }
+  .p2 .hpfill { background: linear-gradient(#ffd0b0, #d64b2b); }
+  .hpbar span { position: absolute; inset: 0; text-align: center; font-size: 11px;
+                line-height: 14px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000; }
+  .stats { margin-top: 4px; display: flex; gap: 5px; align-items: center; flex-wrap: nowrap;
+           overflow: hidden; font-size: 12px; font-weight: bold; }
+  .side.right .stats { justify-content: flex-end; }
+  .stats .chip { background: rgba(8,12,9,.62); border: 1px solid rgba(255,255,255,.07);
+                 border-radius: 999px; padding: 1px 8px; white-space: nowrap;
+                 display: inline-flex; gap: 4px; align-items: baseline; }
+  .stats .chip:empty { display: none; }
+  .stats .chip b { font-size: 13px; }
+  .stats .chip i { font-style: normal; font-size: 10px; opacity: .7; }
+  .stats .tag { font-size: 12px; letter-spacing: 1.4px; font-weight: bold; text-shadow: 0 2px 3px #000; }
+  .gold { color: #ffd75e; } .inc { color: #8dff8d; } .army { color: #cfe8ff; }
+  .lane { color: #e5a8d8; } .mend { color: #9fffd8; } .rec { color: #ffd75e; }
+  @media (max-width: 1100px) { .stats { font-size: 11px; gap: 4px; } .stats .chip { padding: 1px 6px; } }
+  @media (max-width: 860px)  { .stats { font-size: 10px; } .stats .chip.lane { display: none; } }
+  #centre { flex: 0 0 auto; text-align: center; pointer-events: none; padding: 0 6px; }
+  #centre { background: rgba(8,12,9,.62); border: 1px solid rgba(255,255,255,.07);
+            border-radius: 10px; padding: 4px 12px 6px; }
+  #round { font-weight: bold; font-size: 16px; letter-spacing: 1.4px; color: #ffd75e; }
+  #tick { font-size: 10.5px; margin-top: 2px; color: #cfc6ae; }
+  #shrine { font-size: 10.5px; margin-top: 1px; }
+
+  /* ---------- shops ---------- */
+  #shops { flex: 0 0 auto; display: flex; gap: 8px; padding: 6px 8px 4px;
+           background: linear-gradient(#181309, #100d08); border-top: 2px solid #3d3018;
+           box-shadow: 0 -6px 18px rgba(0,0,0,.45); }
+  .half { flex: 1 1 0; min-width: 0; }
+  .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; }
+  .card { cursor: pointer; position: relative; min-width: 0; touch-action: manipulation;
+          background: linear-gradient(#282013, #1d170e); border: 1px solid #4a3c22; border-radius: 7px;
+          padding: 2px 2px 3px; text-align: center;
+          transition: transform .05s, background .1s, border-color .1s, box-shadow .1s; }
+  @media (hover: hover) { .card:hover { background: #33291a; border-color: #7d6738; } }
+  .card.hit { transform: translateY(2px); background: #6b5a33; }
+  .card.poor { opacity: .32; }
+  .card.hero { background: linear-gradient(#352612, #241a0d); border-color: #7a5f2a; }
+  .card .hb { position: absolute; bottom: 1px; right: 3px; font-size: 9px; color: #ffd75e; }
+  #gov { font-size: 11px; color: #b08a4a; letter-spacing: .04em; }
+  .card.sel { border-color: #ffd75e; background: linear-gradient(#5a4820, #3d3115);
+              box-shadow: 0 0 0 2px rgba(255,215,94,.4), 0 0 14px rgba(255,215,94,.3); }
+  .card.sel .nm { color: #ffe9a8; }
+  .card canvas { width: 100%; height: 32px; display: block; }
+  .card .nm { font-size: 9px; font-weight: bold; line-height: 11px; white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; }
+  .card .cost { font-size: 10px; color: #ffd75e; font-weight: bold; line-height: 11px; }
+  .card .rl { font-size: 8px; line-height: 9px; color: #8a7a58; letter-spacing: .3px;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card.hero .rl { color: #b99a54; }
+  .card .key { position: absolute; top: 0; left: 2px; font-size: 9px; color: #b09a6c; font-weight: bold; }
+  .card .arm { position: absolute; top: 0; right: 2px; font-size: 9px; font-weight: bold; }
+  .card .arm.a { color: #9fd0ff; } .card .arm.l { color: #ffd0a0; }
+  .card .pip { position: absolute; left: 0; right: 0; top: 40%; font-size: 15px;
+               font-weight: bold; color: #9fffd8; text-shadow: 0 2px 3px #000;
+               opacity: 0; pointer-events: none; transition: opacity .1s, transform .25s; }
+  .card .pip.go { opacity: 1; transform: translateY(-12px); transition: none; }
+  .card .advbg { height: 3px; background: #16110a; border-radius: 2px; margin: 1px 2px 0; overflow: hidden; }
+  .card .adv { height: 100%; width: 0; background: #6de06d; transition: width .25s linear, background .25s linear; }
+  #vs { flex: 0 0 auto; align-self: center; font-size: 20px; font-weight: bold;
+        color: #ffd75e; text-shadow: 0 2px 0 #000; padding: 0 4px; }
+  .ctrls { font-size: 10px; color: #9e8b63; text-align: center; padding: 2px 0 0; }
+
+  /* ---------- overlay / setup ---------- */
+  #overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(120% 90% at 50% 0%, rgba(60,86,42,.30), rgba(0,0,0,0) 60%),
+      rgba(6,9,7,.93);
+    padding: 14px; overflow: auto; z-index: 10;
+  }
+  #overlay.hide { display: none; }
+  .panel {
+    width: min(880px, 100%); max-height: 100%; overflow-y: auto;
+    background: linear-gradient(#1a1e16, #12150f);
+    border: 2px solid #3f3a26; border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05);
+    padding: 18px 22px 20px; text-align: center;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .ttl h1 {
+    margin: 0; font-size: 40px; line-height: 1; letter-spacing: 3px; color: var(--gold);
+    text-shadow: 0 3px 0 #000, 0 0 26px rgba(255,190,60,.28);
+  }
+  .ttl .tag { margin: 8px 0 0; font-size: 14px; color: #b9b09a; }
+
+  .setup { display: flex; flex-direction: column; gap: 8px; }
+  .row { display: grid; grid-template-columns: 108px 1fr; align-items: center; gap: 12px; text-align: left; }
+  .lbl {
+    font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase;
+    color: #8d8674; text-align: right; font-weight: bold;
+  }
+  .lbl.blue { color: var(--blue); } .lbl.red { color: var(--red); }
+  .opts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  button.mode, button.army {
+    font: inherit; cursor: pointer; color: #cfc6ae;
+    background: #241d13; border: 1px solid #4a3c22; border-radius: 8px;
+    padding: 7px 13px; font-size: 13px; font-weight: bold; line-height: 1.15;
+    transition: background .12s, border-color .12s, color .12s, transform .06s;
+  }
+  @media (hover: hover) {
+    button.mode:hover, button.army:hover { background: #33291a; border-color: #7d6738; color: #f0e6cf; }
+  }
+  button.mode:active, button.army:active { transform: translateY(1px); }
+  button.mode.on { background: #2f4a70; border-color: #7fb0e8; color: #eaf4ff; }
+  button.army { text-align: left; padding: 6px 12px; }
+  button.army .an { display: block; font-size: 13px; letter-spacing: .6px; }
+  button.army .ac { display: block; font-size: 10px; color: #8d8674; font-weight: normal; margin-top: 1px; }
+  button.army.on { background: #3a3118; border-color: var(--gold); }
+  button.army.on .ac { color: #c7b98f; }
+
+  .note { margin: 0; font-size: 12px; color: #9e8b63; line-height: 1.5; min-height: 1em; }
+
+  button.big {
+    align-self: center; font: inherit; font-size: 20px; font-weight: bold; letter-spacing: 2px;
+    cursor: pointer; color: #eaffdf;
+    background: linear-gradient(#4e8536, #3a6427);
+    border: 1px solid #7cc054; border-radius: 10px;
+    box-shadow: 0 4px 0 #26411a, 0 8px 18px rgba(0,0,0,.45);
+    padding: 11px 44px; transition: transform .06s, box-shadow .06s;
+  }
+  button.big:active { transform: translateY(3px); box-shadow: 0 1px 0 #26411a; }
+
+  .result { display: none; }
+  .result.show { display: block; }
+  .result .rt { font-size: 26px; font-weight: bold; letter-spacing: 2px; margin-bottom: 8px; }
+  .result .rg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; }
+  .result .rc { background: #191d15; border: 1px solid #33291a; border-radius: 9px; padding: 9px 12px; }
+  .result .rc h4 { margin: 0 0 4px; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; }
+  .result .rc p { margin: 0; font-size: 12px; color: #b9b09a; line-height: 1.5; }
+
+  .howto { text-align: left; border-top: 1px solid #2c2519; padding-top: 10px; }
+  .howto summary {
+    cursor: pointer; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase;
+    color: #9e8b63; font-weight: bold; list-style: none; text-align: center;
+  }
+  .howto summary::-webkit-details-marker { display: none; }
+  .howto summary::after { content: " ▾"; }
+  .howto[open] summary::after { content: " ▴"; }
+  .howbody { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 12px; }
+  .howbody h3 { margin: 0 0 4px; font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--gold); }
+  .howbody h3 + p { margin: 0 0 12px; }
+  .howbody p { font-size: 12.5px; line-height: 1.55; color: #b9b09a; margin: 0 0 10px; }
+  .howbody .lt { color: #ffd0a0; } .howbody .ar { color: #9fd0ff; }
+  table.keys2 { border-collapse: collapse; width: 100%; font-size: 12px; margin-bottom: 12px; }
+  table.keys2 th, table.keys2 td { padding: 3px 4px; text-align: left; vertical-align: middle; }
+  table.keys2 th { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  table.keys2 th.blue { color: var(--blue); } table.keys2 th.red { color: var(--red); }
+  table.keys2 td:first-child { color: #9e8b63; white-space: nowrap; }
+
+  @media (max-height: 400px) {
+    .ttl .tag { display: none; }
+    .ttl h1 { font-size: 22px; }
+    .panel { gap: 7px; padding: 9px 12px 10px; }
+    .note { font-size: 10px; max-height: 2.6em; overflow: hidden; }
+    .howto { display: none; }
+  }
+  @media (max-height: 620px), (max-width: 720px) {
+    .panel { padding: 12px 14px 14px; gap: 10px; border-radius: 10px; }
+    .ttl h1 { font-size: 27px; letter-spacing: 2px; }
+    .ttl .tag { font-size: 12px; margin-top: 5px; }
+    .row { grid-template-columns: 84px 1fr; gap: 8px; }
+    .lbl { font-size: 10px; }
+    button.mode, button.army { padding: 5px 9px; font-size: 11.5px; }
+    button.army .an { font-size: 11.5px; } button.army .ac { font-size: 9px; }
+    button.big { font-size: 16px; padding: 9px 30px; }
+    .howbody { grid-template-columns: 1fr; gap: 10px; }
+    .note { font-size: 11px; }
+  }
+
+  .banner { position: absolute; left: 0; right: 0; top: 26%; text-align: center;
+            font-size: 42px; font-weight: bold; color: #ffd75e;
+            text-shadow: 0 4px 0 #000, 0 0 22px #ffae00; pointer-events: none;
+            opacity: 0; transition: opacity .2s; }
+  .banner.show { opacity: 1; }
+
+  /* ---------- small screens: the battlefield always keeps the room ---------- */
+  @media (max-height: 620px) {
+    #shops { padding: 3px 4px 1px; gap: 5px; }
+    .card .rl { display: none; }
+    .card canvas { height: 22px; }
+    .banner { font-size: 30px; top: 22%; }
+    .card .nm { font-size: 8px; line-height: 9px; }
+    .card .cost { font-size: 9px; line-height: 10px; }
+    .card .key, .card .arm { font-size: 8px; }
+    .ctrls { font-size: 8px; padding: 1px 0 0; }
+    #vs { font-size: 15px; padding: 0 2px; }
+    .stats { font-size: 11px; }
+    .hpbar { height: 14px; } .hpbar span { font-size: 10px; line-height: 11px; }
+    #round { font-size: 14px; padding: 0 10px; }
+    #tick, #shrine { font-size: 9px; }
+  }
+  /* Too narrow for a readable name — the sprite identifies the unit better than
+     "N…" does, so keep the picture and drop the label. */
+  @media (max-height: 460px) {
+    .card { padding: 1px 1px 2px; }
+    .card canvas { height: 19px; }
+    .card .nm { display: none; }
+    .card .cost { font-size: 9px; line-height: 10px; }
+    .card .key, .card .arm { font-size: 7px; }
+    .ctrls { display: none; }
+    #hud { padding: 3px 6px; }
+    .stats { font-size: 10px; margin-top: 1px; }
+    .hpbar { height: 12px; } .hpbar span { font-size: 9px; line-height: 9px; }
+    .banner { font-size: 24px; top: 20%; }
+  }
+
+  /* ---------- portrait hint ---------- */
+  #rotate { position: fixed; inset: 0; display: none; z-index: 50;
+            background: #0b100d; color: #eae4d3; text-align: center;
+            align-items: center; justify-content: center; flex-direction: column; gap: 14px; padding: 24px; }
+  #rotate div { font-size: 46px; }
+  @media (orientation: portrait) and (max-width: 900px) {
+    #rotate { display: flex; }
+  }
+</style>
+</head>
+<body>
+<div id="rotate"><div>⟳</div><b style="font-size:20px;color:#ffd75e">Turn your device sideways</b>
+  <p style="max-width:320px;color:#cfc6ae;font-size:14px;line-height:1.5">Mirage War is a two-player
+  battlefield — it needs the long edge of your screen.</p></div>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+
+    <div id="hud">
+      <div class="side p1">
+        <div class="hpbar"><div class="hpfill" id="hp1"></div><span id="hpt1"></span></div>
+        <div class="stats">
+          <span class="tag" id="f1"></span>
+          <span class="chip gold">◆<b id="g1">0</b></span>
+          <span class="chip inc">+<b id="i1">0</b></span>
+          <span class="chip army"><b id="a1">0</b><i>troops</i></span>
+          <span class="chip rec" id="rc1"></span>
+          <span class="chip lane" id="l1"></span>
+          <span class="chip mend" id="rp1"></span>
+        </div>
+      </div>
+      <div id="centre">
+        <div id="round">ROUND 1</div>
+        <div id="tick">payday in 10s</div>
+        <div id="shrine"></div>
+        <div id="gov"></div>
+      </div>
+      <div class="side right p2">
+        <div class="stats" style="margin:0 0 3px">
+          <span class="chip mend" id="rp2"></span>
+          <span class="chip lane" id="l2"></span>
+          <span class="chip rec" id="rc2"></span>
+          <span class="chip army"><b id="a2">0</b><i>troops</i></span>
+          <span class="chip inc">+<b id="i2">0</b></span>
+          <span class="chip gold">◆<b id="g2">0</b></span>
+          <span class="tag" id="f2"></span>
+        </div>
+        <div class="hpbar"><div class="hpfill" id="hp2"></div><span id="hpt2"></span></div>
+      </div>
+    </div>
+
+    <div class="banner" id="banner"></div>
+
+    <div id="overlay">
+     <div class="panel">
+      <header class="ttl">
+        <h1>MIRAGE WAR</h1>
+        <p class="tag">Two armies, one screen. Pick a troop and your crystal keeps making it.</p>
+      </header>
+
+      <div id="resultBox" class="result"></div>
+
+      <section class="setup">
+        <div class="row"><span class="lbl">Opponent</span><div class="opts" id="modes"></div></div>
+        <div class="row"><span class="lbl">Battle</span><div class="opts" id="sizes"></div></div>
+        <div class="row"><span class="lbl blue">Blue army</span><div class="opts" id="army1"></div></div>
+        <div class="row"><span class="lbl red">Red army</span><div class="opts" id="army2"></div></div>
+      </section>
+
+      <button class="big" id="startBtn">FIGHT</button>
+
+      <p class="note" id="setupNote"></p>
+
+      <details class="howto">
+        <summary>How to play &amp; controls</summary>
+        <div class="howbody">
+          <div class="hcol">
+            <h3>The loop</h3>
+            <p>Pick a troop once — your crystal keeps recruiting it until the gold runs out. Press it
+            again to stop and bank, or pick another to switch. Shatter the enemy crystal to win.</p>
+            <h3>Armour is the counter system</h3>
+            <p>Every troop is <b class="lt">LIGHT</b> or <b class="ar">ARMORED</b> and carries separate
+            damage against each; armour subtracts flat damage on top. Light-killers butcher fodder and
+            cannot dent plate. Armour-breakers are the reverse. The bar under each card scores that
+            troop against the enemy's army <i>right now</i>.</p>
+            <h3>Your army is your economy</h3>
+            <p>Every living troop pays income at each payday. Hold the shrine mid-field for a bonus.
+            Champions are limited to one on the field at a time.</p>
+          </div>
+          <div class="hcol">
+            <h3>Controls</h3>
+            <table class="keys2">
+              <tr><th></th><th class="blue">Blue</th><th class="red">Red</th></tr>
+              <tr><td>Troops</td>
+                  <td><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><kbd>A</kbd></td>
+                  <td><kbd>7</kbd><kbd>8</kbd><kbd>9</kbd><kbd>0</kbd><kbd>U</kbd><kbd>I</kbd><kbd>O</kbd><kbd>P</kbd><kbd>J</kbd></td></tr>
+              <tr><td>Spawn lane</td><td><kbd>L-Shift</kbd></td><td><kbd>R-Shift</kbd></td></tr>
+              <tr><td>Stance</td><td><kbd>T</kbd></td><td><kbd>'</kbd></td></tr>
+              <tr><td>Mend crystal</td><td><kbd>5</kbd></td><td><kbd>6</kbd></td></tr>
+            </table>
+            <h3>Both players</h3>
+            <p><kbd>Space</kbd> pause &nbsp; <kbd>-</kbd><kbd>=</kbd> game speed &nbsp;
+               <kbd>H</kbd> counter chart &nbsp; <kbd>`</kbd> mute<br>
+               Tap a card to select it, tap again to stop. Hover a card to pick that troop out of the melee.</p>
+          </div>
+        </div>
+      </details>
+     </div>
+    </div>
+  </div>
+
+  <div id="shops">
+    <div class="half">
+      <div class="grid" id="shop1"></div>
+      <div class="ctrls">P1 &nbsp; 1 2 3 4 Q W E R &nbsp;/&nbsp; A S D F Z X C V &nbsp;·&nbsp; L-SHIFT lane &nbsp;·&nbsp; T stance &nbsp;·&nbsp; 5 mend</div>
+    </div>
+    <div id="vs">VS</div>
+    <div class="half">
+      <div class="grid" id="shop2"></div>
+      <div class="ctrls">P2 &nbsp; 7 8 9 0 U I O P &nbsp;/&nbsp; J K L ; M , . / &nbsp;·&nbsp; R-SHIFT lane &nbsp;·&nbsp; ' stance &nbsp;·&nbsp; 6 mend</div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   ROSTER
+   Modelled on Miragine War: a straight price ladder where every unit carries
+   price / income / hp / armour / armour-type / speed / damage-vs-light /
+   damage-vs-armored / range / weapon speed. The counter system *is* those two
+   damage columns plus flat armour — there is no separate multiplier table.
+   `art` drives the sprite so every unit has its own silhouette.
+   ============================================================ */
+/* Role templates. Every faction fields the same eight jobs plus a hero, so the
+   counter maths that was tuned over many simulated matchups carries across all
+   of them — factions differ in flavour, small tilts and their champion, never in
+   raw power. */
+const ROLE = {
+  // The ladder is deliberately steep: each tier costs roughly two and a half times
+  // the one below and hits about that much harder. Value-per-gold stays broadly
+  // flat, so massing cheap troops is still a real strategy - what changes is that a
+  // Titan is a genuine commitment rather than a slightly dearer soldier. The old
+  // curve was nearly flat through the middle (230 against 250, 1020 against 1330),
+  // so with plenty of gold there was no reason not to simply buy the top of it.
+  swarm:   { price:   15, income:  2, hp:  70, armour: 0, type:"light",   spd: 86, dL: 12, dA:   5, rng: 40, ws:0.75, size:20, kind:"melee"  },
+  line:    { price:  140, income:  9, hp: 265, armour: 4, type:"armored", spd: 82, dL: 34, dA:  25, rng: 48, ws:0.80, size:25, kind:"melee"  },
+  slayer:  { price:  340, income: 13, hp: 205, armour: 1, type:"light",   spd:178, dL:117, dA:  11, rng: 44, ws:0.55, size:22, kind:"melee"  },
+  shooter: { price:  370, income: 17, hp: 245, armour: 2, type:"light",   spd: 74, dL: 44, dA:  44, rng:260, ws:1.10, size:22, kind:"ranged" },
+  breaker: { price:  900, income: 25, hp: 330, armour: 3, type:"light",   spd: 74, dL: 32, dA: 188, rng:208, ws:1.00, size:23, kind:"ranged" },
+  rider:   { price: 2200, income: 42, hp: 950, armour: 7, type:"armored", spd:194, dL:110, dA:  55, rng: 56, ws:0.75, size:32, kind:"mount", splash:53 },
+  siege:   { price: 2500, income: 53, hp: 415, armour: 2, type:"light",   spd: 64, dL:104, dA: 104, rng:316, ws:1.40, size:25, kind:"ranged", splash:99 },
+  titan:   { price: 6000, income: 74, hp:2900, armour:18, type:"armored", spd: 56, dL:120, dA:  90, rng: 64, ws:1.00, size:40, kind:"melee", splash:96 },
+  hero:    { price:15000, income:102, hp:4300, armour:15, type:"armored", spd: 96, dL:225, dA: 192, rng: 74, ws:0.75, size:52, kind:"melee", hero:true },
+};
+
+const ROLE_LABEL = { swarm:"fodder", line:"shield line", slayer:"light-killer", shooter:"skirmisher",
+                     breaker:"armour-breaker", rider:"flanker", siege:"artillery", titan:"wall", hero:"CHAMPION" };
+const mk = (role, name, col, art, over) => ({ ...ROLE[role], role, name, col, art, ...(over||{}) });
+
+/* Four armies. Each troop is a character with one job and one trick, in the
+   spirit of TABS' faction rosters. */
+/* Four armies. Every faction fields the same eight roles at identical stats —
+   balance by construction, after simulated round-robins showed that even small
+   per-faction stat tilts swung whole matchups (range especially, since a ranged
+   unit fires from behind a screen and takes almost nothing back). Identity comes
+   from the art, the names, one signature perk each, and the champion. */
+const FACTIONS = [
+  { id:"tribe", name:"TRIBE", tint:"#c9a86a",
+    blurb:"Bone and muscle. The Mammoth is the biggest body on the field.",
+    perk:"Mammoth: +320 HP", units:[
+    mk("swarm","Clubber","#b8a07a",{head:"bare",body:"tatter",weapon:"club",skin:"#d8a878"}),
+    mk("line","Protector","#a98c5e",{head:"hood",body:"tunic",weapon:"club",tower:true}),
+    mk("slayer","Headhunter","#8c6a3c",{head:"mask",body:"tatter",weapon:"daggers",scarf:true,skin:"#d8a878"}),
+    mk("shooter","Bone Thrower","#d8cbb0",{head:"bare",body:"tatter",weapon:"bow",skin:"#d8a878"}),
+    mk("breaker","Bone Mage","#cfd8c0",{head:"horns",body:"robe",weapon:"staff",orb:"#dfeacb"}),
+    mk("rider","Wolf Rider","#7f6a4a",{head:"bare",body:"tunic",weapon:"spear",mount:true,skin:"#d8a878"}),
+    mk("siege","Boulder Thrower","#9a8f78",{head:"bare",body:"tatter",weapon:"club",skin:"#d8a878"}),
+    mk("titan","Mammoth","#8d6c4a",{head:"horns",body:"plate",weapon:"club",mount:true,aura:"#b58c5a"},
+       {hp:3450, size:46}),                                   // signature perk: +550 HP
+    mk("hero","Chieftain","#e0b45a",{head:"horns",body:"plate",weapon:"axe",cape:"#5a3a18",aura:"#ffd070",pauldrons:true},
+       {price:14700, hp:5100, dL:228, dA:198, splash:70, auraBuff:{r:340, dmg:0.30}}),
+  ]},
+  { id:"legion", name:"LEGION", tint:"#d9d9e2",
+    blurb:"Shields and reach, and a god who throws lightning.",
+    perk:"Hoplite: +2 armour", units:[
+    mk("swarm","Militia","#c8c2b0",{head:"helm",body:"tunic",weapon:"sword"}),
+    mk("line","Hoplite","#cfd8e4",{head:"plume",body:"plate",weapon:"spear",shield:true},{armour:6}),
+    mk("slayer","Gladiator","#c07a4a",{head:"visor",body:"tunic",weapon:"daggers"}),
+    mk("shooter","Archer","#a8c88f",{head:"hood",body:"tunic",weapon:"bow"}),
+    mk("breaker","Oracle","#e8dca8",{head:"bald",body:"robe",weapon:"staff",halo:true}),
+    mk("rider","Chariot","#d8c070",{head:"plume",body:"plate",weapon:"lance",mount:true}),
+    mk("siege","Ballista","#9a8f78",{head:"helm",body:"tunic",weapon:"bow"}),
+    mk("titan","Minotaur","#8a5a3a",{head:"horns",body:"plate",weapon:"axe",pauldrons:true}),
+    mk("hero","Zeus","#f0e8b0",{head:"crown",body:"robe",weapon:"staff",cape:"#d8d0a0",aura:"#fff2a0",orb:"#ffffff"},
+       {price:16000, hp:4700, armour:18, kind:"ranged", rng:360, ws:1.00, dL:285, dA:252, spd:84, splash:104, chain:5}),
+  ]},
+  { id:"norse", name:"NORSE", tint:"#8fb4d8",
+    blurb:"Everything charges at once, and Thor lands like a meteor.",
+    perk:"Berserker: swings 10% faster", units:[
+    mk("swarm","Thrall","#b0a894",{head:"bare",body:"tunic",weapon:"club"}),
+    mk("line","Shieldmaiden","#c8b46a",{head:"helm",body:"plate",weapon:"sword",shield:true}),
+    mk("slayer","Berserker","#c05a3a",{head:"bare",body:"tatter",weapon:"axe",scarf:true},{ws:0.50}),
+    mk("shooter","Axe Thrower","#a0b8c8",{head:"helm",body:"tunic",weapon:"axe"}),
+    mk("breaker","Runecaster","#9fd0e8",{head:"hood",body:"robe",weapon:"staff",orb:"#a8e4ff"}),
+    mk("rider","Raider","#c8a05a",{head:"helm",body:"plate",weapon:"axe",mount:true}),
+    mk("siege","Stone Thrower","#8f9aa8",{head:"helm",body:"tunic",weapon:"club"}),
+    mk("titan","Ice Giant","#a8d8ea",{head:"horns",body:"plate",weapon:"greatsword",aura:"#bfe8ff"}),
+    mk("hero","Thor","#e8d070",{head:"helm",body:"plate",weapon:"greatsword",cape:"#7a2a2a",aura:"#9fd8ff",pauldrons:true},
+       {price:15500, hp:5450, dL:258, dA:228, ws:0.80, spd:86, splash:190}),
+  ]},
+  { id:"dynasty", name:"DYNASTY", tint:"#e0776a",
+    blurb:"Fire from range, and a champion that simply does not stop.",
+    perk:"Fire Archer: looses 5% faster", units:[
+    mk("swarm","Peasant","#c8b48f",{head:"kasa",body:"tunic",weapon:"club"}),
+    mk("line","Iron Guard","#b9c4d2",{head:"visor",body:"plate",weapon:"spear",tower:true}),
+    mk("slayer","Ninja","#5f5f74",{head:"mask",body:"tunic",weapon:"daggers",scarf:true}),
+    mk("shooter","Fire Archer","#e08a4a",{head:"kasa",body:"tunic",weapon:"bow"},{ws:1.05}),
+    mk("breaker","Monk","#e0c060",{head:"bald",body:"robe",weapon:"staff",halo:true}),
+    mk("rider","Lancer","#d8b45a",{head:"kasa",body:"plate",weapon:"lance",mount:true}),
+    mk("siege","Hwacha","#c86a4a",{head:"kasa",body:"tunic",weapon:"bow"}),
+    mk("titan","Iron Ox","#8fa0b8",{head:"visor",body:"plate",weapon:"greatsword",pauldrons:true,tower:true,glow:"#ffd070"}),
+    mk("hero","Monkey King","#f0c040",{head:"crown",body:"tunic",weapon:"spear",cape:"#c83a2a",aura:"#ffd84a"},
+       {price:15300, hp:3800, spd:210, ws:0.55, dL:237, dA:183, type:"light", armour:5, drain:0.38}),
+  ]},
+];
+
+/* one flat list so sprites, sizing and the battle-size multipliers can address
+   every unit in the game by a stable id */
+const ALL_UNITS = [];
+FACTIONS.forEach(f => f.units.forEach(u => {
+  u.faction = f; u.idx = f.units.indexOf(u); u.gid = ALL_UNITS.length;
+  u.baseSize = u.size; u.baseSpd = u.spd; u.baseHp = u.hp; u.basePrice = u.price;
+  ALL_UNITS.push(u);
+}));
+
+const P1_KEYS = ["Digit1","Digit2","Digit3","Digit4","KeyQ","KeyW","KeyE","KeyR",
+                 "KeyA","KeyS","KeyD","KeyF","KeyZ","KeyX","KeyC","KeyV"];
+const P2_KEYS = ["Digit7","Digit8","Digit9","Digit0","KeyU","KeyI","KeyO","KeyP",
+                 "KeyJ","KeyK","KeyL","Semicolon","KeyM","Comma","Period","Slash"];
+const P1_LBL = ["1","2","3","4","Q","W","E","R","A","S","D","F","Z","X","C","V"];
+const P2_LBL = ["7","8","9","0","U","I","O","P","J","K","L",";","M",",",".","/"];
+const LANES = ["SPREAD", "HIGH", "MID", "LOW"];
+const STANCES = ["ADVANCE", "HOLD"];
+const holdX = t => crystalX(t) + (t === 0 ? 1 : -1) * G.W * 0.3;
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let CRYSTAL_HP    = 6000;
+const START_GOLD  = 900;
+const TICK_T      = 10;
+const BASE_INCOME = 300;
+
+const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed:1,
+            units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false,
+            shrine:{ owner:-1, prog:0 }, sudden:false, zones:[], poorT:0,
+            ft:8, fps:60, govMs:0, budget:1e9, inc:[0,0], cnt:[0,0] };
+let P = [];
+let CPU = null;                   // {team, level} or null for 2-player
+
+let REPAIR_COST = 450, REPAIR_HEAL = 700;
+let AUTO_GAP = 0.30;        // seconds between automatic recruits
+const RECRUIT_BURST = 80;   // most troops one crystal may produce in a single frame
+let goldMul = 1;            // battle-size gold multiplier
+let UNIT_CAP = 2600;        // safety valve so a runaway battle cannot stall the frame
+
+/* ---------- battle sizes ---------- */
+const SIZES = {
+  normal: { label:"NORMAL BATTLE", world:2600, gold: 1, auto:0.300, size:1,    spd:1,   hp: 6000, cap:2600, hero:{hp:1,   price:1  } },
+  epic:   { label:"EPIC BATTLE",   world:5200, gold: 4, auto:0.050, size:1.45, spd:1.7, hp:18000, cap:2600, hero:{hp:2.2, price:4  } },
+  // CHAOS takes EPIC's dials ten times further wherever that stays playable.
+  // Gold and recruit rate go the full 10x; the map cannot, because troops have to
+  // stay visible on a screen two people share - so it grows as far as legibility
+  // allows and bodies scale with it.
+  chaos:  { label:"CHAOS",         world:14000, gold:40, auto:0.005, size:3.4, spd:4.6, hp:48000, cap:4200, hero:{hp:4.5, price:14 } },
+  // CHAOS x10: ten times the area, five times the gold, twice the recruit rate.
+  // A soldier here is about three pixels tall - past the point where the sprite
+  // detail means anything, which is why this size draws the simplified bodies.
+  // The biggest the engine holds at sixty frames a second. The ceiling is not the
+  // map: a wider world with proportionally bigger troops looks identical, because
+  // the whole world is always on screen and never scrolls. What actually binds is
+  // troop *pixel* size for legibility - 2.4px here, the point where the dark rim
+  // can still separate one body from the next - and JavaScript cost per troop for
+  // frame rate. Measured across real matches on a mid machine: 26,000 troops runs a
+  // median 9.7ms with a 12.6ms p90, and 32,000 breaks down to a 23ms p90.
+  // Gold is deliberately lower than CHAOS x10's: army income scales with the army,
+  // so at eight times the troops a smaller multiplier already funds more, and x200
+  // made every unit price irrelevant.
+  chaos10:{ label:"MAELSTROM",     world:66000, gold:200, auto:0.001,  size:5.5, spd:18, hp:1500000, cap:26000, hero:{hp:16, price:100} },
+};
+let sizeId = "normal";
+function applyBattleSize() {
+  if (!SIZES[sizeId]) sizeId = "normal";   // a stale saved preference must not brick the menu
+  const c = SIZES[sizeId];
+  WORLD_W = c.world; goldMul = c.gold; AUTO_GAP = c.auto; CRYSTAL_HP = c.hp; UNIT_CAP = c.cap;
+  G.budget = c.cap; FX_CAP = FX_MAX;
+  REPAIR_COST = Math.round(450 * c.gold);
+  REPAIR_HEAL = Math.round(700 * (c.hp / 6000));
+  ALL_UNITS.forEach(u => {
+    u.size = Math.round(u.baseSize*c.size);
+    u.spd  = Math.round(u.baseSpd*c.spd);
+    u.hp    = u.hero ? Math.round(u.baseHp    * c.hero.hp)    : u.baseHp;
+    u.price = u.hero ? Math.round(u.basePrice * c.hero.price) : u.basePrice;
+  });
+  spriteCache.clear(); gpu.stamp = -1;
+  resize();          // resize() re-evaluates SIMPLE for the new zoom
+}
+const SHRINE_R = 251, SHRINE_GOLD = 240, SUDDEN_ROUND = 28;
+const shrineX = () => G.W/2, shrineY = () => crystalY();
+function mkPlayer(team) {
+  return { team, gold: START_GOLD*goldMul, hp: CRYSTAL_HP, cool: 0, kills: 0, lane: 0, spent: 0,
+           built: {}, mend: 0, stance: 0, sel: null, autoT: 0,
+           faction: FACTIONS[0], roster: FACTIONS[0].units, heroes: 0 };
+}
+function repair(team) {
+  if (!G.running || G.over || G.paused) return;
+  const p = P[team];
+  if (p.gold < REPAIR_COST || p.hp >= CRYSTAL_HP || p.mend > 0) { sfxDeny(); return; }
+  p.gold -= REPAIR_COST; p.spent += REPAIR_COST; p.mend = 1.2;
+  p.hp = Math.min(CRYSTAL_HP, p.hp + REPAIR_HEAL);
+  tone(520, .18, "triangle", .05, 1040);
+  for (let i=0;i<14;i++) {
+    const a = Math.random()*6.28;
+    G.fx.push({ t:"p", x:crystalX(team)+Math.cos(a)*40, y:crystalY()+Math.sin(a)*54,
+                vx:-Math.cos(a)*70, vy:-Math.sin(a)*70, life:.5, max:.5,
+                c: team===0 ? "#bfe6ff" : "#ffd0b0", r:2+Math.random()*2, nog:true });
+  }
+}
+
+const cv = document.getElementById("cv");
+let ctx = cv.getContext("2d");
+let DPR = 1;
+let WORLD_W = 2600;         // everything is authored in these units
+let VIEW = 1;               // world -> css pixels
+// static layers, painted once instead of every frame
+const bgCv = document.createElement("canvas"), bgCtx = bgCv.getContext("2d");
+const decCv = document.createElement("canvas"), decCtx = decCv.getContext("2d");
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const r = cv.getBoundingClientRect();
+  const cssW = Math.max(300, r.width), cssH = Math.max(150, r.height);
+  VIEW = cssW / WORLD_W;
+  G.W = WORLD_W;
+  G.H = Math.max(560, cssH / VIEW);          // world height follows the aspect
+  cv.width = Math.round(cssW*DPR); cv.height = Math.round(cssH*DPR);
+  const q = VIEW*DPR;
+  ctx.setTransform(q, 0, 0, q, 0, 0);
+  ctx.imageSmoothingEnabled = false;      // sprites blit 1:1; filtering is pure cost
+  for (const c of [bgCv, decCv]) { c.width = cv.width; c.height = cv.height; }
+  bgCtx.setTransform(q,0,0,q,0,0); decCtx.setTransform(q,0,0,q,0,0);
+  buildTerrain();
+  buildZones();
+  paintBackground();
+  if (typeof spriteCache !== "undefined") { spriteCache.clear(); gpu.stamp = -1; refreshSimple(); }
+}
+/* Size the board to whatever the browser is actually showing right now. iOS in
+   particular reports a layout viewport that is taller than the visible area and
+   can offset it, which framed the game with a black bar on top and clipped the
+   shop off the bottom. */
+const wrapEl = document.getElementById("wrap");
+function fit() {
+  const vv = window.visualViewport;
+  const w = Math.round(vv ? vv.width  : window.innerWidth);
+  const h = Math.round(vv ? vv.height : window.innerHeight);
+  wrapEl.style.width  = w + "px";
+  wrapEl.style.height = h + "px";
+  wrapEl.style.transform = vv && (vv.offsetLeft || vv.offsetTop)
+    ? "translate(" + vv.offsetLeft + "px," + vv.offsetTop + "px)" : "";
+  resize();
+}
+window.addEventListener("resize", fit);
+window.addEventListener("orientationchange", () => { fit(); setTimeout(fit, 300); });
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", fit);
+  window.visualViewport.addEventListener("scroll", fit);
+}
+// a mobile browser can settle its chrome a beat after load
+window.addEventListener("load", () => { fit(); setTimeout(fit, 250); });
+
+let terrain = [];
+function buildTerrain() {
+  terrain = [];
+  const n = Math.round(G.W*G.H/7600);
+  for (let i = 0; i < n; i++)
+    terrain.push({ x: Math.random()*G.W, y: Math.random()*G.H, s: 4+Math.random()*8,
+                   k: Math.random() < .07 ? "rock" : (Math.random() < .06 ? "flower" : "grass"),
+                   c: Math.random() });
+}
+
+/* Battlefield terrain. Zones never block movement — no pathfinding, nothing to
+   get stuck on — they change what happens inside them, which is enough to make
+   position matter. Always mirrored, so neither side gets the better ground. */
+const ZONE = {
+  wood:  { name:"Woods",     spd:0.82, ranged:0.60, dmg:1.00, fill:"rgba(28,58,26,.34)",  edge:"rgba(30,70,28,.5)"  },
+  hill:  { name:"High ground",spd:0.94, ranged:1.00, dmg:1.14, fill:"rgba(150,132,70,.20)", edge:"rgba(180,160,90,.42)" },
+  marsh: { name:"Marsh",     spd:0.62, ranged:1.00, dmg:0.90, fill:"rgba(60,72,54,.34)",  edge:"rgba(80,96,70,.45)" },
+};
+function buildZones() {
+  const W = G.W, H = G.H, midY = crystalY(), span = BOT() - TOP();
+  const z = [];
+  const pair = (dx, y, rx, ry, type) => {           // mirrored across the centre line
+    z.push({ x: W/2 - dx, y, rx, ry, type });
+    z.push({ x: W/2 + dx, y, rx, ry, type });
+  };
+  z.push({ x: W/2, y: midY, rx: SHRINE_R*1.5, ry: span*0.26, type:"hill" });
+  pair(W*0.220, TOP() + span*0.19, W*0.085, span*0.165, "wood");
+  pair(W*0.220, BOT() - span*0.19, W*0.085, span*0.165, "wood");
+  pair(W*0.360, midY,              W*0.055, span*0.20,  "marsh");
+  G.zones = z;
+}
+function zoneAt(x, y) {
+  const z = G.zones;
+  for (let i = 0; i < z.length; i++) {
+    const a = z[i], dx = (x-a.x)/a.rx, dy = (y-a.y)/a.ry;
+    if (dx*dx + dy*dy < 1) return a.type;
+  }
+  return null;
+}
+
+function paintBackground() {
+  const W=G.W, H=G.H, c=bgCtx;
+  c.clearRect(0,0,W,H);
+  const g = c.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#6f9a35"); g.addColorStop(.45,"#88b643"); g.addColorStop(1,"#5f8a2c");
+  c.fillStyle=g; c.fillRect(0,0,W,H);
+  const mid = c.createLinearGradient(0,0,W,0);
+  mid.addColorStop(0,"rgba(0,0,0,0)"); mid.addColorStop(.5,"rgba(96,78,44,.22)"); mid.addColorStop(1,"rgba(0,0,0,0)");
+  c.fillStyle=mid; c.fillRect(0, 68, W, H-100);
+  for (const z of G.zones || []) {                 // terrain sits under the grass detail
+    const cfg = ZONE[z.type];
+    c.fillStyle = cfg.fill;
+    c.beginPath(); c.ellipse(z.x, z.y, z.rx, z.ry, 0, 0, 6.29); c.fill();
+    c.strokeStyle = cfg.edge; c.lineWidth = 3; c.setLineDash([14, 12]);
+    c.beginPath(); c.ellipse(z.x, z.y, z.rx, z.ry, 0, 0, 6.29); c.stroke();
+    c.setLineDash([]);
+    if (z.type === "wood") {                       // a scatter of trees to read as forest
+      for (let i = 0; i < 34; i++) {
+        const a = Math.random()*6.29, r = Math.sqrt(Math.random());
+        const tx = z.x + Math.cos(a)*z.rx*r*0.92, ty = z.y + Math.sin(a)*z.ry*r*0.92;
+        const h = 26 + Math.random()*22;
+        c.fillStyle = "rgba(30,22,12,.55)";
+        c.fillRect(tx-2, ty-h*0.28, 4, h*0.30);
+        c.fillStyle = i%3 ? "rgba(38,86,34,.85)" : "rgba(46,102,40,.85)";
+        c.beginPath();
+        c.moveTo(tx, ty-h); c.lineTo(tx+h*0.34, ty-h*0.22); c.lineTo(tx-h*0.34, ty-h*0.22);
+        c.closePath(); c.fill();
+      }
+    }
+    if (z.type === "marsh") {
+      for (let i = 0; i < 20; i++) {
+        const a = Math.random()*6.29, r = Math.sqrt(Math.random());
+        const tx = z.x + Math.cos(a)*z.rx*r*0.9, ty = z.y + Math.sin(a)*z.ry*r*0.9;
+        c.fillStyle = "rgba(74,92,68,.5)";
+        c.beginPath(); c.ellipse(tx, ty, 9+Math.random()*13, 4+Math.random()*5, 0, 0, 6.29); c.fill();
+      }
+    }
+  }
+
+  for (const t of terrain) {
+    if (t.k === "rock") {
+      c.fillStyle="rgba(88,88,78,.38)";
+      c.beginPath(); c.ellipse(t.x,t.y,t.s,t.s*.7,0,0,6.29); c.fill();
+    } else if (t.k === "flower") {
+      c.fillStyle = t.c > .5 ? "rgba(255,236,150,.75)" : "rgba(255,180,210,.7)";
+      c.beginPath(); c.arc(t.x, t.y, t.s*.5, 0, 6.29); c.fill();
+    } else {
+      c.strokeStyle = t.c>.5 ? "rgba(58,104,28,.42)" : "rgba(166,204,96,.38)";
+      c.lineWidth=1.3; c.beginPath();
+      c.moveTo(t.x,t.y); c.lineTo(t.x-t.s*.5,t.y-t.s*1.6);
+      c.moveTo(t.x,t.y); c.lineTo(t.x+t.s*.6,t.y-t.s*1.3);
+      c.stroke();
+    }
+  }
+  // vignette baked in: it never changes either
+  const vg = c.createRadialGradient(W/2,H/2,Math.min(W,H)*.35, W/2,H/2,Math.max(W,H)*.75);
+  vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,.30)");
+  c.fillStyle=vg; c.fillRect(0,0,W,H);
+}
+
+const TOP = () => 144;
+const BOT = () => G.H - 86;                  // leaves room for the radar strip
+const crystalX = t => (t === 0 ? 116 : G.W - 116);
+const crystalY = () => (TOP()+BOT())/2;
+// fake depth: things lower on the field are nearer the camera
+const persp = y => 0.80 + 0.40 * ((y - TOP()) / Math.max(1, BOT() - TOP()));
+
+/* ============================================================
+   SOUND
+   ============================================================ */
+let AC = null, muted = false, lastSfx = {};
+function tone(f, dur, type, vol, slide) {
+  if (muted) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "square";
+    o.frequency.setValueAtTime(f, AC.currentTime);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + dur);
+    g.gain.setValueAtTime(vol || .04, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + dur);
+  } catch (e) { /* audio is a nicety, never a failure */ }
+}
+function throttled(key, ms, fn) {                    // stops 200 swords becoming a buzzsaw
+  const now = performance.now();
+  if ((lastSfx[key] || 0) + ms > now) return;
+  lastSfx[key] = now; fn();
+}
+const sfxBuy   = () => throttled("buy", 55, () => tone(600, .06, "square", .04, 900));
+const sfxDeny  = () => tone(140, .08, "sawtooth", .035, 90);
+const sfxPay   = () => { tone(660,.1,"triangle",.05,990); setTimeout(()=>tone(880,.12,"triangle",.05,1180),90); };
+const sfxThud  = () => tone(85, .15, "sawtooth", .06, 45);
+const sfxClang = () => throttled("clang", 70, () => tone(320+Math.random()*160, .05, "square", .022, 180));
+const sfxBow   = () => throttled("bow", 110, () => tone(900, .05, "triangle", .02, 500));
+const sfxBoom  = () => throttled("boom", 90, () => tone(200, .18, "sawtooth", .05, 60));
+const sfxDie   = () => throttled("die", 60, () => tone(240+Math.random()*80, .09, "sawtooth", .025, 90));
+
+/* ============================================================
+   COMBAT
+   ============================================================ */
+function dmgOf(src, dst) {
+  const raw = dst.u.type === "light" ? src.u.dL : src.u.dA;
+  // The floor is a fraction of the attacker's own damage, not a flat 2. A flat
+  // minimum meant armour stopped mattering once numbers got large enough - a
+  // thousand fodder chipping 2 apiece out-damaged what they were supposedly unable
+  // to hurt, and armoured troops lost to the same gold in bodies. Proportional, a
+  // wall takes 0.4 a swing from fodder instead of 2, and still nothing is ever
+  // outright invulnerable, so a fight can never stalemate.
+  return Math.max(raw * 0.08, raw - dst.u.armour);
+}
+
+let UID = 0;
+function laneY(team) {
+  const p = P[team], top = TOP()+20, bot = BOT()-20, span = bot-top;
+  switch (p.lane) {
+    case 1: return top + span*0.16 + (Math.random()-.5)*span*0.16;
+    case 2: return (top+bot)/2 + (Math.random()-.5)*span*0.16;
+    case 3: return bot - span*0.16 + (Math.random()-.5)*span*0.16;
+    default: return top + Math.random()*span;
+  }
+}
+function spawn(idx, team) {
+  const u = P[team].roster[idx];
+  return { uid:++UID, team, u,
+    x: crystalX(team) + (team===0?70:-70) + (Math.random()*18-9),
+    y: laneY(team),
+    hp:u.hp, maxhp:u.hp, cool:Math.random()*u.ws, tgt:null, retarget:Math.random()*.3,
+    swing:0, hurt:0, step:Math.random()*6.28, dust:0, vet:0, zn:null, znT:0, dead:false, gi:-1 };
+}
+
+function select(team, idx) {
+  if (!G.running || G.over) return;
+  const p = P[team];
+  if (!p.roster[idx]) return;
+  if (p.sel === idx) { p.sel = null; tone(300, .07, "square", .035, 200); return; }
+  p.sel = idx; p.autoT = 0;
+  if (!buy(team, idx)) { flashCard(team, idx, true); } // still selects if you cannot afford it yet
+  markSelection(team);
+}
+
+function buy(team, idx) {
+  if (!G.running || G.over || G.paused) return false;
+  const p = P[team], u = p.roster[idx];
+  if (!u) return false;                     // roster sizes differ between armies
+  if (p.gold < u.price || (u.hero && p.heroes > 0)) {
+    if (!CPU || CPU.team !== team) sfxDeny();
+    return false;
+  }
+  p.gold -= u.price; p.spent += u.price;
+  p.built[u.name] = (p.built[u.name] || 0) + 1;
+  G.units.push(spawn(idx, team));
+  flashCard(team, idx);
+  if (u.hero) {
+    p.heroes++;
+    banner(u.name.toUpperCase() + " TAKES THE FIELD", 1300);
+    tone(170, .4, "sawtooth", .06, 90);
+  }
+  if (!CPU || CPU.team !== team) sfxBuy();
+  return true;
+}
+
+/* ---------- spatial hash ---------- */
+/* Flat bucket grid. The old version built a fresh Map of fresh arrays every
+   frame - twenty thousand pushes and thousands of allocations, 6.5ms of it, plus
+   a Map hash on every one of the ~100 cell lookups a sight-radius query makes.
+   This counting-sorts the live units into one Int32Array and never allocates in
+   steady state, so a lookup is an array index. */
+let CELL = 130, INV_CELL = 1/130, GW = 1, GH = 1;
+let gStart = new Int32Array(2);      // per-cell start offset, GW*GH+1 entries
+let gItems = new Int32Array(0);      // unit slots, bucketed by cell
+let gUnits = [];                     // slot -> unit
+/* ---------- hot-field mirror ----------
+   The two most expensive loops in the simulation - separation and target-finding
+   - spend most of their time chasing pointers: gUnits[gItems[i]], then .x, then
+   .y, then .u.size, three dereferences before any arithmetic happens. Benchmarked
+   on the real separation loop over 26,000 troops, the identical work over flat
+   typed arrays ran in half the time (2.1ms against 4.1-5.6ms) and, more usefully,
+   with a quarter of the variance - and variance is what a player feels as stutter.
+
+   So the handful of fields those loops touch are mirrored into parallel typed
+   arrays indexed by grid slot. The unit objects stay the source of truth for
+   everything else. The mirror is filled during the grid rebuild, which already
+   walks every live unit, and written back after separation - the only hot loop
+   that moves anything. */
+let PX = new Float32Array(0), PY = new Float32Array(0), PSZ = new Float32Array(0);
+let PTEAM = new Uint8Array(0), PDEAD = new Uint8Array(0);
+let gCur = new Int32Array(0);        // scratch write cursors
+let gN = 0;
+
+// The cell wants to be about the size of the commonest query, which is the
+// separation radius. Troops are 4.6x bigger at CHAOS x10 than at NORMAL, so a
+// fixed 130 left every query scanning far more cells than it needed.
+function sizeGrid() {
+  CELL = Math.max(130, Math.round((ALL_UNITS[0].size || 20) * 2.2));
+  INV_CELL = 1/CELL;
+  GW = Math.max(1, Math.ceil(G.W*INV_CELL) + 2);
+  GH = Math.max(1, Math.ceil(G.H*INV_CELL) + 2);
+  const need = GW*GH + 1;
+  if (gStart.length < need) gStart = new Int32Array(need);
+}
+
+const cellOf = (x, y) => {
+  let cx = (x*INV_CELL + 1) | 0, cy = (y*INV_CELL + 1) | 0;
+  if (cx < 0) cx = 0; else if (cx >= GW) cx = GW-1;
+  if (cy < 0) cy = 0; else if (cy >= GH) cy = GH-1;
+  return cy*GW + cx;
+};
+
+function rebuildGrid() {
+  sizeGrid();                        // a few divisions; the loops below dwarf it
+  const nCell = GW*GH;
+  gStart.fill(0, 0, nCell+1);
+  const us = G.units;
+  gN = 0;
+  if (PX.length < us.length) {
+    const cap = Math.max(64, us.length*2);
+    PX = new Float32Array(cap); PY = new Float32Array(cap); PSZ = new Float32Array(cap);
+    PTEAM = new Uint8Array(cap); PDEAD = new Uint8Array(cap);
+  }
+  // This loop already touches every live unit, so it does three jobs at once:
+  // builds the slot list, fills the mirror, and tallies the per-side count and
+  // income the HUD needs - rather than walking 26,000 objects three times.
+  G.inc[0] = G.inc[1] = G.cnt[0] = G.cnt[1] = 0;
+  for (let i = 0; i < us.length; i++) {
+    const a = us[i];
+    if (a.dead) continue;
+    a.gi = gN;
+    PX[gN] = a.x; PY[gN] = a.y; PSZ[gN] = a.u.size; PTEAM[gN] = a.team; PDEAD[gN] = 0;
+    gUnits[gN++] = a;
+    G.inc[a.team] += a.u.income; G.cnt[a.team]++;
+  }
+  if (gItems.length < gN) gItems = new Int32Array(Math.max(64, gN*2));
+  for (let i = 0; i < gN; i++) gStart[cellOf(gUnits[i].x, gUnits[i].y) + 1]++;
+  for (let c = 0; c < nCell; c++) gStart[c+1] += gStart[c];
+  if (gCur.length < nCell) gCur = new Int32Array(nCell*2);
+  gCur.set(gStart.subarray(0, nCell));
+  for (let i = 0; i < gN; i++) gItems[gCur[cellOf(gUnits[i].x, gUnits[i].y)]++] = i;
+}
+function nearby(x, y, r, fn) {
+  let c0=((x-r)*INV_CELL+1)|0, c1=((x+r)*INV_CELL+1)|0;
+  let r0=((y-r)*INV_CELL+1)|0, r1=((y+r)*INV_CELL+1)|0;
+  if (c0 < 0) c0 = 0; if (c1 >= GW) c1 = GW-1;
+  if (r0 < 0) r0 = 0; if (r1 >= GH) r1 = GH-1;
+  for (let cy=r0; cy<=r1; cy++) {
+    const row = cy*GW;
+    for (let cx=c0; cx<=c1; cx++) {
+      const e = gStart[row+cx+1];
+      for (let i = gStart[row+cx]; i < e; i++) fn(gUnits[gItems[i]]);
+    }
+  }
+}
+
+const SIGHT = 560;
+/* Nearest enemy, searched as rings of cells expanding outwards instead of one
+   flat sweep of the whole sight radius. In a packed battle the answer is nearly
+   always in the first ring or two, so this stops after a handful of cells rather
+   than the ~100 a 560-unit sight radius covers - it was 3.5us a call, and this is
+   the single most expensive thing the simulation does. */
+function findTarget(a) {
+  const team = a.team, ax = a.x, ay = a.y;
+  const cx = (ax*INV_CELL + 1) | 0, cy = (ay*INV_CELL + 1) | 0;
+  const maxRing = Math.ceil(SIGHT*INV_CELL);
+  let best = -1, bd = SIGHT*SIGHT;
+  for (let ring = 0; ring <= maxRing; ring++) {
+    if (best >= 0) {                  // nothing further out can beat what we have
+      const safe = (ring-1)*CELL;
+      if (safe > 0 && bd <= safe*safe) break;
+    }
+    const x0 = cx-ring, x1 = cx+ring, y0 = cy-ring, y1 = cy+ring;
+    for (let gy = y0; gy <= y1; gy++) {
+      if (gy < 0 || gy >= GH) continue;
+      const row = gy*GW;
+      const stepX = (gy === y0 || gy === y1) ? 1 : (x1 - x0 || 1);
+      for (let gx = x0; gx <= x1; gx += stepX) {
+        if (gx < 0 || gx >= GW) continue;
+        const e = gStart[row+gx+1];
+        for (let i = gStart[row+gx]; i < e; i++) {
+          const j = gItems[i];
+          if (PTEAM[j] === team || PDEAD[j]) continue;
+          const dx = PX[j]-ax, dy = PY[j]-ay, d = dx*dx + dy*dy;
+          if (d < bd) { bd = d; best = j; }
+        }
+      }
+    }
+  }
+  return best < 0 ? null : gUnits[best];
+}
+
+function vetBonus(a) { return 1 + Math.min(3, Math.floor((a.vet||0)/3)) * 0.12; }
+function hurt(target, amt, src, ranged) {
+  if (src) {
+    amt *= vetBonus(src) * (1 + (src.buff||0));
+    if (src.zn) amt *= ZONE[src.zn].dmg;            // high ground hits harder
+  }
+  if (ranged && target.zn === "wood") amt *= ZONE.wood.ranged;   // cover from missiles
+
+  target.hp -= amt; target.hurt = .16;
+  if (amt >= 55) dmgText(target.x, target.y - target.u.size, Math.round(amt), src && src.team === 0);
+  if (src && src.u.drain) {
+    src.hp = Math.min(src.maxhp, src.hp + amt*src.u.drain);
+    G.fx.push({ t:"p", x:src.x, y:src.y-8, vx:0, vy:-40, life:.4, max:.4, c:"#ff5e8a", r:2.5 });
+  }
+  if (target.hp <= 0 && !target.dead) {
+    target.dead = true;
+    if (target.gi >= 0) PDEAD[target.gi] = 1;   // keep the mirror honest mid-step
+    P[1-target.team].kills++;
+    if (target.u.hero) {           // a champion falling is an event
+      P[target.team].heroes = Math.max(0, P[target.team].heroes - 1);
+      G.hitstop = .12; G.shake = 10; boom(target.x, target.y, 170);
+      banner(target.u.name.toUpperCase() + " HAS FALLEN", 1300);
+    }
+    if (src) src.vet = (src.vet||0) + 1;
+    puff(target.x, target.y, target.team, target.u.size);
+    bleed(target.x, target.y, target.u.size);
+    sfxDie();
+    if (target.u.size >= 30) { G.hitstop = .06; G.shake = Math.min(9, G.shake + 3); }
+  }
+}
+
+function hitCrystal(team, amt) {
+  const p = P[team];
+  if (p.hp <= 0) return;
+  p.hp = Math.max(0, p.hp - amt);
+  G.shake = Math.min(10, G.shake + amt*.03);
+  throttled("crys", 140, sfxThud);
+  for (let i=0;i<3;i++)
+    G.fx.push({ t:"p", x:crystalX(team)+(Math.random()*26-13), y:crystalY()+(Math.random()*70-35),
+                vx:(Math.random()-.5)*80, vy:-40-Math.random()*60, life:.5, max:.5,
+                c: team===0 ? "#bfe6ff" : "#ffd0b0", r:2+Math.random()*3 });
+  if (p.hp <= 0) endGame(1-team);
+}
+
+/* ============================================================
+   CPU
+   ============================================================ */
+const CPU_LEVELS = {
+  // costPow: how much the CPU cares about value-for-money vs raw power.
+  // Higher = buy for value, lower = buy the biggest thing affordable. Simulated
+  // duels put value-buying ahead 7 games in 10, so hard plays that way.
+  // What really separates them is awareness, not reaction speed: easy never looks
+  // at what it is fighting, normal sees it through noise, hard sees it exactly.
+  // The CPU streams troops continuously at every level, exactly the way your own
+  // crystal does. Two dials shape the ladder on top of awareness:
+  //   gap   - how much slower than you it recruits. 1.0 is your rate exactly.
+  //   reach - how far past its purse it will commit, in paydays of income.
+  //           Recruiting flat out keeps gold near zero, so this is what decides
+  //           whether it streams cheap troops or stalls saving for one big one.
+  // hard's costPow is above 1: recruiting continuously makes value-per-gold the
+  // whole game, and at 1.0 it still liked the big expensive units enough to stall
+  // saving for them - it fielded six troops against a player's eighty-seven.
+  easy:   { think: 2.0,  smart: 0.35, costPow: 0.00, maxPrice: 1300,  blind: true,  mend: false, gap: 5.0, reach: 0.4 },
+  normal: { think: 1.6,  smart: 0.60, costPow: 0.60, maxPrice: 2300, noise: 0.55,  mend: true,  gap: 2.2, reach: 0.4 },
+  hard:   { think: 0.25, smart: 1.00, costPow: 1.35, maxPrice: 9999, noise: 0,     mend: true,  gap: 1.0, reach: 0.4 },
+};
+function gapMul(team) {
+  return CPU && CPU.team === team ? CPU_LEVELS[CPU.level].gap : 1;
+}
+function cpuThink(dt) {
+  if (!CPU) return;
+  const cfg = CPU_LEVELS[CPU.level], me = P[CPU.team], foe = 1 - CPU.team;
+  CPU.t = (CPU.t || 0) - dt;
+  if (CPU.t > 0) return;
+  CPU.t = cfg.think * (0.75 + Math.random()*0.5);
+
+  // Profile the enemy army by remaining HP per unit type. This is where the
+  // difficulty lives: easy never looks (flat profile), normal sees it through
+  // noise, hard sees it exactly.
+  const prof = new Map();
+  let tot = 0, mine = 0, theirs = 0, myInc = 0;
+  for (const a of G.units) {
+    if (a.dead) continue;
+    if (a.team === foe) { theirs++; prof.set(a.u.gid, (prof.get(a.u.gid)||0) + a.hp); tot += a.hp; }
+    else { mine++; myInc += a.u.income; }
+  }
+  if (cfg.blind || !tot) { prof.clear(); tot = 0; }
+  else if (cfg.noise) {
+    for (const [k,v] of prof) prof.set(k, v * (1 + (Math.random()-0.5)*cfg.noise*2));
+    tot = 0; for (const v of prof.values()) tot += v;
+  }
+
+  // How well would this unit actually do against what they have on the field?
+  // Damage after their armour, weighed against how long it survives their damage.
+  const score = u => {
+    let dps, inc;
+    if (!tot) { dps = (u.dL + u.dA)/2 / u.ws; inc = 45; }
+    else {
+      dps = 0; inc = 0;
+      for (const [k, hp] of prof) {
+        const e = ALL_UNITS[k], sh = hp/tot;
+        dps += sh * Math.max(2, (e.type === "light" ? u.dL : u.dA) - e.armour) / u.ws;
+        inc += sh * Math.max(2, (u.type === "light" ? e.dL : e.dA) - u.armour) / e.ws;
+      }
+    }
+    const surv = u.hp / Math.max(1, inc);
+    return dps * surv * (1 + (u.splash ? u.splash/110 : 0)) / Math.pow(u.price, cfg.costPow);
+  };
+
+  const losing = theirs > mine + 2 || me.hp < P[foe].hp * 0.9;
+
+  // Mending needs a lump sum, and something that recruits continuously never has
+  // one - its purse sits near zero by design. So when the crystal is in real
+  // danger the CPU stops recruiting and saves up, the same way you would.
+  if (cfg.mend && me.hp < CRYSTAL_HP*0.6) {
+    if (me.gold >= REPAIR_COST && me.mend <= 0) repair(CPU.team);
+    else if (me.hp < CRYSTAL_HP*0.3 && me.gold < REPAIR_COST) { me.sel = null; return; }
+  }
+
+  // Affordability is judged against income, not gold in hand. Recruiting flat out
+  // keeps the purse near empty, so a "can I pay for it right now" filter would
+  // pin the CPU to fodder for the whole match; anything it can cover within about
+  // two paydays is fair game, and the auto-recruit loop saves up for it.
+  const payday = (BASE_INCOME + 170*G.round + myInc) * goldMul;
+  const reach = me.gold + payday * cfg.reach;
+  const usable = u => u.price <= reach && !(u.hero && me.heroes > 0);
+  const opts = me.roster.filter(u => usable(u) && u.price <= cfg.maxPrice);
+  const any  = me.roster.filter(usable);
+  let pick = null;
+  if (Math.random() > cfg.smart) {                       // sloppy play on lower levels
+    if (any.length) pick = any[Math.floor(Math.random()*any.length)];
+  } else {
+    const pool = opts.length ? opts : any;
+    if (pool.length) {
+      pick = pool[0];
+      let best = -1;
+      for (const u of pool) { const v = score(u); if (v > best) { best = v; pick = u; } }
+    }
+  }
+  // Losing means committing the purse rather than drip-feeding: drop the value
+  // discipline and take the hardest thing it can reach.
+  if (losing && pick && Math.random() < cfg.smart) {
+    for (const u of any) if (u.price > pick.price) pick = u;
+  }
+  if (pick && pick.idx !== me.sel) { me.sel = pick.idx; me.autoT = 0; }
+  if (cfg.mend) {                       // easy never bothers with stances either
+    if (theirs > mine + 5 && me.hp < CRYSTAL_HP*0.75) me.stance = 1;
+    else if (mine >= theirs) me.stance = 0;
+  }
+  if (Math.random() < 0.05) me.lane = Math.floor(Math.random()*4);
+}
+
+/* ============================================================
+   STEP
+   ============================================================ */
+/* V8's Math.hypot guards against overflow that coordinates on a 14000-unit map
+   can never reach, and pays several times the cost of a plain sqrt for it. This
+   is called a few times per unit per frame, so it is worth the two lines. */
+const hyp = (x, y) => Math.sqrt(x*x + y*y);
+
+function step(dt) {
+  G.frame++;
+  rebuildGrid();
+  cpuThink(dt);
+
+  for (const p of P) {
+    if (p.mend > 0) p.mend -= dt;
+    p.goldAvg = p.goldAvg === undefined ? p.gold : p.goldAvg + (p.gold - p.goldAvg) * Math.min(1, dt*1.6);
+    // your crystal keeps producing whatever you last selected, as long as the
+    // gold lasts - no tapping once per soldier. The CPU runs through the very same
+    // loop, so a solo battle fills the field the way a two-player one does; all
+    // cpuThink does is choose which card is selected.
+    if (p.sel !== null) {
+      p.autoT -= dt;
+      // This has to drain the accumulator, not buy once and reset it. Buying a
+      // single troop per frame silently clamped every rate below ~1/60s: CHAOS
+      // asks for 200 troops a second and was delivering 60, and CHAOS x10's
+      // faster gap did nothing at all. The += keeps the remainder too, which is
+      // what EPIC was losing (20/s configured, 15/s delivered).
+      let n = 0;
+      while (p.autoT <= 0 && G.units.length < capNow() && n++ < RECRUIT_BURST) {
+        if (buy(p.team, p.sel)) p.autoT += AUTO_GAP * gapMul(p.team);
+        else { p.autoT = 0.15; break; }      // broke: check again shortly
+      }
+      if (p.autoT < 0) p.autoT = 0;          // hit a ceiling: never bank a debt
+    }
+  }
+
+  // contest the shrine: whoever has more troops standing on it drags it their way
+  {
+    const n = [0,0];
+    nearby(shrineX(), shrineY(), SHRINE_R, b => {
+      if (b.dead) return;
+      if (hyp(b.x-shrineX(), b.y-shrineY()) < SHRINE_R) n[b.team]++;
+    });
+    const sh = G.shrine, lead = Math.max(-4, Math.min(4, n[0]-n[1]));
+    if (lead) {
+      sh.prog = Math.max(-100, Math.min(100, sh.prog + lead*dt*11));
+      if (sh.prog >= 100 && sh.owner !== 0) { sh.owner = 0; banner("BLUE TAKES THE SHRINE", 1100); sfxPay(); }
+      if (sh.prog <= -100 && sh.owner !== 1) { sh.owner = 1; banner("RED TAKES THE SHRINE", 1100); sfxPay(); }
+      if (sh.owner === 0 && sh.prog < 0) sh.owner = -1;
+      if (sh.owner === 1 && sh.prog > 0) sh.owner = -1;
+    }
+  }
+
+  G.tick -= dt;
+  if (G.tick <= 0) {
+    G.tick += TICK_T; G.round++;
+    const inc = [0,0];
+    for (const a of G.units) if (!a.dead) inc[a.team] += a.u.income;
+    for (const t of [0,1]) P[t].gold += (BASE_INCOME + 170*G.round + inc[t]) * goldMul;
+    if (G.shrine.owner >= 0) P[G.shrine.owner].gold += SHRINE_GOLD*goldMul;
+    banner("PAYDAY", 850); sfxPay();
+    // no war lasts forever: past a point both crystals start crumbling on their own
+    if (G.round >= SUDDEN_ROUND) {
+      if (!G.sudden) { G.sudden = true; banner("SUDDEN DEATH", 1600); }
+      const chip = (G.round - SUDDEN_ROUND + 1) * 160;
+      hitCrystal(0, chip); hitCrystal(1, chip);
+    }
+  }
+
+  // champion auras, refreshed a few times a second rather than every frame
+  G.auraT = (G.auraT || 0) - dt;
+  if (G.auraT <= 0) {
+    G.auraT = 0.25;
+    let anyAura = false;
+    for (const a of G.units) if (!a.dead && a.u.auraBuff) { anyAura = true; break; }
+    if (anyAura) {
+      for (const a of G.units) a.buff = 0;
+      for (const a of G.units) {
+        if (a.dead || !a.u.auraBuff) continue;
+        const ab = a.u.auraBuff;
+        nearby(a.x, a.y, ab.r, b => {
+          if (b === a || b.dead || b.team !== a.team) return;   // a leader lifts his troops, not himself
+          if (hyp(b.x-a.x, b.y-a.y) < ab.r && (b.buff||0) < ab.dmg) b.buff = ab.dmg;
+        });
+      }
+    }
+  }
+
+  // Attacks resolve in array order, so whoever sits earlier in the list strikes
+  // first and can kill before being struck back. Team 0's troops are reliably
+  // earlier, which handed the left seat a real edge in mirror matches — measured
+  // at up to 10-2. Alternating the sweep each frame evens it out.
+  const us = G.units, un = us.length, fwd = (G.frame & 1) === 0;
+  for (let ui = 0; ui < un; ui++) {
+    const a = us[fwd ? ui : un - 1 - ui];
+    if (a.dead) continue;
+    a.cool -= dt; a.swing = Math.max(0, a.swing - dt*4);
+    a.hurt = Math.max(0, a.hurt - dt); a.retarget -= dt;
+
+    a.znT -= dt;
+    if (a.znT <= 0) { a.znT = 0.2 + Math.random()*0.1; a.zn = zoneAt(a.x, a.y); }
+
+    // Note the missing `|| !a.tgt`: with it, every troop that has nobody in sight
+    // ran a full sight-radius scan every single frame, and on a 44000-wide map
+    // most of the army is marching with no enemy in range. Finding nothing now
+    // backs off instead, which was worth more than half of step().
+    if (a.retarget <= 0 || (a.tgt && a.tgt.dead)) {
+      a.tgt = findTarget(a);
+      a.retarget = a.tgt ? .2 + Math.random()*.2 : .3 + Math.random()*.3;
+      // HOLD means decline anything past your own line: fight what comes to you
+      if (a.tgt && P[a.team].stance === 1) {
+        const line = holdX(a.team), reach = a.u.rng + a.u.size + 20;
+        if (a.team === 0 ? a.tgt.x > line + reach : a.tgt.x < line - reach) a.tgt = null;
+      }
+    }
+    let tx, ty, reach, isCrystal = false, idle = false;
+    if (a.tgt) {
+      tx=a.tgt.x; ty=a.tgt.y; reach=a.u.rng + a.u.size + a.tgt.u.size;
+    } else if (P[a.team].stance === 1) {                 // HOLD: fall back to your own half
+      tx = holdX(a.team); ty = a.y; reach = 6; idle = true;
+    } else {
+      tx = crystalX(1-a.team); ty = crystalY(); reach = a.u.rng + a.u.size + 60; isCrystal = true;
+    }
+
+    const dx=tx-a.x, dy=ty-a.y, dist=hyp(dx,dy)||1;
+
+    if (dist > reach) {
+      const sp = a.u.spd * dt * (a.zn ? ZONE[a.zn].spd : 1);
+      a.x += dx/dist*sp; a.y += dy/dist*sp;
+      a.step += dt*a.u.spd*.2;
+      a.y = Math.max(TOP(), Math.min(BOT(), a.y));
+      a.dust -= dt;
+      if (a.dust <= 0 && a.u.spd > 55 && !G.crowd && G.fx.length < FX_CAP) {
+        a.dust = .12;
+        G.fx.push({ t:"p", x:a.x-(a.team===0?6:-6), y:a.y+a.u.size*.8,
+                    vx:(Math.random()-.5)*18, vy:-8-Math.random()*12,
+                    life:.45, max:.45, c:"rgba(214,206,170,.75)", r:1.5+Math.random()*2.5, nog:true });
+      }
+    } else if (a.cool <= 0 && !idle) {                  // nothing to swing at while holding
+      a.cool = a.u.ws; a.swing = 1;
+      if (isCrystal) {
+        hitCrystal(1-a.team, 42 + Math.max(a.u.dL, a.u.dA)*0.55);
+      } else if (a.u.kind === "ranged") {
+        sfxBow();
+        G.shots.push({ x:a.x, y:a.y-7, tx:a.tgt.x, ty:a.tgt.y-7, src:a, tgt:a.tgt,
+                       sp:a.u.splash?611:930, splash:a.u.splash||0, team:a.team, t:0,
+                       col:a.u.splash ? "#e08fff" : "#f5e6b0" });
+      } else {
+        arc(a, a.tgt);
+        sfxClang();
+        if (a.u.splash) {
+          nearby(a.tgt.x, a.tgt.y, a.u.splash, b => {
+            if (b.dead || b.team === a.team) return;
+            if (hyp(b.x-a.tgt.x, b.y-a.tgt.y) < a.u.splash) { hurt(b, dmgOf(a,b), a); spark(b.x,b.y); }
+          });
+        } else { hurt(a.tgt, dmgOf(a,a.tgt), a); spark(a.tgt.x, a.tgt.y); }
+      }
+    }
+  }
+
+  // crystals defend themselves
+  for (const p of P) {
+    if (p.hp <= 0) continue;
+    p.cool -= dt;
+    if (p.cool > 0) continue;
+    let best=null, bd=381*381;
+    nearby(crystalX(p.team), crystalY(), 381, b => {
+      if (b.dead || b.team === p.team) return;
+      const d=(b.x-crystalX(p.team))**2 + (b.y-crystalY())**2;
+      if (d < bd) { bd=d; best=b; }
+    });
+    if (best) {
+      p.cool = .75;
+      G.shots.push({ x:crystalX(p.team), y:crystalY()-22, tx:best.x, ty:best.y, tgt:best,
+                     src:null, crystal:true, sp:871, splash:0, team:p.team, t:0, col:"#cff4ff" });
+    }
+  }
+
+  for (const s of G.shots) {
+    s.t += dt;
+    if (s.tgt && !s.tgt.dead) { s.tx=s.tgt.x; s.ty=s.tgt.y-7; }
+    const dx=s.tx-s.x, dy=s.ty-s.y, d=hyp(dx,dy)||1, stepd=s.sp*dt;
+    if (d <= stepd || s.t > 4) {
+      s.done = true;
+      if (s.splash) {
+        nearby(s.tx, s.ty, s.splash, b => {
+          if (b.dead || b.team === s.team) return;
+          if (hyp(b.x-s.tx, b.y-s.ty) < s.splash) hurt(b, dmgOf(s.src,b), s.src, true);
+        });
+        boom(s.tx, s.ty, s.splash); sfxBoom();
+      } else if (s.tgt && !s.tgt.dead) {
+        hurt(s.tgt, s.crystal ? 95 : dmgOf(s.src, s.tgt), s.crystal ? null : s.src, true);
+        spark(s.tx, s.ty);
+      }
+      if (s.chain && s.src) {            // lightning leaps to whatever stands near
+        let hops = 0, fx = s.tx, fy = s.ty;
+        nearby(s.tx, s.ty, 260, b => {
+          if (hops >= s.chain || b.dead || b.team === s.team || b === s.tgt) return;
+          if (hyp(b.x-fx, b.y-fy) > 260) return;
+          hops++;
+          G.fx.push({ t:"bolt", x:fx, y:fy, x2:b.x, y2:b.y-7, life:.18, max:.18 });
+          hurt(b, dmgOf(s.src, b) * 0.65, s.src, true);
+          fx = b.x; fy = b.y-7;
+        });
+      }
+    } else { s.x += dx/d*stepd; s.y += dy/d*stepd; }
+  }
+  G.shots = G.shots.filter(s => !s.done);
+
+  /* Separation, run over the mirror rather than the objects. It is the single
+     most expensive thing the simulation does - two thirds of step at this scale -
+     and it is almost pure pointer chasing, which is exactly what the typed arrays
+     fix. Positions moved during the main loop above, so the mirror is refreshed
+     first: one pass of straight-line writes costs far less than the dereferencing
+     it saves inside the scan.
+
+     Past twenty-four thousand troops it runs for a fifth of the army each frame.
+     It only stops bodies overlapping, and at two and a half pixels a body there
+     is nothing to see. */
+  const nSep = G.units.length > 24000 ? 5 : G.units.length > 10000 ? 3 : G.units.length > 1200 ? 2 : 1;
+  const top = TOP(), bot = BOT(), fr = G.frame;
+  for (let i = 0; i < gN; i++) { const a = gUnits[i]; PX[i] = a.x; PY[i] = a.y; }
+  for (let ui = 0; ui < gN; ui++) {
+    if (PDEAD[ui]) continue;
+    if (nSep > 1 && (ui + fr) % nSep) continue;
+    const ax = PX[ui], ay = PY[ui], asz = PSZ[ui], r = asz*2;
+    // Most of the army is not crowded - it is walking across open ground with
+    // nobody within a body's width. Reading its own cell's occupancy is one array
+    // read and skips the nine-cell scan entirely, which fires for about a quarter
+    // of the army. A pair is only missed if both are alone in their own cells,
+    // since either one scanning pushes both apart.
+    const own = cellOf(ax, ay);
+    if (gStart[own+1] - gStart[own] < 2) continue;
+    let c0=((ax-r)*INV_CELL+1)|0, c1=((ax+r)*INV_CELL+1)|0;
+    let r0=((ay-r)*INV_CELL+1)|0, r1=((ay+r)*INV_CELL+1)|0;
+    if (c0 < 0) c0 = 0; if (c1 >= GW) c1 = GW-1;
+    if (r0 < 0) r0 = 0; if (r1 >= GH) r1 = GH-1;
+    // A grid stops helping when everything lands in one cell, and that happens
+    // for real: when one army takes the field the survivors pile onto the enemy
+    // crystal and thousands end up inside a couple of cells, each testing against
+    // every other. Measured turning a 24,000-troop field into 80ms a frame.
+    // Capping the tests per troop keeps it linear whatever the crowd does, and
+    // pushing apart the nearest two dozen resolves the overlap just as well.
+    let seen = 0, x = ax, y = ay;
+    outer:
+    for (let cy=r0; cy<=r1; cy++) {
+      const row = cy*GW;
+      for (let cx=c0; cx<=c1; cx++) {
+        const e = gStart[row+cx+1];
+        for (let k = gStart[row+cx]; k < e; k++) {
+          if (++seen > 24) break outer;
+          const j = gItems[k];
+          if (j === ui || PDEAD[j]) continue;
+          const dx=PX[j]-x, dy=PY[j]-y, md=(asz+PSZ[j])*.82, d2=dx*dx+dy*dy;
+          if (d2 < md*md && d2 > .01) {
+            const d=Math.sqrt(d2), push=(md-d)*.28, nx=dx/d*push, ny=dy/d*push;
+            x-=nx; y-=ny; PX[j]+=nx; PY[j]+=ny;
+          }
+        }
+      }
+    }
+    PX[ui] = x;
+    PY[ui] = y < top ? top : y > bot ? bot : y;
+  }
+  for (let i = 0; i < gN; i++) {
+    const a = gUnits[i];
+    if (a.dead) continue;
+    a.x = PX[i];
+    a.y = PY[i] < top ? top : PY[i] > bot ? bot : PY[i];
+  }
+
+  for (const f of G.fx) {
+    f.life -= dt;
+    if (f.t === "p") { f.x += f.vx*dt; f.y += f.vy*dt; if (!f.nog) f.vy += 220*dt; }
+    else if (f.t === "txt") { f.y -= 26*dt; }
+  }
+  G.fx = G.fx.filter(f => f.life > 0);
+  G.units = G.units.filter(u => !u.dead || (u.fade = (u.fade ?? .5) - dt) > 0);
+}
+
+/* ============================================================
+   FX
+   ============================================================ */
+const FX_MAX = 1400;
+let FX_CAP = FX_MAX;
+function spark(x, y) {
+  if (G.fx.length > FX_CAP) return;
+  for (let i=0;i<(G.crowd?1:3);i++)
+    G.fx.push({ t:"p", x, y, vx:(Math.random()-.5)*90, vy:-Math.random()*70,
+                life:.26, max:.26, c:"#ffd0a0", r:1.4+Math.random()*1.4 });
+}
+function puff(x, y, team, size) {
+  if (G.fx.length > FX_CAP) return;
+  const c = team === 0 ? "#bfe6ff" : "#ffc0a0";
+  for (let i=0;i<(G.crowd?3:9);i++)
+    G.fx.push({ t:"p", x, y, vx:(Math.random()-.5)*140, vy:-Math.random()*130,
+                life:.5, max:.5, c, r:1.5+Math.random()*size*.3 });
+}
+function bleed(x, y, size) {
+  for (let i=0;i<2;i++) {
+    const dx=x+(Math.random()-.5)*size, dy=y+size*.7+(Math.random()-.5)*size*.5;
+    decCtx.fillStyle = "rgba(96,18,14," + (.2+Math.random()*.14) + ")";
+    decCtx.beginPath();
+    decCtx.ellipse(dx, dy, size*(.3+Math.random()*.4), size*(.14+Math.random()*.18), 0, 0, 6.29);
+    decCtx.fill();
+  }
+  G.decals++;
+}
+function boom(x, y, r) {
+  if (G.fx.length > FX_CAP) return;
+  for (let i=0;i<(G.crowd?6:18);i++) {
+    const a=Math.random()*6.28, s=Math.random()*r*2.6;
+    G.fx.push({ t:"p", x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s-40,
+                life:.45, max:.45, c:"#e08fff", r:2+Math.random()*3 });
+  }
+}
+function arc(a, tgt) {
+  if (G.crowd || G.fx.length > FX_CAP) return;
+  const ang = Math.atan2(tgt.y-a.y, tgt.x-a.x);
+  G.fx.push({ t:"arc", x:(a.x+tgt.x)/2, y:(a.y+tgt.y)/2 - a.u.size*.3,
+              ang, r:a.u.size*1.5, life:.16, max:.16 });
+}
+let dmgShown = 0;
+function dmgText(x, y, n, blue) {
+  if (G.crowd) return;
+  if (++dmgShown % 2) return;                     // thin them out in a big melee
+  G.fx.push({ t:"txt", x, y, s:String(n), life:.6, max:.6, c: blue ? "#cfe8ff" : "#ffd0c0" });
+}
+let bannerT = 0;
+function banner(text, ms) {
+  const el = document.getElementById("banner");
+  if (!text) { el.classList.remove("show"); bannerT = 0; return; }
+  el.textContent = text; el.classList.add("show"); bannerT = performance.now()+ms;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+/* Painter's order by y. A comparator sort of twenty thousand objects costs ~9ms
+   a frame; bucketing them by screen row costs about one, and with bodies three
+   pixels tall nobody can see the ordering inside a bucket. Both arrays are
+   reused, so a frame allocates nothing. */
+const DS_BUCKETS = 1024;
+let dsOrder = [], dsCnt = new Int32Array(DS_BUCKETS + 1);
+function depthSorted(units) {
+  const n = units.length, top = TOP(), k = (DS_BUCKETS-1) / Math.max(1, BOT()-top);
+  dsCnt.fill(0);
+  for (let i=0;i<n;i++) {
+    let b = ((units[i].y - top) * k) | 0;
+    dsCnt[(b < 0 ? 0 : b >= DS_BUCKETS ? DS_BUCKETS-1 : b) + 1]++;
+  }
+  for (let b=0;b<DS_BUCKETS;b++) dsCnt[b+1] += dsCnt[b];
+  if (dsOrder.length !== n) dsOrder.length = n;
+  for (let i=0;i<n;i++) {
+    const u = units[i];
+    let b = ((u.y - top) * k) | 0;
+    dsOrder[dsCnt[b < 0 ? 0 : b >= DS_BUCKETS ? DS_BUCKETS-1 : b]++] = u;
+  }
+  return dsOrder;
+}
+
+function draw() {
+  const W=G.W, H=G.H;
+  ctx.save();
+  let shx = 0, shy = 0;
+  if (G.shake > .2) {
+    shx = (Math.random()-.5)*G.shake; shy = (Math.random()-.5)*G.shake;
+    ctx.translate(shx, shy);
+  }
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(bgCv, 0, 0);
+  ctx.drawImage(decCv, 0, 0);
+  ctx.restore();
+
+  drawShrine();
+  drawHoldLine(0); drawHoldLine(1);
+  drawLaneMarker(0); drawLaneMarker(1);
+  drawCrystal(0); drawCrystal(1);
+
+  // Troops are drawn in device space so each cached sprite blits 1:1 instead of
+  // being rescaled - measured 9.3ms vs 22.8ms for 680 units.
+  const list = depthSorted(G.units);
+  const q = VIEW*DPR;
+  G.crowd = list.length > 900;          // skip trimmings once the field is a wall of bodies
+  G.dense = list.length > 1800;         // and drop health bars entirely in a grinder
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, shx*q, shy*q);
+  for (const a of list) if (a.dead) drawFallen(a, q);
+  // The batch carries a fixed cost - clearing and compositing a full-screen
+  // layer - that a small army never earns back, so skirmishes stay on 2D.
+  if (list.length < GPU_MIN || probe.use2D || !gpuUnits(list, q))
+    { for (const a of list) if (!a.dead) drawUnit(a, q); }
+  // In a dense field drawTrim draws nothing at all, so skip the walk entirely.
+  if (!G.dense) for (const a of list) if (!a.dead) drawTrim(a, q);
+  ctx.restore();
+
+  for (const s of G.shots) {
+    ctx.strokeStyle=s.col; ctx.lineWidth=s.splash?4:2; ctx.lineCap="round";
+    const dx=s.tx-s.x, dy=s.ty-s.y, d=hyp(dx,dy)||1;
+    ctx.beginPath(); ctx.moveTo(s.x,s.y);
+    ctx.lineTo(s.x-dx/d*(s.splash?9:14), s.y-dy/d*(s.splash?9:14)); ctx.stroke();
+    if (s.splash) { ctx.fillStyle=s.col; ctx.beginPath(); ctx.arc(s.x,s.y,3.2,0,6.29); ctx.fill(); }
+  }
+
+  let lastA = -1, lastC = "";
+  for (const f of G.fx) {
+    const k = Math.max(0, f.life/f.max);
+    if (f.t === "bolt") {
+      lastA = -1; lastC = "";
+      ctx.globalAlpha = k; ctx.strokeStyle = "#dff0ff"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(f.x, f.y);
+      const mx = (f.x+f.x2)/2, my = (f.y+f.y2)/2;
+      ctx.lineTo(mx + (f.y2-f.y)*.12, my - (f.x2-f.x)*.12);
+      ctx.lineTo(f.x2, f.y2); ctx.stroke();
+    } else if (f.t === "arc") {
+      lastA = -1; lastC = "";
+      ctx.globalAlpha = k*.85; ctx.strokeStyle="#fff"; ctx.lineWidth=3.2; ctx.lineCap="round";
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r*(1.4-k*.4), f.ang-1.15, f.ang+1.15); ctx.stroke();
+    } else if (f.t === "txt") {
+      lastA = -1; lastC = "";
+      ctx.globalAlpha = k; ctx.font = "bold 23px 'Trebuchet MS', sans-serif";
+      ctx.textAlign = "center"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.75)";
+      ctx.strokeText(f.s, f.x, f.y); ctx.fillStyle = f.c; ctx.fillText(f.s, f.x, f.y);
+      ctx.textAlign = "left";
+    } else {
+      const bucket = k > .75 ? 1 : k > .5 ? .7 : k > .25 ? .45 : .2;
+      if (bucket !== lastA) { ctx.globalAlpha = bucket; lastA = bucket; }
+      if (f.c !== lastC) { ctx.fillStyle = f.c; lastC = f.c; }
+      const d = f.r*2;
+      ctx.fillRect(f.x-f.r, f.y-f.r, d, d);
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+  drawRadar();
+  if (G.help) drawHelp();
+  else if (G.paused && G.running && !G.over) drawPause();
+}
+
+function drawPause() {
+  const w = 520, h = 150, x = (G.W-w)/2, y = (G.H-h)/2 - 20;
+  ctx.fillStyle = "rgba(8,12,9,.88)"; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "#4a3c22"; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffd75e"; ctx.font = "bold 34px 'Trebuchet MS', sans-serif";
+  ctx.fillText("PAUSED", G.W/2, y + 52);
+  ctx.fillStyle = "#cfc6ae"; ctx.font = "17px 'Trebuchet MS', sans-serif";
+  ctx.fillText("SPACE resume    H counters    - / =  speed    `  mute", G.W/2, y + 92);
+  ctx.fillStyle = "#9e8b63"; ctx.font = "15px 'Trebuchet MS', sans-serif";
+  ctx.fillText("Terrain is mirrored — woods blunt missiles, the shrine hill hits harder.", G.W/2, y + 122);
+  ctx.textAlign = "left";
+}
+
+function drawHelp() {
+  const lines = [
+    ["THE ONE RULE", "#ffd75e"],
+    ["Pick a troop once - your crystal keeps recruiting it until the gold runs out.", "#ffd75e"],
+    ["Press it again to stop, or pick another to switch.", "#e8e2d0"],
+    ["", ""],
+    ["Every unit is LIGHT or ARMORED and has separate damage vs each.", "#e8e2d0"],
+    ["Armour also subtracts flat damage from every hit.", "#e8e2d0"],
+    ["", ""],
+    ["Ninja / Samurai — shred LIGHT, useless into plate", "#ffd0a0"],
+    ["Monk / Vampire — shred ARMORED, the answer to Iron Knights", "#9fd0ff"],
+    ["Dread Lord is LIGHT: fast and lethal, but anti-light units eat it", "#ff9a9a"],
+    ["Novice / Mage — hit both, from range", "#c9b6ff"],
+    ["", ""],
+    ["Hold the shrine in the middle for +◆" + SHRINE_GOLD*goldMul + " every payday.", "#e8dcb0"],
+    ["", ""],
+    ["TERRAIN — mirrored, so neither side gets the better ground", "#ffd75e"],
+    ["Woods: troops inside take 40% less missile damage, and move slower", "#9fd88f"],
+    ["High ground (the shrine): +14% damage dealt from on top of it", "#e8d090"],
+    ["Marsh: wades at 62% speed and hits 10% softer — a bad place to fight", "#a8b49c"],
+    ["", ""],
+    ["5 / 6  mend crystal      L-SHIFT / R-SHIFT  lane      T / '  advance or hold", "#9fffd8"],
+    ["SPACE pause     - / =  speed     `  mute     H  close", "#cfc6ae"],
+  ];
+  const w = 1014, h = lines.length*39 + 49;
+  const x = (G.W-w)/2, y = (G.H-h)/2 - 20;
+  ctx.fillStyle = "rgba(10,14,10,.92)";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "#4a3c22"; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+  ctx.textAlign = "left";
+  lines.forEach((l, i) => {
+    if (!l[0]) return;
+    ctx.font = (i === 0 ? "bold 27px " : "23px ") + "'Trebuchet MS', sans-serif";
+    ctx.fillStyle = l[1];
+    ctx.fillText(l[0], x+36, y+55+i*39);
+  });
+}
+
+function drawShrine() {
+  const x = shrineX(), y = shrineY(), sh = G.shrine;
+  const col = sh.owner === 0 ? "#7fc4ff" : sh.owner === 1 ? "#ff8a6a" : "#e8dcb0";
+  ctx.strokeStyle = "rgba(255,255,255,.13)"; ctx.lineWidth = 2;
+  ctx.setLineDash([6,9]);
+  ctx.beginPath(); ctx.ellipse(x, y, SHRINE_R, SHRINE_R*.5, 0, 0, 6.29); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "rgba(0,0,0,.2)";
+  ctx.beginPath(); ctx.ellipse(x, y+62, 48, 17, 0, 0, 6.29); ctx.fill();
+  ctx.fillStyle = "#6b6255"; ctx.fillRect(x-40, y+40, 81, 22);
+  ctx.fillStyle = "#514a3f";
+  ctx.beginPath();
+  ctx.moveTo(x-21, y+44); ctx.lineTo(x+21, y+44);
+  ctx.lineTo(x+13, y-74); ctx.lineTo(x-13, y-74); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = col;
+  ctx.globalAlpha = .85;
+  ctx.beginPath();
+  ctx.moveTo(x, y-104); ctx.lineTo(x+14, y-78); ctx.lineTo(x, y-56); ctx.lineTo(x-14, y-78);
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = .13; ctx.beginPath(); ctx.arc(x, y-78, 56, 0, 6.29); ctx.fill();
+  ctx.globalAlpha = 1;
+  // capture ring
+  const p = Math.abs(sh.prog)/100;
+  if (p > .01) {
+    ctx.strokeStyle = sh.prog > 0 ? "#7fc4ff" : "#ff8a6a";
+    ctx.lineWidth = 4; ctx.lineCap = "butt";
+    ctx.beginPath(); ctx.arc(x, y-78, 38, -Math.PI/2, -Math.PI/2 + p*6.283); ctx.stroke();
+  }
+}
+
+function drawHoldLine(team) {
+  const p = P[team]; if (!p || p.stance !== 1) return;
+  const x = holdX(team);
+  ctx.strokeStyle = team===0 ? "rgba(190,230,255,.30)" : "rgba(255,208,176,.30)";
+  ctx.lineWidth = 3; ctx.setLineDash([10,8]);
+  ctx.beginPath(); ctx.moveTo(x, TOP()); ctx.lineTo(x, BOT()); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawLaneMarker(team) {
+  const p = P[team]; if (!p || !p.lane) return;
+  const x = crystalX(team) + (team===0 ? 30 : -30);
+  const top=TOP()+20, bot=BOT()-20, span=bot-top;
+  const y = p.lane===1 ? top+span*.16 : p.lane===2 ? (top+bot)/2 : bot-span*.16;
+  ctx.strokeStyle = team===0 ? "rgba(190,230,255,.35)" : "rgba(255,208,176,.35)";
+  ctx.lineWidth = 2; ctx.setLineDash([5,6]);
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (team===0?278:-278), y); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawCrystal(team) {
+  const x=crystalX(team), y=crystalY();
+  const p = P[team] || { hp:CRYSTAL_HP };
+  const f = Math.max(0, p.hp/CRYSTAL_HP);
+  const h=208, w=86;
+  const lite = team===0 ? "#7fc4ff" : "#ff8a6a";
+  const dark = team===0 ? "#1d4278" : "#72281c";
+  const t = performance.now()/600;
+
+  ctx.fillStyle="rgba(0,0,0,.24)";
+  ctx.beginPath(); ctx.ellipse(x, y+h/2+10, w*1.05, 14, 0, 0, 6.29); ctx.fill();
+
+  ctx.fillStyle="#544c41"; ctx.fillRect(x-w*.85, y+h/2-6, w*1.7, 20);
+  ctx.fillStyle="#6e6558"; ctx.fillRect(x-w*.85, y+h/2-6, w*1.7, 6);
+  ctx.fillStyle="#443d34";
+  for (let i=0;i<4;i++) ctx.fillRect(x-w*.85 + i*(w*1.7/4)+2, y+h/2+2, w*1.7/4-4, 3);
+
+  ctx.fillStyle = team===0 ? "rgba(120,190,255,.14)" : "rgba(255,150,110,.14)";
+  ctx.globalAlpha = .3 + .7*f;
+  ctx.beginPath(); ctx.arc(x,y,w*1.9,0,6.29); ctx.fill();
+  ctx.beginPath(); ctx.arc(x,y,w*1.25,0,6.29); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  const s = .45 + .55*f;
+  ctx.globalAlpha = .6 + .4*f;
+  ctx.fillStyle=dark;
+  ctx.beginPath();
+  ctx.moveTo(x, y-h/2*s); ctx.lineTo(x+w/2*s, y-h/8*s);
+  ctx.lineTo(x+w/3*s, y+h/2*s); ctx.lineTo(x-w/3*s, y+h/2*s);
+  ctx.lineTo(x-w/2*s, y-h/8*s); ctx.closePath(); ctx.fill();
+  ctx.fillStyle=lite;
+  ctx.beginPath();
+  ctx.moveTo(x, y-h/2*s); ctx.lineTo(x+w/2*s, y-h/8*s);
+  ctx.lineTo(x, y+h/2*s); ctx.lineTo(x-w/2*s, y-h/8*s); ctx.closePath(); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.6)";
+  ctx.beginPath();
+  ctx.moveTo(x, y-h/2*s); ctx.lineTo(x+w/6*s, y-h/8*s);
+  ctx.lineTo(x, y+h/4*s); ctx.lineTo(x-w/6*s, y-h/8*s); ctx.closePath(); ctx.fill();
+  ctx.globalAlpha=1;
+
+  if (f < .8) {                       // cracks spread as it takes damage
+    ctx.strokeStyle = "rgba(20,10,10," + (0.7*(1-f)) + ")"; ctx.lineWidth = 1.6;
+    for (let i=0;i<4;i++) {
+      const a0 = i*1.7 + .4;
+      ctx.beginPath();
+      ctx.moveTo(x, y - h*.1);
+      ctx.lineTo(x + Math.cos(a0)*w*.4*s, y + Math.sin(a0)*h*.28*s);
+      ctx.lineTo(x + Math.cos(a0+.5)*w*.5*s, y + Math.sin(a0+.4)*h*.4*s);
+      ctx.stroke();
+    }
+  }
+
+  for (let i=0;i<3;i++) {
+    const a = t + i*2.1;
+    ctx.fillStyle=lite; ctx.globalAlpha=.65;
+    ctx.beginPath(); ctx.arc(x+Math.cos(a)*w*.95, y+Math.sin(a*1.3)*h*.32, 2.6, 0, 6.29); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+/* ---------- the sprite, drawn with paths (used to bake the cache) ---------- */
+function drawUnitVector(a) {
+  const art = a.u.art;
+  const ps = a.ghost ? 1 : persp(a.y);
+  const s = a.u.size * ps;
+  const face = a.team===0 ? 1 : -1;
+  const teamCol = a.team===0 ? "#3f7fd6" : "#d64b2b";
+  const teamLite = a.team===0 ? "#6fa6ea" : "#e87255";
+  const bob = a.dead ? 0 : Math.sin(a.step)*1.4;
+  const x=a.x, y=a.y+bob;
+  const alpha0 = ctx.globalAlpha;
+  if (a.dead) ctx.globalAlpha = alpha0*Math.max(0,(a.fade??0)/.5)*.75;
+
+  ctx.fillStyle="rgba(0,0,0,.24)";
+  ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.95, s*.88, s*.34, 0, 0, 6.29); ctx.fill();
+  if (!a.dead) {                       // team ring: colour *and* line style
+    ctx.strokeStyle = a.team===0 ? "rgba(110,180,255,.9)" : "rgba(255,120,90,.9)";
+    ctx.lineWidth = 2;
+    if (a.team === 1) ctx.setLineDash([3.5, 3.5]);
+    ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.95, s*.82, s*.3, 0, 0, 6.29); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  if (a.dead) {
+    ctx.fillStyle=teamCol;
+    ctx.beginPath(); ctx.ellipse(a.x, a.y+s*.62, s*.95, s*.42, 0, 0, 6.29); ctx.fill();
+    ctx.fillStyle=a.u.col;
+    ctx.beginPath(); ctx.ellipse(a.x+face*s*.4, a.y+s*.5, s*.3, s*.24, 0, 0, 6.29); ctx.fill();
+    ctx.globalAlpha=alpha0; return;
+  }
+
+  const hit = a.hurt > 0;
+  const skin = art.skin || "#e8c9a0";
+  const lean = art.hunch ? s*.18 : 0;
+
+  if (art.aura) {
+    ctx.globalAlpha = alpha0 * .11; ctx.fillStyle = art.aura;
+    ctx.beginPath(); ctx.arc(x, y+s*.2, s*1.7, 0, 6.29); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y+s*.2, s*1.1, 0, 6.29); ctx.fill();
+    ctx.globalAlpha = alpha0;
+  }
+  if (art.cape) {
+    ctx.fillStyle = art.cape;
+    ctx.beginPath();
+    ctx.moveTo(x-face*s*.45, y-s*.55);
+    ctx.lineTo(x-face*s*1.25, y+s*.95);
+    ctx.lineTo(x-face*s*.05, y+s*.8);
+    ctx.closePath(); ctx.fill();
+  }
+  if (art.wings) {
+    ctx.fillStyle = "rgba(30,10,28,.9)";
+    for (const d of [-1,1]) {
+      ctx.beginPath();
+      ctx.moveTo(x, y-s*.35);
+      ctx.quadraticCurveTo(x+d*s*1.5, y-s*1.15, x+d*s*1.25, y+s*.15);
+      ctx.quadraticCurveTo(x+d*s*.75, y-s*.2, x, y-s*.05);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  ctx.strokeStyle = art.body==="plate" ? "#5c6472" : "#3a2c1c";
+  ctx.lineWidth = Math.max(1.6, s*.2);
+  const sw = Math.sin(a.step)*s*.42;
+  if (!art.mount) {
+    ctx.lineWidth = Math.max(2, s*.22);
+    ctx.beginPath();
+    ctx.moveTo(x-s*.14, y+s*.45); ctx.lineTo(x-sw, y+s*1.0);
+    ctx.moveTo(x+s*.14, y+s*.45); ctx.lineTo(x+sw, y+s*1.0);
+    ctx.stroke();
+    ctx.fillStyle = "#2c2117";                       // boots
+    ctx.fillRect(x-sw-s*.2, y+s*.94, s*.4, s*.16);
+    ctx.fillRect(x+sw-s*.2, y+s*.94, s*.4, s*.16);
+  } else {
+    const my = y+s*.55;
+    ctx.fillStyle = "#4e3620";
+    ctx.beginPath(); ctx.ellipse(x, my, s*1.05, s*.42, 0, 0, 6.29); ctx.fill();
+    ctx.fillStyle = "#3c2917";
+    ctx.fillRect(x+face*s*.85, my-s*.42, s*.4, s*.5);
+    ctx.beginPath(); ctx.ellipse(x+face*s*1.05, my-s*.42, s*.28, s*.2, 0, 0, 6.29); ctx.fill();
+    ctx.strokeStyle="#3c2917"; ctx.lineWidth=Math.max(2, s*.16);
+    ctx.beginPath();
+    ctx.moveTo(x-s*.6, my+s*.2); ctx.lineTo(x-s*.6-sw*.6, my+s*.85);
+    ctx.moveTo(x+s*.5, my+s*.2); ctx.lineTo(x+s*.5+sw*.6, my+s*.85);
+    ctx.stroke();
+  }
+
+  const by = art.mount ? y - s*.25 : y;
+
+  const torsoW = s*(art.body==="plate" ? 1.12 : 1.0);
+  ctx.fillStyle = hit ? "#fff" : teamCol;
+  if (art.body === "robe") {
+    ctx.beginPath();
+    ctx.moveTo(x-s*.42+lean, by-s*.5); ctx.lineTo(x+s*.42+lean, by-s*.5);
+    ctx.lineTo(x+s*.72, by+s*1.05); ctx.lineTo(x-s*.72, by+s*1.05);
+    ctx.closePath(); ctx.fill();
+  } else if (art.body === "tatter") {
+    ctx.fillRect(x-torsoW/2+lean, by-s*.5, torsoW, s*1.0);
+    ctx.fillStyle = hit ? "#fff" : "rgba(0,0,0,.25)";
+    for (let i=0;i<3;i++) ctx.fillRect(x-torsoW/2+lean+i*s*.36, by+s*.35, s*.16, s*.5);
+  } else {
+    ctx.fillRect(x-torsoW/2+lean, by-s*.5, torsoW, s*1.05);
+  }
+  ctx.fillStyle = hit ? "#fff" : a.u.col;      // unit crest down the chest
+  ctx.fillRect(x-torsoW*.22+lean, by-s*.5, torsoW*.44, s*1.05);
+  ctx.fillRect(x-torsoW/2+lean, by-s*.5, torsoW, s*.26);
+  if (!hit) {                                   // cheap shading + outline
+    ctx.fillStyle = "rgba(0,0,0,.26)";
+    ctx.fillRect(x-torsoW/2+lean, by-s*.5, torsoW*.24, s*1.05);
+    ctx.fillStyle = "rgba(255,255,255,.15)";
+    ctx.fillRect(x+torsoW*.26+lean, by-s*.5, torsoW*.24, s*1.05);
+    ctx.strokeStyle = "rgba(0,0,0,.5)"; ctx.lineWidth = 1.2;
+    ctx.strokeRect(x-torsoW/2+lean, by-s*.5, torsoW, s*1.05);
+  }
+  if (art.body === "plate" && !hit) {
+    ctx.strokeStyle="rgba(255,255,255,.7)"; ctx.lineWidth=1.2;
+    ctx.strokeRect(x-torsoW/2+lean, by-s*.5, torsoW, s*1.05);
+    ctx.fillStyle = teamLite;
+    ctx.fillRect(x-torsoW/2+lean, by+s*.1, torsoW, s*.12);
+  }
+  if (art.pauldrons && !hit) {
+    ctx.fillStyle="#cfd8e4"; ctx.strokeStyle="rgba(0,0,0,.4)"; ctx.lineWidth=1;
+    for (const d of [-1,1]) {
+      ctx.beginPath(); ctx.ellipse(x+d*torsoW/2+lean, by-s*.3, s*.22, s*.17, 0, 0, 6.29);
+      ctx.fill(); ctx.stroke();
+    }
+  }
+  if (art.shield) {
+    ctx.fillStyle = hit ? "#fff" : "#cfd8e4";
+    ctx.fillRect(x-face*s*.72, by-s*.38, s*.24, s*.78);
+    ctx.fillStyle = teamLite;
+    ctx.fillRect(x-face*s*.70, by-s*.22, s*.2, s*.2);
+  }
+  if (art.tower) {
+    ctx.fillStyle = hit ? "#fff" : "#b9c4d2";
+    ctx.fillRect(x-face*s*.8, by-s*.75, s*.26, s*1.5);
+    ctx.strokeStyle="rgba(255,255,255,.65)"; ctx.lineWidth=1;
+    ctx.strokeRect(x-face*s*.8, by-s*.75, s*.26, s*1.5);
+  }
+  if (art.scarf) {
+    ctx.fillStyle="#c8392e";
+    ctx.beginPath();
+    ctx.moveTo(x-face*s*.3, by-s*.55);
+    ctx.lineTo(x-face*s*1.15, by-s*.85+Math.sin(a.step*2)*s*.2);
+    ctx.lineTo(x-face*s*.3, by-s*.3);
+    ctx.closePath(); ctx.fill();
+  }
+
+  const hy = by - s*.88;
+  ctx.fillStyle = hit ? "#fff" : "rgba(0,0,0,.35)";
+  ctx.fillRect(x+lean-s*.13, hy+s*.2, s*.26, s*.2);          // neck
+  ctx.fillStyle = hit ? "#fff" : skin;
+  ctx.beginPath(); ctx.arc(x+lean, hy, s*.4, 0, 6.29); ctx.fill();
+  if (!hit) { ctx.strokeStyle="rgba(0,0,0,.45)"; ctx.lineWidth=1.1; ctx.stroke(); }
+  if (!hit) {
+    ctx.fillStyle = "rgba(0,0,0,.55)";
+    ctx.fillRect(x+lean+face*s*.06, hy-s*.06, s*.12, s*.08);
+  }
+  ctx.fillStyle = hit ? "#fff" : a.u.col;
+  switch (art.head) {
+    case "helm":
+      ctx.beginPath(); ctx.arc(x+lean, hy-s*.08, s*.45, Math.PI, 6.29); ctx.fill();
+      ctx.fillRect(x+lean-s*.45, hy-s*.1, s*.9, s*.12); break;
+    case "visor":
+      ctx.fillStyle = hit ? "#fff" : "#b9c4d2";
+      ctx.beginPath(); ctx.arc(x+lean, hy-s*.05, s*.5, Math.PI, 6.29); ctx.fill();
+      ctx.fillRect(x+lean-s*.5, hy-s*.05, s*1.0, s*.42);
+      ctx.fillStyle = art.glow || "rgba(20,24,30,.9)";
+      ctx.fillRect(x+lean-s*.34, hy+s*.02, s*.68, s*.1); break;
+    case "hood":
+      ctx.beginPath(); ctx.arc(x+lean, hy-s*.02, s*.52, Math.PI, 6.29); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x+lean-s*.52, hy); ctx.lineTo(x+lean+s*.52, hy);
+      ctx.lineTo(x+lean+s*.3, hy+s*.42); ctx.lineTo(x+lean-s*.3, hy+s*.42);
+      ctx.closePath(); ctx.fill(); break;
+    case "mask":
+      ctx.fillRect(x+lean-s*.42, hy-s*.42, s*.84, s*.56);
+      ctx.fillStyle="#f0e6d0"; ctx.fillRect(x+lean-s*.3, hy-s*.14, s*.6, s*.1); break;
+    case "kasa":
+      ctx.beginPath();
+      ctx.moveTo(x+lean-s*.85, hy-s*.1); ctx.lineTo(x+lean+s*.85, hy-s*.1);
+      ctx.lineTo(x+lean, hy-s*.75); ctx.closePath(); ctx.fill(); break;
+    case "wizhat":
+      ctx.beginPath();
+      ctx.moveTo(x+lean-s*.7, hy-s*.2); ctx.lineTo(x+lean+s*.7, hy-s*.2);
+      ctx.lineTo(x+lean+face*s*.35, hy-s*1.5); ctx.closePath(); ctx.fill(); break;
+    case "horns":
+      ctx.beginPath(); ctx.arc(x+lean, hy-s*.08, s*.46, Math.PI, 6.29); ctx.fill();
+      ctx.strokeStyle = hit ? "#fff" : "#e8e2d0"; ctx.lineWidth=Math.max(2,s*.14);
+      for (const d of [-1,1]) {
+        ctx.beginPath();
+        ctx.moveTo(x+lean+d*s*.4, hy-s*.28);
+        ctx.quadraticCurveTo(x+lean+d*s*.95, hy-s*.7, x+lean+d*s*.6, hy-s*1.1);
+        ctx.stroke();
+      } break;
+    case "crown":
+      ctx.beginPath(); ctx.arc(x+lean, hy-s*.08, s*.44, Math.PI, 6.29); ctx.fill();
+      ctx.fillStyle = hit ? "#fff" : "#ffe066";
+      ctx.beginPath();
+      ctx.moveTo(x+lean-s*.5, hy-s*.42); ctx.lineTo(x+lean+s*.5, hy-s*.42);
+      ctx.lineTo(x+lean+s*.5, hy-s*.72); ctx.lineTo(x+lean+s*.25, hy-s*.52);
+      ctx.lineTo(x+lean, hy-s*.82); ctx.lineTo(x+lean-s*.25, hy-s*.52);
+      ctx.lineTo(x+lean-s*.5, hy-s*.72); ctx.closePath(); ctx.fill(); break;
+    case "plume":
+      ctx.beginPath(); ctx.arc(x+lean, hy-s*.08, s*.45, Math.PI, 6.29); ctx.fill();
+      ctx.fillStyle="#e8484f";
+      ctx.beginPath();
+      ctx.moveTo(x+lean, hy-s*.5);
+      ctx.quadraticCurveTo(x+lean-face*s*.5, hy-s*1.1, x+lean-face*s*.15, hy-s*1.15);
+      ctx.quadraticCurveTo(x+lean-face*s*.1, hy-s*.7, x+lean+s*.12, hy-s*.5);
+      ctx.closePath(); ctx.fill(); break;
+    default: break;
+  }
+  if (art.halo) {
+    ctx.strokeStyle = "rgba(255,232,150,.9)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(x+lean, hy-s*.62, s*.42, s*.15, 0, 0, 6.29); ctx.stroke();
+  }
+
+  const sg = a.swing;
+  const hx = x + face*s*.6, wy = by - s*.1;
+  ctx.lineCap="round";
+  ctx.lineWidth = Math.max(1.6, s*.2);
+  ctx.save();
+  ctx.translate(hx, wy); ctx.scale(.66, .72); ctx.translate(-hx, -wy);   // keep weapons in proportion
+  switch (art.weapon) {
+    case "bow":
+      ctx.strokeStyle="#6b4a26"; ctx.lineWidth=Math.max(1.4,s*.16);
+      ctx.beginPath(); ctx.arc(hx, wy, s*.75, -1.15+(face<0?Math.PI:0), 1.15+(face<0?Math.PI:0)); ctx.stroke();
+      ctx.strokeStyle="rgba(240,235,215,.8)"; ctx.lineWidth=1;
+      ctx.beginPath();
+      ctx.moveTo(hx+face*s*.3, wy-s*.68); ctx.lineTo(hx-face*s*.05-sg*s*.3, wy);
+      ctx.lineTo(hx+face*s*.3, wy+s*.68); ctx.stroke(); break;
+    case "staff":
+      ctx.strokeStyle = "#6a4f2c";
+      ctx.beginPath(); ctx.moveTo(hx, wy+s*.75); ctx.lineTo(hx+face*s*.18, wy-s*1.25); ctx.stroke();
+      ctx.fillStyle = art.orb || "rgba(255,232,150,.95)";
+      ctx.beginPath(); ctx.arc(hx+face*s*.18, wy-s*1.35, s*.28, 0, 6.29); ctx.fill();
+      ctx.save(); ctx.globalAlpha *= .4;
+      ctx.beginPath(); ctx.arc(hx+face*s*.18, wy-s*1.35, s*.6, 0, 6.29); ctx.fill();
+      ctx.restore(); break;
+    case "daggers":
+      ctx.strokeStyle="#e8eef5";
+      for (const d of [1,-1]) {
+        ctx.beginPath();
+        ctx.moveTo(x+d*face*s*.4, wy+s*.15);
+        ctx.lineTo(x+d*face*(s*.95+sg*s*.5), wy-s*.4-sg*s*.3);
+        ctx.stroke();
+      } break;
+    case "claws":
+      ctx.strokeStyle = art.cape ? "#f0d0e0" : "#d8d0c0"; ctx.lineWidth=Math.max(1.4,s*.13);
+      for (const d of [-.25,0,.25]) {
+        ctx.beginPath();
+        ctx.moveTo(hx-face*s*.15, wy+s*.1+d*s);
+        ctx.lineTo(hx+face*(s*.7+sg*s*.5), wy-s*.15+d*s*1.2);
+        ctx.stroke();
+      } break;
+    case "katana":
+      ctx.strokeStyle="#f2f6ff"; ctx.lineWidth=Math.max(2,s*.16);
+      ctx.beginPath();
+      ctx.moveTo(hx-face*s*.2, wy+s*.3);
+      ctx.quadraticCurveTo(hx+face*(s*.9+sg*s*.5), wy-s*.1-sg*s*.3,
+                           hx+face*(s*1.5+sg*s*.7), wy-s*.85-sg*s*.5);
+      ctx.stroke(); break;
+    case "greatsword":
+      ctx.strokeStyle="#c8ccd4"; ctx.lineWidth=Math.max(3,s*.26);
+      ctx.beginPath();
+      ctx.moveTo(hx-face*s*.1, wy+s*.45);
+      ctx.lineTo(hx+face*(s*1.15+sg*s*.6), wy-s*1.05-sg*s*.5); ctx.stroke();
+      ctx.strokeStyle="#8a6a3a"; ctx.lineWidth=Math.max(2,s*.14);
+      ctx.beginPath();
+      ctx.moveTo(hx-face*s*.32, wy+s*.28); ctx.lineTo(hx+face*s*.2, wy+s*.1); ctx.stroke(); break;
+    case "axe":
+      ctx.strokeStyle="#6a4f2c"; ctx.lineWidth=Math.max(2.4,s*.18);
+      ctx.beginPath();
+      ctx.moveTo(hx-face*s*.15, wy+s*.5);
+      ctx.lineTo(hx+face*(s*1.0+sg*s*.5), wy-s*.85-sg*s*.4); ctx.stroke();
+      ctx.fillStyle="#d8dde6";
+      ctx.beginPath();
+      ctx.moveTo(hx+face*(s*.85+sg*s*.5), wy-s*.6-sg*s*.4);
+      ctx.lineTo(hx+face*(s*1.5+sg*s*.5), wy-s*1.1-sg*s*.4);
+      ctx.lineTo(hx+face*(s*1.15+sg*s*.5), wy-s*.2-sg*s*.4);
+      ctx.closePath(); ctx.fill(); break;
+    case "lance":
+      ctx.strokeStyle="#e8e2d0"; ctx.lineWidth=Math.max(2.4,s*.17);
+      ctx.beginPath();
+      ctx.moveTo(hx-face*s*.7, wy+s*.35);
+      ctx.lineTo(hx+face*(s*2.0+sg*s*.4), wy-s*.35); ctx.stroke();
+      ctx.fillStyle="#c8392e";
+      ctx.fillRect(hx+face*s*.35, wy-s*.05, s*.3, s*.28); break;
+    case "spear":
+      ctx.strokeStyle="#8a6a3a"; ctx.lineWidth=Math.max(2,s*.15);
+      ctx.beginPath();
+      ctx.moveTo(hx-face*s*.5, wy+s*.6);
+      ctx.lineTo(hx+face*(s*1.6+sg*s*.6), wy-s*.7); ctx.stroke();
+      ctx.fillStyle="#e8eef5";
+      ctx.beginPath();
+      ctx.moveTo(hx+face*(s*1.45+sg*s*.6), wy-s*.5);
+      ctx.lineTo(hx+face*(s*1.95+sg*s*.6), wy-s*.95);
+      ctx.lineTo(hx+face*(s*1.5+sg*s*.6), wy-s*.85);
+      ctx.closePath(); ctx.fill(); break;
+    case "club":
+      ctx.strokeStyle="#8a6a3a"; ctx.lineWidth=Math.max(2,s*.2);
+      ctx.beginPath();
+      ctx.moveTo(hx, wy+s*.3);
+      ctx.lineTo(hx+face*(s*.85+sg*s*.6), wy-s*.6-sg*s*.4); ctx.stroke(); break;
+    default:
+      ctx.strokeStyle="#efe6cf";
+      ctx.beginPath();
+      ctx.moveTo(hx, wy+s*.3);
+      ctx.lineTo(hx+face*(s*.95+sg*s*.7), wy-s*.7-sg*s*.5); ctx.stroke();
+  }
+  ctx.restore();
+
+  if (!a.ghost && a.hp < a.maxhp) {
+    const w=s*1.9, f=Math.max(0,a.hp/a.maxhp);
+    ctx.fillStyle="rgba(0,0,0,.6)"; ctx.fillRect(x-w/2, by-s*1.6, w, 3.4);
+    ctx.fillStyle = f>.5 ? "#6de06d" : f>.25 ? "#ffd75e" : "#ff5e5e";
+    ctx.fillRect(x-w/2, by-s*1.6, w*f, 3.4);
+  }
+  ctx.globalAlpha=alpha0;
+}
+
+/* ---------- sprite cache: bake each unit/team/frame once, then blit ----------
+   300 hand-drawn sprites a frame is far too much path work for canvas, so every
+   animation frame is rendered once into its own little canvas and reused.       */
+// Keyed by a packed integer, not a string. The old "gid_team_walk_sw_ps" key meant
+// one string concatenation and one Map hash per troop per frame - twenty thousand
+// of them at CHAOS x10, inside the hottest loop in the renderer.
+const spriteSlot = [];                       // packed key -> baked canvas
+const spriteList = [];                       // every baked canvas, for the atlas
+const simpleSlot = [];                       // gid<<1|team -> flat body
+const spriteCache = { get size() { return spriteList.length; },
+                      clear() { spriteSlot.length = 0; spriteList.length = 0;
+                                simpleSlot.length = 0; },
+                      values() { return spriteList; } };
+const PS_STEPS = [0.84, 1.0, 1.16];          // perspective, quantised so blits are 1:1
+
+/* ---------- simplified bodies ----------
+   Below about eight pixels there is no room in a body for a walk cycle, a weapon
+   swing or a perspective step: CHAOS draws soldiers at seven pixels, CHAOS x10 at
+   three, and a phone shrinks every size past that. Those battles bake ONE flat
+   silhouette per unit per side instead of twenty-four animated variants.
+
+   The saving is not in the drawing - a sprite is baked once either way. It is that
+   the hot loops stop computing a walk frame, a swing state and a perspective band
+   for every troop on every frame, the atlas collapses to a handful of sprites, and
+   the box loses all the padding that only existed to accommodate lances and capes.
+   At three pixels the flat body is also simply more legible than a detailed one
+   squeezed into the same space. */
+let SIMPLE = false;
+const SIMPLE_PX = 8;
+function refreshSimple() { SIMPLE = (ALL_UNITS[0].size * VIEW) < SIMPLE_PX; }
+
+function simpleSprite(u, team) {
+  const key = u.gid << 1 | team;
+  const c = simpleSlot[key];
+  return c !== undefined ? c : bakeSimple(u, team, key);
+}
+function bakeSimple(u, team, key) {
+  const q = VIEW*DPR, s = u.size;
+  const w = Math.ceil(s*1.7), h = Math.ceil(s*2.1);       // no lance/cape padding
+  const c = document.createElement("canvas");
+  c.width = Math.max(2, Math.ceil(w*q)); c.height = Math.max(2, Math.ceil(h*q));
+  const g = c.getContext("2d");
+  g.setTransform(q, 0, 0, q, 0, 0);
+  const cx = w/2, base = h*0.86;
+  const body = team===0 ? "#4a8fe0" : "#e05636";
+  const lite = team===0 ? "#8cc0f5" : "#ff9a70";
+  const skin = (u.art && u.art.skin) || "#e8c9a0";
+  const px = v => Math.max(0.8, v);                        // never round away to nothing
+  const bw = s*(u.type === "armored" ? .60 : .44), bh = s*.78;
+  const hr = s*.22, hy = base - bh - hr*.75;
+  g.fillStyle = "rgba(0,0,0,.30)";                         // keeps the crowd on the ground
+  g.beginPath(); g.ellipse(cx, base, s*.40, s*.14, 0, 0, 6.29); g.fill();
+  // A dark rim under everything. In a crowd this deep the thing that makes a body
+  // legible is not detail, it is the edge between it and the body behind it -
+  // without this the field reads as one blue smear rather than as troops.
+  const o = px(s*.09);
+  g.fillStyle = "rgba(12,8,4,.72)";
+  g.fillRect(cx-bw/2-o, base-bh-o, bw+o*2, bh+o);
+  g.beginPath(); g.arc(cx, hy, hr+o, 0, 6.29); g.fill();
+  g.fillStyle = body;  g.fillRect(cx-bw/2, base-bh, bw, bh);
+  g.fillStyle = lite;  g.fillRect(cx-bw/2, base-bh, bw, px(s*.15));   // lit shoulders
+  g.fillStyle = u.col; g.fillRect(cx-bw/2, base-bh*.58, bw, px(s*.18)); // its own colour
+  g.fillStyle = skin;
+  g.beginPath(); g.arc(cx, hy, hr, 0, 6.29); g.fill();
+  if (u.hero) {                                            // champions stay findable
+    g.fillStyle = "#ffd75e";
+    g.fillRect(cx-s*.30, hy-hr-px(s*.16), s*.60, px(s*.16));
+  }
+  c._w = w; c._h = h; c._a = 0.86;
+  simpleSlot[key] = c; spriteList.push(c);
+  return c;
+}
+
+function sprite(u, team, walk, sw, ps) {
+  const key = ((((u.gid << 1 | team) << 2) | walk) << 1 | sw) * 3 + ps;
+  let c = spriteSlot[key];
+  if (c !== undefined) return c;
+  // NB: no floor on q. Clamping it up made sprites bake denser than the view,
+  // and since they blit 1:1 that drew every troop oversized on the zoomed-out
+  // battle sizes - and cost ~4x the pixels.
+  const k = PS_STEPS[ps], q = VIEW*DPR;
+  // When a soldier is only a handful of pixels tall, the generous box that
+  // accommodates lances and capes is almost entirely empty padding - and padding
+  // is what costs at three thousand troops. Crop it; nothing visible is lost.
+  const tiny = u.size * VIEW * k < 16;
+  const bw = tiny ? 2.7 : 3.9, bh = tiny ? 2.5 : 3.15;
+  const w = Math.ceil(u.size*bw*k), h = Math.ceil(u.size*bh*k);
+  c = document.createElement("canvas");
+  c.width = Math.max(2, Math.ceil(w*q)); c.height = Math.max(2, Math.ceil(h*q));
+  const g = c.getContext("2d");
+  g.setTransform(q*k, 0, 0, q*k, 0, 0);
+  const real = ctx; ctx = g;
+  drawUnitVector({ team, u, x:w/(2*k), y:h*0.6/k, hp:1, maxhp:1,
+                   swing: sw/2, hurt:0, step: walk*Math.PI/2, dead:false, ghost:true });
+  ctx = real;
+  c._w = w; c._h = h; c._a = tiny ? 0.58 : 0.60;
+  spriteSlot[key] = c; spriteList.push(c);
+  return c;
+}
+
+const psiOf = a => SIMPLE ? 1
+                 : a.y < TOP() + (BOT()-TOP())*0.34 ? 0
+                 : a.y < TOP() + (BOT()-TOP())*0.7  ? 1 : 2;
+
+function drawUnit(a, q) {
+  if (a.ghost) { drawUnitVector(a); return; }     // shop icons still draw as paths
+  const X = a.x*q, Y = a.y*q;
+  const c = SIMPLE ? simpleSprite(a.u, a.team)
+                   : sprite(a.u, a.team, ((a.step/(Math.PI/2))|0)&3, a.swing > .45 ? 1 : 0, psiOf(a));
+  const dx = (X - c.width/2) | 0, dy = (Y - c.height*c._a) | 0;
+  ctx.drawImage(c, dx, dy);                       // 1:1, no resampling
+  if (a.hurt > 0 && !G.crowd) {
+    const op = ctx.globalCompositeOperation, al = ctx.globalAlpha;
+    ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = al * .6;
+    ctx.drawImage(c, dx, dy);
+    ctx.globalCompositeOperation = op; ctx.globalAlpha = al;
+  }
+}
+
+/* Fallen bodies stay on the 2D layer: they are paths rather than sprites, and a
+   half-second fade never leaves many of them on the field at once. */
+function drawFallen(a, q) {
+  const s = a.u.size * PS_STEPS[psiOf(a)] * q;
+  const X = a.x*q, Y = a.y*q, al = ctx.globalAlpha;
+  ctx.globalAlpha = al * Math.max(0,(a.fade??0)/.5) * .75;
+  ctx.fillStyle = "rgba(0,0,0,.24)";
+  ctx.beginPath(); ctx.ellipse(X, Y+s*.95, s*.88, s*.34, 0, 0, 6.29); ctx.fill();
+  ctx.fillStyle = a.team===0 ? "#3f7fd6" : "#d64b2b";
+  ctx.beginPath(); ctx.ellipse(X, Y+s*.62, s*.95, s*.42, 0, 0, 6.29); ctx.fill();
+  ctx.globalAlpha = al;
+}
+
+/* Health bars, veteran chevrons and the hover ring - drawn over whichever
+   renderer laid down the bodies. Skipped entirely once the field is dense. */
+function drawTrim(a, q) {
+  const psi = psiOf(a);
+  const s = a.u.size * PS_STEPS[psi] * q;
+  const X = a.x*q, Y = a.y*q;
+  if (G.crowd) {                        // health only, and only when it matters
+    if (a.hp < a.maxhp * .55) {
+      const bw = s*1.9, f = Math.max(0, a.hp/a.maxhp);
+      ctx.fillStyle = f>.25 ? "#ffd75e" : "#ff5e5e";
+      ctx.fillRect(X-bw/2, Y-s*1.65, bw*f, 3*q);
+    }
+    return;
+  }
+  if (G.hi && G.hi.team === a.team && G.hi.idx === a.u.idx) {
+    ctx.strokeStyle = "#fff8c0"; ctx.lineWidth = 2.4*q;
+    ctx.beginPath(); ctx.ellipse(X, Y+s*.95, s*1.0, s*.4, 0, 0, 6.29); ctx.stroke();
+  }
+  const rank = Math.min(3, Math.floor((a.vet||0)/3));
+  if (rank > 0) {
+    ctx.strokeStyle = "#ffe066"; ctx.lineWidth = 1.6*q;
+    for (let i=0;i<rank;i++) {
+      const cy = Y - s*1.9 - i*4.4*q;
+      ctx.beginPath();
+      ctx.moveTo(X - s*.26, cy + 3*q); ctx.lineTo(X, cy);
+      ctx.lineTo(X + s*.26, cy + 3*q); ctx.stroke();
+    }
+  }
+  if (a.hp < a.maxhp) {
+    const bw = s*1.9, f = Math.max(0, a.hp/a.maxhp);
+    ctx.fillStyle = "rgba(0,0,0,.6)"; ctx.fillRect(X-bw/2, Y-s*1.65, bw, 4*q);
+    ctx.fillStyle = f>.5 ? "#6de06d" : f>.25 ? "#ffd75e" : "#ff5e5e";
+    ctx.fillRect(X-bw/2, Y-s*1.65, bw*f, 4*q);
+  }
+}
+
+/* ============================================================
+   GPU crowd renderer
+   Canvas2D charges roughly 4us of call overhead per drawImage, so three thousand
+   troops cost ~12ms of CPU before a single pixel is filled - the frame is
+   draw-call bound, not fill bound (the whole army is about one screenful of
+   pixels). The sprites are already baked into cached canvases, so this packs
+   them into one atlas texture and submits the entire army as a single triangle
+   batch. Measured on the same 3,100-troop CHAOS frame: 12.0ms -> 1.0ms.
+
+   Everything else - ground, crystals, effects, bars, radar - stays on the 2D
+   canvas, and the batch composites into it with one drawImage, so layering and
+   screen shake are unchanged. If WebGL is missing, the atlas will not fit, or
+   the context is lost, gpu.ok goes false and draw() falls back to the per-unit
+   2D path below, which is the code it always was.
+   ============================================================ */
+const GPU_MIN = 350;                 // below this the 2D path is simply cheaper
+const gpu = { ok:false, tried:false, soft:false, allowSoft:false, cv:null, gl:null, buf:null, tex:null,
+              arr:null, cap:0, uv:new Map(), stamp:-1, cs:[], atCv:null };
+
+const GPU_VS = `attribute vec2 aP; attribute vec2 aT; attribute float aF;
+uniform vec2 uRes; varying vec2 vT; varying float vF;
+void main(){ vT=aT; vF=aF;
+  gl_Position=vec4((aP/uRes)*2.0-1.0, 0.0, 1.0); gl_Position.y*=-1.0; }`;
+// Premultiplied source, so pure white is (a,a,a) - mixing towards it whitens the
+// sprite exactly the way the 2D path's "lighter" re-blit did, but for free.
+const GPU_FS = `precision mediump float; varying vec2 vT; varying float vF;
+uniform sampler2D uS;
+void main(){ vec4 t=texture2D(uS,vT);
+  gl_FragColor=vec4(mix(t.rgb, vec3(t.a), vF*0.55), t.a); }`;
+
+function gpuInit() {
+  if (gpu.tried) return gpu.ok;
+  gpu.tried = true;
+  try {
+    const c = document.createElement("canvas");
+    c.width = cv.width; c.height = cv.height;
+    const gl = c.getContext("webgl", { alpha:true, antialias:false, depth:false,
+                                       stencil:false, preserveDrawingBuffer:false });
+    if (!gl) return false;
+    const sh = (t, src) => {
+      const o = gl.createShader(t); gl.shaderSource(o, src); gl.compileShader(o);
+      if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o));
+      return o;
+    };
+    const pr = gl.createProgram();
+    gl.attachShader(pr, sh(gl.VERTEX_SHADER, GPU_VS));
+    gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, GPU_FS));
+    gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    gl.useProgram(pr);
+    gpu.buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, gpu.buf);
+    const S = 20;                                   // x,y,u,v,flash
+    const bind = (n, sz, off) => { const l = gl.getAttribLocation(pr, n);
+      gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, sz, gl.FLOAT, false, S, off); };
+    bind("aP", 2, 0); bind("aT", 2, 8); bind("aF", 1, 16);
+    gpu.uRes = gl.getUniformLocation(pr, "uRes");
+    gpu.tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, gpu.tex);
+    for (const [k,v] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST],
+                         [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]])
+      gl.texParameteri(gl.TEXTURE_2D, k, v);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.clearColor(0,0,0,0);
+    // Chrome falls back to a software GL driver (SwiftShader) whenever the real
+    // GPU is blocklisted, and software-rasterising three thousand textured quads
+    // is slower than the Canvas2D path this replaces - measured 30ms against
+    // 15ms on the same frame. Batching only wins when there is a GPU to batch
+    // onto, so recognise the software drivers and decline.
+    const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+    const who = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || "") : "";
+    gpu.soft = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(who);
+    if (gpu.soft && !gpu.allowSoft) return false;
+    c.addEventListener("webglcontextlost", e => { e.preventDefault(); gpu.ok = false; });
+    gpu.cv = c; gpu.gl = gl; gpu.max = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 2048;
+    gpu.ok = true;
+  } catch (e) { gpu.ok = false; }
+  return gpu.ok;
+}
+
+/* Repack every baked sprite into one texture. Only runs when the sprite cache
+   actually grew, which in a steady battle is never. */
+function gpuAtlas() {
+  if (gpu.stamp === spriteCache.size) return true;
+  const gl = gpu.gl, all = spriteList;
+  const AW = Math.min(2048, gpu.max);
+  let x = 0, y = 0, rowH = 0;
+  gpu.uv.clear();
+  for (const c of all) {
+    if (x + c.width > AW) { x = 0; y += rowH; rowH = 0; }
+    gpu.uv.set(c, [x, y]); x += c.width + 1; rowH = Math.max(rowH, c.height + 1);
+  }
+  const AH = y + rowH;
+  if (AH > gpu.max) { gpu.ok = false; return false; }   // absurdly large: stay on 2D
+  const at = gpu.atCv || (gpu.atCv = document.createElement("canvas"));
+  at.width = AW; at.height = Math.max(1, AH);
+  const g = at.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  for (const c of all) { const p = gpu.uv.get(c); g.drawImage(c, p[0], p[1]); }
+  gl.bindTexture(gl.TEXTURE_2D, gpu.tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, at);
+  gpu.aw = AW; gpu.ah = at.height; gpu.stamp = spriteCache.size;
+  return true;
+}
+
+// Returns false if the caller should fall back to the 2D per-unit path.
+function gpuUnits(list, q) {
+  if (!gpu.ok && !gpuInit()) return false;
+  const gl = gpu.gl;
+  if (gl.isContextLost && gl.isContextLost()) { gpu.ok = false; return false; }
+  if (gpu.cv.width !== cv.width || gpu.cv.height !== cv.height) {
+    gpu.cv.width = cv.width; gpu.cv.height = cv.height;
+  }
+  // Resolve sprites first: this is what bakes any new ones, so the atlas check
+  // below sees a complete cache.
+  // Resolving sprites and writing vertices used to be two separate walks over
+  // 26,000 units, because a sprite baked mid-pass would invalidate the atlas the
+  // vertices are indexed against. In a steady battle nothing new is ever baked,
+  // so do it in one pass and simply repeat if the cache grew - the retry costs a
+  // frame's fill once, and the saved pass costs 1.6ms every frame.
+  const stamp0 = spriteCache.size;
+  if (gpu.cap < gN + 64) {
+    gpu.cap = Math.max(64, (gN + 64) * 2);
+    gpu.arr = new Float32Array(gpu.cap * 30);       // 6 verts x 5 floats
+    gl.bindBuffer(gl.ARRAY_BUFFER, gpu.buf);
+    gl.bufferData(gl.ARRAY_BUFFER, gpu.arr.byteLength, gl.DYNAMIC_DRAW);
+  }
+  let n = 0, k = 0;
+  const fill = () => {
+    const A = gpu.arr, iw = 1/gpu.aw, ih = 1/gpu.ah, uv = gpu.uv;
+    n = 0; k = 0;
+    for (const a of list) {
+      if (a.dead) continue;
+      const c = SIMPLE ? simpleSprite(a.u, a.team)
+                       : sprite(a.u, a.team, ((a.step/(Math.PI/2))|0)&3, a.swing > .45 ? 1 : 0, psiOf(a));
+      const p = uv.get(c);
+      if (p === undefined) return false;            // freshly baked: atlas is stale
+      const w = c.width, h = c.height;
+      const x0 = ((a.x*q - w/2)|0), y0 = ((a.y*q - h*c._a)|0), x1 = x0 + w, y1 = y0 + h;
+      const u0 = p[0]*iw, v0 = p[1]*ih, u1 = (p[0]+w)*iw, v1 = (p[1]+h)*ih;
+      const f = a.hurt > 0 ? 1 : 0;
+      A[k]=x0;A[k+1]=y0;A[k+2]=u0;A[k+3]=v0;A[k+4]=f;
+      A[k+5]=x1;A[k+6]=y0;A[k+7]=u1;A[k+8]=v0;A[k+9]=f;
+      A[k+10]=x1;A[k+11]=y1;A[k+12]=u1;A[k+13]=v1;A[k+14]=f;
+      A[k+15]=x0;A[k+16]=y0;A[k+17]=u0;A[k+18]=v0;A[k+19]=f;
+      A[k+20]=x1;A[k+21]=y1;A[k+22]=u1;A[k+23]=v1;A[k+24]=f;
+      A[k+25]=x0;A[k+26]=y1;A[k+27]=u0;A[k+28]=v1;A[k+29]=f;
+      k += 30; n++;
+      if (k + 30 > gpu.arr.length) break;           // never run off the buffer
+    }
+    return true;
+  };
+  if (!fill() || spriteCache.size !== stamp0) {     // something new was baked
+    if (!gpuAtlas()) return false;
+    if (!fill()) return false;
+  }
+  gl.viewport(0, 0, gpu.cv.width, gpu.cv.height);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  if (n) {
+    gl.uniform2f(gpu.uRes, gpu.cv.width, gpu.cv.height);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gpu.buf);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, gpu.arr.subarray(0, k));
+    gl.bindTexture(gl.TEXTURE_2D, gpu.tex);
+    gl.drawArrays(gl.TRIANGLES, 0, n*6);            // the whole army, one call
+  }
+  ctx.drawImage(gpu.cv, 0, 0);
+  return true;
+}
+
+/* ---------- radar strip, like the original's ---------- */
+/* The strip repaints 3,000 blips a frame - about 2ms of fillRect, and a swarm of
+   dots two pixels wide does not change meaningfully at 60Hz. Bake it into a small
+   offscreen canvas a few times a second and blit that instead. */
+let rdCv = null, rdCtx = null, rdT = 0;
+function drawRadar() {
+  // Every size here is screen-relative. Drawing in world units worked when a map
+  // was 2600 wide, but CHAOS is 14000: the strip and its blips were being divided
+  // by five and had shrunk to an unreadable smear along the bottom edge.
+  const px = v => v / VIEW;                       // css pixels -> world units
+  const w = px(Math.min(560, G.W*VIEW*0.34)), h = px(26);
+  const x = (G.W-w)/2, y = G.H - h - px(14), q = VIEW*DPR;
+  const cw = Math.max(2, Math.ceil((w+px(8))*q)), ch = Math.max(2, Math.ceil((h+px(8))*q));
+  if (!rdCv) { rdCv = document.createElement("canvas"); rdCtx = rdCv.getContext("2d"); }
+  if (rdCv.width !== cw || rdCv.height !== ch) { rdCv.width = cw; rdCv.height = ch; rdT = 0; }
+  if (--rdT <= 0) {
+    rdT = 5;
+    rdCtx.setTransform(q, 0, 0, q, -(x-px(4))*q, -(y-px(4))*q);
+    rdCtx.clearRect(x-px(4), y-px(4), w+px(8), h+px(8));
+    const real = ctx; ctx = rdCtx;
+    radarBody(x, y, w, h, px);
+    ctx = real;
+  }
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(rdCv, Math.round((x-px(4))*q), Math.round((y-px(4))*q));
+  ctx.restore();
+}
+/* Little-endian is near-universal, but packing a colour the wrong way round would
+   silently swap red and blue rather than fail loudly, so it is worth four lines. */
+const LE = (() => { const b = new ArrayBuffer(4); new Uint32Array(b)[0] = 1;
+                    return new Uint8Array(b)[0] === 1; })();
+const rgb = (r,g,b) => (LE ? (255<<24 | b<<16 | g<<8 | r) : (r<<24 | g<<16 | b<<8 | 255)) >>> 0;
+const BLIP = [rgb(127,196,255), rgb(255,138,106)];
+const RADAR_BG = rgb(30,47,24);
+let rdImg = null, rdPix = null;
+
+function radarBody(x, y, w, h, px) {
+  const b2 = px(2), b4 = px(4), q = VIEW*DPR;
+  ctx.fillStyle = "rgba(10,8,6,.8)";
+  ctx.fillRect(x-b2, y-b2, w+b4, h+b4);
+  ctx.strokeStyle = "#4a3c22"; ctx.lineWidth = b2;
+  ctx.strokeRect(x-b2, y-b2, w+b4, h+b4);
+
+  /* Blips go in as pixels, not rectangles. One fillRect per troop is 26,000 draw
+     calls into a strip 490 by 26 - the same draw-call wall the army itself hit,
+     and worth ~3.5ms a frame amortised. Writing into an ImageData makes it one
+     putImageData plus a flat array store per troop. */
+  const iw = Math.max(1, Math.round(w*q)), ih = Math.max(1, Math.round(h*q));
+  if (!rdImg || rdImg.width !== iw || rdImg.height !== ih) {
+    rdImg = ctx.createImageData(iw, ih);
+    rdPix = new Uint32Array(rdImg.data.buffer);
+  }
+  rdPix.fill(RADAR_BG);
+  const bx = iw/G.W, by = ih/Math.max(1, BOT()-TOP()), top = TOP(), us = G.units;
+  for (let i = 0; i < us.length; i++) {
+    const a = us[i];
+    if (a.dead) continue;
+    const cx = (a.x*bx) | 0, cy = ((a.y-top)*by) | 0;
+    if (cx < 0 || cx >= iw || cy < 0 || cy >= ih) continue;
+    const c = BLIP[a.team];
+    rdPix[cy*iw + cx] = c;
+    if (a.u.baseSize >= 30) {                    // heavies read as a 2x2 block
+      if (cx+1 < iw) rdPix[cy*iw + cx+1] = c;
+      if (cy+1 < ih) { rdPix[(cy+1)*iw + cx] = c;
+                       if (cx+1 < iw) rdPix[(cy+1)*iw + cx+1] = c; }
+    }
+  }
+  // rdCtx is translated so that (x-px(4), y-px(4)) is its origin; putImageData
+  // ignores the transform, so the offset is computed in device pixels here.
+  ctx.putImageData(rdImg, Math.round(px(4)*q), Math.round(px(4)*q));
+
+  for (const t of [0,1]) {
+    ctx.fillStyle = t===0 ? "#bfe6ff" : "#ffd0b0";
+    ctx.fillRect(x + crystalX(t)*(w/G.W) - b2, y + h/2 - b4, b4, px(8));
+  }
+  ctx.fillStyle = G.shrine.owner === 0 ? "#7fc4ff" : G.shrine.owner === 1 ? "#ff8a6a" : "#e8dcb0";
+  ctx.fillRect(x + shrineX()*(w/G.W) - px(1.5), y + h/2 - px(3), px(3), px(6));
+  if (G.speed !== 1) {
+    ctx.fillStyle = "#ffd75e";
+    ctx.font = "bold " + px(16).toFixed(1) + "px 'Trebuchet MS', sans-serif";
+    ctx.fillText(G.speed + "×", x + w + px(10), y + px(13));
+  }
+}
+
+/* ============================================================
+   SHOP UI
+   ============================================================ */
+const cards = [[],[]];
+function buildShops() {
+  [0,1].forEach(team => {
+    const host = document.getElementById(team===0 ? "shop1" : "shop2");
+    host.innerHTML = "";
+    cards[team] = [];
+    const roster = P[team].roster;
+    host.style.gridTemplateColumns = "repeat(" + Math.ceil(roster.length/2) + ", 1fr)";
+    roster.forEach((u,i) => {
+      const el = document.createElement("div");
+      el.className = "card";
+      el.innerHTML =
+        '<div class="key">' + (team===0?P1_LBL[i]:P2_LBL[i]) + '</div>' +
+        (u.hero ? '<div class="hb">★</div>' : '') +
+        '<div class="arm ' + (u.type==="armored" ? 'a">A' : 'l">L') + '</div>' +
+        '<canvas width="80" height="46"></canvas>' +
+        '<div class="nm">' + u.name + '</div>' +
+        '<div class="rl">' + ROLE_LABEL[u.role] + '</div>' +
+        '<div class="cost">◆' + u.price + '</div>' +
+        '<div class="advbg"><div class="adv"></div></div>' +
+        '<div class="pip">+1</div>';
+      el.className = "card" + (u.hero ? " hero" : "");
+      el.title = u.name + "  —  " + ROLE_LABEL[u.role] + "\n◆" + u.price + "   income +" + u.income + "\n" +
+        (u.type==="armored"?"ARMORED":"LIGHT") + "   hp " + u.hp + "   armour " + u.armour + "\n" +
+        "damage vs light " + u.dL + "   vs armored " + u.dA + "\n" +
+        "range " + u.rng + "   move " + u.spd + "   attack every " + u.ws + "s" +
+        (u.splash ? "\nsplash radius " + u.splash : "") +
+        (u.drain ? "\nheals for " + (u.drain*100) + "% of damage dealt" : "") +
+        (u.auraBuff ? "\nnearby allies deal +" + (u.auraBuff.dmg*100) + "% damage" : "") +
+        (u.chain ? "\nlightning arcs to " + u.chain + " more enemies" : "") +
+        (u.hero ? "\nCHAMPION — only one on the field at a time" : "");
+      let lastTap = 0;
+      el.addEventListener("pointerdown", e => {
+        e.preventDefault(); e.stopPropagation();
+        const now = e.timeStamp || performance.now();
+        if (now - lastTap < 90) return;
+        lastTap = now;
+        select(team, i);
+      });
+      el.addEventListener("contextmenu", e => e.preventDefault());
+      el.addEventListener("mouseenter", () => { G.hi = { team, idx:i }; });
+      el.addEventListener("mouseleave", () => { if (G.hi && G.hi.idx === i && G.hi.team === team) G.hi = null; });
+      host.appendChild(el);
+      drawIcon(el.querySelector("canvas"), u, team);
+      cards[team].push(el);
+    });
+  });
+}
+function drawIcon(c, u, team) {
+  const g = c.getContext("2d");
+  g.clearRect(0,0,c.width,c.height);
+  const real = ctx; ctx = g;
+  const sc = Math.min(1, 18/u.size);
+  g.save(); g.translate(40,32); g.scale(sc,sc); g.translate(-40,-32);
+  drawUnit({ team, u, x:40, y:24, hp:1, maxhp:1, swing:0, hurt:0, step:.6, dead:false, ghost:true });
+  g.restore();
+  ctx = real;
+}
+function markSelection(team) {
+  const sel = P[team].sel;
+  cards[team].forEach((el, i) => el.classList.toggle("sel", i === sel));
+}
+
+const flashAt = [{}, {}];
+function flashCard(team, idx, force) {
+  const el = cards[team][idx]; if (!el) return;
+  // The selected card already wears a permanent gold outline. Pulsing it on every
+  // auto-recruit reads as a strobe rather than feedback once the cadence is quick
+  // (EPIC recruits 20x a second, CHAOS 200x), so only pulse at the slow NORMAL pace.
+  if (!force && P[team].sel === idx && AUTO_GAP < 0.25) return;
+  const now = performance.now();
+  if ((flashAt[team][idx] || 0) + 220 > now) return;
+  flashAt[team][idx] = now;
+  el.classList.add("hit"); setTimeout(() => el.classList.remove("hit"), 80);
+  const pip = el.querySelector(".pip");
+  if (pip) { pip.classList.add("go"); setTimeout(() => pip.classList.remove("go"), 30); }
+}
+
+/* ---------- live counter advisor ----------
+   Scores every shop unit against the enemy's *current* army the same way the CPU
+   does, and paints a bar on each card. Makes the armour system legible while
+   you're playing instead of something you have to memorise. */
+let adviceT = 0;
+function updateAdvice(dt) {
+  adviceT -= dt;
+  if (adviceT > 0) return;
+  adviceT = 0.4;
+  for (const team of [0,1]) {
+    const foe = 1 - team;
+    const prof = new Map(); let tot = 0;
+    for (const a of G.units) {
+      if (a.dead || a.team !== foe) continue;
+      prof.set(a.u.gid, (prof.get(a.u.gid)||0) + a.hp); tot += a.hp;
+    }
+    const roster = P[team].roster;
+    const vals = roster.map(u => {
+      if (!tot) return null;
+      let dps = 0, inc = 0;
+      for (const [k, hp] of prof) {
+        const e = ALL_UNITS[k], sh = hp/tot;
+        dps += sh * Math.max(2, (e.type === "light" ? u.dL : u.dA) - e.armour) / u.ws;
+        inc += sh * Math.max(2, (u.type === "light" ? e.dL : e.dA) - u.armour) / e.ws;
+      }
+      return dps * (u.hp/Math.max(1,inc)) * (1 + (u.splash ? u.splash/110 : 0)) / u.price;
+    });
+    const live = vals.filter(v => v !== null);
+    const hi = live.length ? Math.max(...live) : 0;
+    roster.forEach((u,i) => {
+      const bar = cards[team][i].querySelector(".adv");
+      if (!bar) return;
+      if (vals[i] === null || hi <= 0) { setStyle(bar, "width", "0%"); return; }
+      const f = Math.max(0.04, Math.min(1, vals[i]/hi));
+      setStyle(bar, "width", Math.round(f*1000)/10 + "%");
+      setStyle(bar, "background", f > .72 ? "#6de06d" : f > .4 ? "#ffd75e" : "#e06a5a");
+    });
+  }
+}
+
+/* ============================================================
+   HUD
+   ============================================================ */
+/* ---------- DOM writes ----------
+   updateHUD runs every frame and used to do thirty getElementById lookups and
+   twenty textContent/style writes, whether or not anything had changed. The cost
+   of that is invisible to the frame governor: the JavaScript measures at a tenth
+   of a millisecond, but every touched node dirties style, layout and paint, and
+   the browser does that work *after* our frame function returns - outside the
+   window performance.now() can see. On a phone, re-laying out a HUD with eighteen
+   shop cards sixty times a second is far more expensive than anything the
+   simulation does, and the governor never knew to shed for it.
+
+   Nearly all of these values are unchanged frame to frame - the faction name
+   never changes, the round every ten seconds. So: look each node up once, and
+   only write when the value is actually different. */
+const $ = (() => { const c = {}; return id => c[id] || (c[id] = document.getElementById(id)); })();
+const _txt = new WeakMap(), _sty = new WeakMap();
+function setText(el, v) {
+  if (!el || _txt.get(el) === v) return;
+  _txt.set(el, v); el.textContent = v;
+}
+function setStyle(el, prop, v) {
+  if (!el) return;
+  let m = _sty.get(el);
+  if (!m) { m = {}; _sty.set(el, m); }
+  if (m[prop] === v) return;
+  m[prop] = v; el.style[prop] = v;
+}
+
+function updateHUD() {
+  G.poorT -= 1/60;
+  const inc = G.inc, cnt = G.cnt;   // tallied in rebuildGrid, not walked again here
+  for (const t of [0,1]) {
+    const p=P[t], n=t+1;
+    setStyle($("hp"+n), "width", Math.max(0, Math.round(p.hp/CRYSTAL_HP*1000)/10) + "%");
+    setText($("hpt"+n), Math.ceil(p.hp)+" / "+CRYSTAL_HP);
+    setText($("g"+n), Math.floor(p.gold));
+    setText($("i"+n), Math.round((BASE_INCOME + 170*G.round + inc[t]) * goldMul));
+    setText($("a"+n), cnt[t]);
+    setText($("f"+n), (CPU && CPU.team===t ? "CPU " : "") + p.faction.name);
+    setStyle($("f"+n), "color", p.faction.tint);
+    setText($("l"+n), LANES[p.lane] + " · " + STANCES[p.stance]);
+    setText($("rc"+n), (CPU && CPU.team===t) ? ""
+      : p.sel === null ? "" : "▶ " + p.roster[p.sel].name);
+    setStyle($("rc"+n), "color", p.sel === null ? "#9e8b63" : "#ffd75e");
+    if (G.poorT <= 0) {
+      // Hysteresis: while you are auto-recruiting, gold oscillates around the price
+      // of the thing you are buying, so a bare `gold < price` test dims and undims
+      // the card several times a second. A card only lights up once you can clearly
+      // afford it, and only dims once you clearly cannot.
+      const budget = Math.max(p.gold, p.goldAvg || 0);
+      p.roster.forEach((u,i) => {
+        const el = cards[t][i];
+        if (u.hero && p.heroes > 0) { el.classList.add("poor"); return; }
+        const was = el.classList.contains("poor");
+        const now = was ? budget < u.price * 1.15 : budget < u.price * 0.85;
+        if (now !== was) el.classList.toggle("poor", now);
+      });
+    }
+    setText($("rp"+n), p.hp < CRYSTAL_HP && p.gold >= REPAIR_COST && !(CPU && CPU.team===t)
+      ? "["+(t===0?"5":"6")+"] mend ◆"+REPAIR_COST : "");
+  }
+  const sh = G.shrine;
+  setText($("shrine"),
+    sh.owner === 0 ? "SHRINE: BLUE +◆" + SHRINE_GOLD*goldMul
+    : sh.owner === 1 ? "SHRINE: RED +◆" + SHRINE_GOLD*goldMul
+    : "SHRINE: neutral");
+  setStyle($("shrine"), "color",
+    sh.owner === 0 ? "#bfe6ff" : sh.owner === 1 ? "#ffd0b0" : "#cfc6ae");
+  if (G.poorT <= 0) G.poorT = 0.25;
+  setText($("round"), "ROUND " + G.round);
+  setText($("tick"), G.paused ? "PAUSED" : "payday in " + Math.ceil(G.tick) + "s");
+  // When the governor is limiting, say so - and show the frame rate with it, so
+  // there is a number to report rather than a feeling.
+  setText($("gov"), G.budget < UNIT_CAP*0.95
+    ? "auto-scaled to " + capNow() + " troops · " + Math.round(G.fps) + "fps"
+    : (G.fps && G.fps < 45 ? Math.round(G.fps) + "fps" : ""));
+}
+
+/* ============================================================
+   MODES / MENU
+   ============================================================ */
+const MODES = [
+  { id:"2p",     label:"2 PLAYERS" },
+  { id:"easy",   label:"VS CPU · EASY" },
+  { id:"normal", label:"VS CPU · NORMAL" },
+  { id:"hard",   label:"VS CPU · HARD" },
+];
+let modeId = "2p";
+let pick = [0, 1];
+const PREFS = "miragewar.prefs";
+function savePrefs() {
+  try { localStorage.setItem(PREFS, JSON.stringify({ modeId, sizeId, pick, muted })); } catch (e) {}
+}
+function loadPrefs() {
+  try {
+    const v = JSON.parse(localStorage.getItem(PREFS) || "null");
+    if (!v) return;
+    if (MODES.some(m => m.id === v.modeId)) modeId = v.modeId;
+    if (SIZES[v.sizeId]) sizeId = v.sizeId;
+    if (Array.isArray(v.pick) && v.pick.every(i => FACTIONS[i])) pick = v.pick.slice(0,2);
+    muted = !!v.muted;
+  } catch (e) {}
+}
+function setupNote() {
+  const el = document.getElementById("setupNote");
+  if (!el) return;
+  const size = sizeId === "epic"
+      ? "EPIC — twice the map, four times the gold, six times the recruit rate."
+    : sizeId === "chaos"
+      ? "CHAOS — forty times the gold and sixty times the recruit rate; troops pour out faster than they can die."
+      : "";
+  const f0 = FACTIONS[pick[0]], f1 = FACTIONS[pick[1]];
+  el.innerHTML = (size ? size + "<br>" : "") +
+    "<b style='color:" + f0.tint + "'>" + f0.name + "</b> " + f0.blurb + " <i>" + f0.perk + "</i>" +
+    " &nbsp;·&nbsp; " +
+    "<b style='color:" + f1.tint + "'>" + f1.name + "</b> " + f1.blurb + " <i>" + f1.perk + "</i>";
+}
+function buildArmies() {
+  [0,1].forEach(t => {
+    const host = document.getElementById("army" + (t+1));
+    host.innerHTML = "";
+    FACTIONS.forEach((f, i) => {
+      const b = document.createElement("button");
+      b.className = "army" + (i === pick[t] ? " on" : "");
+      b.innerHTML = '<span class="an">' + f.name + '</span>' +
+                    '<span class="ac">' + f.units[8].name + '</span>';
+      b.querySelector(".an").style.color = f.tint;
+      b.title = f.blurb + "  ·  " + f.perk;
+      b.addEventListener("click", () => {
+        pick[t] = i;
+        if (!G.running) {                    // preview the army you just picked
+          P[t].faction = FACTIONS[i]; P[t].roster = FACTIONS[i].units;
+          P[t].sel = null; buildShops();
+        }
+        savePrefs(); buildArmies();
+      });
+      host.appendChild(b);
+    });
+  });
+  setupNote();
+}
+
+function buildSizes() {
+  const host = document.getElementById("sizes");
+  host.innerHTML = "";
+  for (const id of Object.keys(SIZES)) {
+    const b = document.createElement("button");
+    b.className = "mode" + (id === sizeId ? " on" : "");
+    b.textContent = SIZES[id].label;
+    b.title = id === "epic" ? "Twice the map, four times the gold, six times the recruit rate"
+      : id === "chaos" ? "Ten times EPIC's gold and recruit rate, on the largest field that stays readable"
+      : id === "chaos10" ? "As large as the engine holds at sixty frames a second - a thousand troops a second, per side"
+      : "The standard battlefield";
+    b.addEventListener("click", () => { sizeId = id; savePrefs(); buildSizes(); });
+    host.appendChild(b);
+  }
+  setupNote();
+}
+
+function buildModes() {
+  const host = document.getElementById("modes");
+  host.innerHTML = "";
+  MODES.forEach(m => {
+    const b = document.createElement("button");
+    b.className = "mode" + (m.id===modeId ? " on" : "");
+    b.textContent = m.label;
+    b.addEventListener("click", () => { modeId = m.id; savePrefs(); buildModes(); });
+    host.appendChild(b);
+  });
+}
+
+/* ============================================================
+   INPUT
+   ============================================================ */
+window.addEventListener("keydown", e => {
+  if (e.repeat) { e.preventDefault(); return; }    // a held key must not drain the treasury
+  if (e.code === "Backquote") { muted = !muted; savePrefs(); banner(muted?"SOUND OFF":"SOUND ON", 700); return; }
+  if (!G.running || G.over) {
+    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); newGame(); }
+    return;
+  }
+  if (e.code === "Space")  { e.preventDefault(); G.paused=!G.paused; banner(""); return; }
+  if (e.code === "Minus")  { G.speed = Math.max(1, G.speed-1); return; }
+  if (e.code === "Equal")  { G.speed = Math.min(3, G.speed+1); return; }
+  if (e.code === "KeyT")  { if (!CPU || CPU.team!==0) P[0].stance ^= 1; return; }
+  if (e.code === "Quote")  { if (!CPU || CPU.team!==1) P[1].stance ^= 1; return; }
+  if (e.code === "Digit5") { if (!CPU || CPU.team!==0) repair(0); return; }
+  if (e.code === "Digit6") { if (!CPU || CPU.team!==1) repair(1); return; }
+  if (e.code === "KeyH") { G.help = !G.help; return; }
+  if (e.code === "ShiftLeft")  { if (!CPU || CPU.team!==0) P[0].lane=(P[0].lane+1)%4; return; }
+  if (e.code === "ShiftRight") { if (!CPU || CPU.team!==1) P[1].lane=(P[1].lane+1)%4; return; }
+  let i = P1_KEYS.indexOf(e.code);
+  if (i >= 0 && (!CPU || CPU.team !== 0)) { e.preventDefault(); select(0,i); return; }
+  i = P2_KEYS.indexOf(e.code);
+  if (i >= 0 && (!CPU || CPU.team !== 1)) { e.preventDefault(); select(1,i); return; }
+});
+document.getElementById("startBtn").addEventListener("click", newGame);
+
+function newGame() {
+  applyBattleSize();
+  P = [mkPlayer(0), mkPlayer(1)];
+  [0,1].forEach(t => { P[t].faction = FACTIONS[pick[t]]; P[t].roster = FACTIONS[pick[t]].units; });
+  buildShops();
+  CPU = modeId === "2p" ? null : { team:1, level:modeId, t:0 };
+  G.units=[]; G.shots=[]; G.fx=[]; G.decals=0; decCtx.clearRect(0,0,G.W,G.H);
+  G.round=1; G.tick=TICK_T; G.shake=0; G.speed=1;
+  G.shrine={ owner:-1, prog:0 }; G.sudden=false; G.hi=null; G.help=false;
+  cards.forEach(row => row.forEach(el => el.classList.remove("sel")));
+  probe.phase = 0; probe.use2D = false;
+  G.running=true; G.over=false; G.paused=false;
+  document.getElementById("overlay").classList.add("hide");
+  document.getElementById("resultBox").classList.remove("show");
+  banner("FIGHT!", 900);
+}
+
+function endGame(winner) {
+  G.over = true; G.running = false;
+  const ov = document.getElementById("overlay"), box = document.getElementById("resultBox");
+  const title = CPU ? (winner === CPU.team ? "CPU WINS" : "YOU WIN")
+                    : (winner === 0 ? "BLUE WINS" : "RED WINS");
+  const army = t => Object.entries(P[t].built).sort((a,b) => b[1]-a[1])
+    .slice(0,5).map(([k,v]) => k+" ×"+v).join(", ") || "nothing";
+  const side = (t, col) =>
+    '<div class="rc"><h4 style="color:' + col + '">' + (t===0?"Blue":"Red") + " · " + P[t].faction.name +
+    '</h4><p><b>' + P[t].kills + '</b> kills &nbsp;·&nbsp; <b>◆' + P[t].spent + '</b> spent<br>' +
+    army(t) + '</p></div>';
+  box.innerHTML =
+    '<div class="rt" style="color:' + (winner===0 ? "#bfe6ff" : "#ffd0b0") + '">' + title + '</div>' +
+    '<p class="note" style="margin-bottom:10px">Crystal shattered on round <b>' + G.round + '</b>.</p>' +
+    '<div class="rg">' + side(0, "#bfe6ff") + side(1, "#ffd0b0") + '</div>';
+  box.classList.add("show");
+  document.getElementById("startBtn").textContent = "REMATCH";
+  ov.classList.remove("hide");
+}
+
+/* ============================================================
+   LOOP
+   ============================================================ */
+let last = performance.now();
+/* ---------- device governor ----------
+   The battle sizes are written for a machine nobody can know in advance: CHAOS
+   asks for four thousand troops, which a laptop shrugs off and a three-year-old
+   phone does not. Rather than guess, watch the real frame time and let the field
+   find its own ceiling - shed effects first, then troops, and give them back the
+   moment there is headroom again. A player who can hold 4,000 keeps 4,000.       */
+// Never shrink the war below a real battle - and what counts as one depends on
+// the map. Five hundred troops is a fight on the normal field and scattered dust
+// on CHAOS x10's, which is forty-four thousand units wide.
+const govFloor = () => Math.max(400, UNIT_CAP * 0.12) | 0;
+const GOV_HI = 13, GOV_LO = 8;   // ms of our own work per frame: shed above, restore below
+function capNow() { return Math.min(UNIT_CAP, G.budget); }
+/* ---------- renderer probe ----------
+   Which renderer is faster is not knowable in advance. The batch should win by a
+   distance, and does everywhere it can be measured - but compositing a WebGL
+   layer into a 2D canvas is a plain texture copy on some drivers and a full
+   readback on others, and a readback would make it lose. Rather than assume,
+   time both on the actual device: a couple of dozen frames each way, once per
+   battle, once the field is big enough for the answer to matter. The loser is
+   never used again for that battle. */
+const probe = { phase:0, n:0, gpu:0, cpu:0, gpuN:0, cpuN:0, use2D:false };
+const PROBE_WARM = 5, PROBE_RUN = 16;
+// Returns true while it is actively measuring, so the governor can ignore those
+// frames - the losing renderer's samples are not the device's real speed, and
+// letting them through would shed troops for no reason.
+function probeStep(ms) {
+  if (probe.phase >= 3 || !gpu.ok || !G.running || G.over) return false;
+  if (probe.phase === 0) {                      // wait for a field worth measuring
+    if (G.units.length < GPU_MIN * 2) return false;
+    probe.phase = 1; probe.n = 0;
+    probe.gpu = probe.cpu = probe.gpuN = probe.cpuN = 0;
+    return true;
+  }
+  probe.n++;
+  if (probe.n <= PROBE_WARM) return true;       // let the first frames settle
+  if (probe.phase === 1) {
+    probe.gpu += ms; probe.gpuN++;
+    if (probe.n >= PROBE_WARM + PROBE_RUN) { probe.phase = 2; probe.n = 0; probe.use2D = true; }
+    return true;
+  }
+  probe.cpu += ms; probe.cpuN++;
+  // Bail out early once the answer is obvious rather than sitting through the
+  // full run on whichever renderer is losing badly - on a field this size that
+  // could be several seconds of deliberate stutter.
+  const a = probe.gpu/Math.max(1,probe.gpuN), b = probe.cpu/Math.max(1,probe.cpuN);
+  const done = probe.n >= PROBE_WARM + PROBE_RUN
+            || (probe.cpuN >= 4 && (b > a*2.5 || a > b*2.5));
+  if (done) { probe.phase = 3; probe.use2D = b < a; return false; }
+  return true;
+}
+
+function govern(ms, wall) {
+  if (!(ms >= 0)) return;
+  if (wall > 0 && wall < 2000) G.fps += (1000/wall - G.fps) * 0.05;
+  // Our own work is the primary signal, because the gap between frames cannot be
+  // trusted on its own: a display capped at 30Hz, or a throttled background tab,
+  // looks exactly like a machine that cannot keep up, and the field would shrink
+  // for no reason.
+  //
+  // But our work is blind to everything the browser does *after* this function
+  // returns - style recalculation, layout, paint, compositing - and that turned
+  // out to be the expensive part on a phone, with the HUD dirtying a shopful of
+  // DOM nodes sixty times a second. So when the wall clock says a frame took far
+  // longer than our own work explains, believe the wall clock. Only above 45ms:
+  // no display caps below about 30Hz, so a genuine 33ms vsync is never mistaken
+  // for trouble.
+  let eff = ms;
+  if (wall > 45 && wall > ms * 1.6) eff = wall;
+  // Clamp the sample, never discard it. This used to ignore anything over 200ms
+  // as "a hitch" - which meant the worse a device was struggling, the more
+  // certain the governor was to do nothing at all.
+  const s = eff > 600 ? 600 : eff;
+  // Rise fast, fall slow: react to trouble within a few frames, give the load
+  // back only once the headroom has clearly lasted.
+  G.ft += (s - G.ft) * (s > G.ft ? 0.3 : 0.05);
+  // Decide on wall-clock, not on a frame count. At five frames a second a
+  // 30-frame interval is six seconds between decisions, and shaving 10% each
+  // time took two minutes to get from a stalled field to a playable one.
+  G.govMs += s;
+  if (G.govMs < 350 || !G.running || G.over) return;
+  G.govMs = 0;
+  const floor = govFloor();
+  if (G.ft > GOV_HI) {
+    FX_CAP = 300;
+    // Proportional, not a fixed 10% nibble: if a frame costs four times the
+    // budget, the field is four times too big and one decision should say so.
+    const want = (G.units.length * (GOV_HI / G.ft)) | 0;
+    G.budget = Math.max(floor, Math.min(G.budget, want));
+  } else if (G.ft < GOV_LO && G.budget < UNIT_CAP) {
+    FX_CAP = FX_MAX;
+    G.budget = Math.min(UNIT_CAP, G.budget * 1.08 + 25 | 0);
+  }
+}
+
+function frame(now) {
+  const wall = now - last;             // real elapsed time, before any clamping
+  let dt = wall/1000; last = now;
+  if (dt > .05) dt = .05;
+  const t0 = performance.now();
+  if (G.hitstop > 0) G.hitstop -= dt;
+  else if (G.running && !G.paused && !G.over) { for (let i=0;i<G.speed;i++) step(dt); }
+  G.shake *= .88;
+  if (bannerT && now > bannerT) { document.getElementById("banner").classList.remove("show"); bannerT=0; }
+  draw();
+  if (P.length) { updateHUD(); updateAdvice(dt); }
+  const cost = performance.now() - t0;
+  if (!probeStep(cost)) govern(cost, wall);
+  requestAnimationFrame(frame);
+}
+
+P = [mkPlayer(0), mkPlayer(1)];
+loadPrefs();
+[0,1].forEach(t => { P[t].faction = FACTIONS[pick[t]]; P[t].roster = FACTIONS[pick[t]].units; });
+buildShops(); buildModes(); buildSizes(); buildArmies(); fit();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
