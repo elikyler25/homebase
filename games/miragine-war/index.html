@@ -507,7 +507,7 @@ const BASE_INCOME = 300;
 const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed:1,
             units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false,
             shrine:{ owner:-1, prog:0 }, sudden:false, zones:[], poorT:0,
-            ft:8, fps:60, govMs:0, budget:1e9, inc:[0,0], cnt:[0,0] };
+            ft:8, fps:60, govMs:0, budget:1e9, rscale:1, rsT:0, inc:[0,0], cnt:[0,0] };
 let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
@@ -589,10 +589,25 @@ let VIEW = 1;               // world -> css pixels
 const bgCv = document.createElement("canvas"), bgCtx = bgCv.getContext("2d");
 const decCv = document.createElement("canvas"), decCtx = decCv.getContext("2d");
 
+let fitKey = "";
 function resize() {
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  // The backing store is deliberately allowed to be smaller than the element. A
+  // frame costs three full-screen blits - ground, decals, the troop layer - plus
+  // the batch's own rasterisation, and all of that scales with pixels rather than
+  // with troops. On a fill-bound machine no amount of shedding troops helps, which
+  // is why the governor can turn this down instead. The canvas keeps its CSS size
+  // and the browser scales it back up; at two-pixel bodies it is barely visible.
+  DPR = Math.min(window.devicePixelRatio || 1, 2) * G.rscale;
   const r = cv.getBoundingClientRect();
   const cssW = Math.max(300, r.width), cssH = Math.max(150, r.height);
+  // fit() is wired to visualViewport's *scroll* event, which on a phone fires
+  // continuously while the address bar slides. Every one of those calls used to
+  // rebuild the terrain, repaint the entire background and drop the sprite cache
+  // - 3.6 seconds of work on the largest map, over and over. None of it matters
+  // unless the box, the pixel ratio or the world has actually changed.
+  const key = cssW + "x" + cssH + "@" + DPR + "/" + WORLD_W;
+  if (key === fitKey) return;
+  fitKey = key;
   VIEW = cssW / WORLD_W;
   G.W = WORLD_W;
   G.H = Math.max(560, cssH / VIEW);          // world height follows the aspect
@@ -634,7 +649,10 @@ window.addEventListener("load", () => { fit(); setTimeout(fit, 250); });
 let terrain = [];
 function buildTerrain() {
   terrain = [];
-  const n = Math.round(G.W*G.H/7600);
+  // Density that reads on screen, not per world unit. The whole world is always
+  // on screen, so scaling this with world area put 272,000 blades of grass on the
+  // largest map and made one background repaint take four and a half seconds.
+  const n = Math.max(240, Math.min(1200, Math.round(G.W*G.H/7600)));
   for (let i = 0; i < n; i++)
     terrain.push({ x: Math.random()*G.W, y: Math.random()*G.H, s: 4+Math.random()*8,
                    k: Math.random() < .07 ? "rock" : (Math.random() < .06 ? "flower" : "grass"),
@@ -1486,7 +1504,7 @@ function draw() {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(bgCv, 0, 0);
-  ctx.drawImage(decCv, 0, 0);
+  if (G.decals) ctx.drawImage(decCv, 0, 0);   // nothing on it yet: skip the blit
   ctx.restore();
 
   drawShrine();
@@ -2657,9 +2675,12 @@ function updateHUD() {
   setText($("tick"), G.paused ? "PAUSED" : "payday in " + Math.ceil(G.tick) + "s");
   // When the governor is limiting, say so - and show the frame rate with it, so
   // there is a number to report rather than a feeling.
-  setText($("gov"), G.budget < UNIT_CAP*0.95
-    ? "auto-scaled to " + capNow() + " troops · " + Math.round(G.fps) + "fps"
-    : (G.fps && G.fps < 45 ? Math.round(G.fps) + "fps" : ""));
+  const scaled = G.budget < UNIT_CAP*0.95, soft = G.rscale < 1;
+  setText($("gov"), (scaled || soft || G.fps < 45)
+    ? (scaled ? "auto-scaled to " + capNow() + " troops" : "")
+      + (soft ? (scaled ? " · " : "") + Math.round(G.rscale*100) + "% res" : "")
+      + ((scaled||soft) ? " · " : "") + Math.round(G.fps) + "fps"
+    : "");
 }
 
 /* ============================================================
@@ -2905,15 +2926,30 @@ function govern(ms, wall) {
   if (G.govMs < 350 || !G.running || G.over) return;
   G.govMs = 0;
   const floor = govFloor();
+  G.rsT -= 0.35;
   if (G.ft > GOV_HI) {
     FX_CAP = 300;
+    // Resolution first, troops second. Rendering cost is per pixel, so if the
+    // machine is fill-bound - which shedding troops cannot fix - this is the only
+    // dial that touches it, and losing sharpness costs the player far less than
+    // losing half their army. Rebuilding the canvases is expensive, so it moves at
+    // most once every couple of seconds.
+    if (G.rscale > 0.5 && G.rsT <= 0) {
+      G.rscale = Math.max(0.5, Math.round((G.rscale - 0.18)*100)/100);
+      G.rsT = 6; resize();
+      return;
+    }
     // Proportional, not a fixed 10% nibble: if a frame costs four times the
     // budget, the field is four times too big and one decision should say so.
     const want = (G.units.length * (GOV_HI / G.ft)) | 0;
     G.budget = Math.max(floor, Math.min(G.budget, want));
-  } else if (G.ft < GOV_LO && G.budget < UNIT_CAP) {
+  } else if (G.ft < GOV_LO) {
     FX_CAP = FX_MAX;
-    G.budget = Math.min(UNIT_CAP, G.budget * 1.08 + 25 | 0);
+    if (G.budget < UNIT_CAP) G.budget = Math.min(UNIT_CAP, G.budget * 1.08 + 25 | 0);
+    else if (G.rscale < 1 && G.rsT <= 0) {     // army restored first, then sharpness
+      G.rscale = Math.min(1, Math.round((G.rscale + 0.18)*100)/100);
+      G.rsT = 6; resize();
+    }
   }
 }
 

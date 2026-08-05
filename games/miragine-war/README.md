@@ -352,6 +352,27 @@ underneath, so a rematch with different armies is one tap.
   line is legible. The single biggest thing for readability was not detail but the dark rim around each
   body — at this density what makes a troop visible is the edge between it and the one behind it.
 
+- **The worst bug in the project was a scroll handler.** `fit()` is wired to `visualViewport`'s
+  **scroll** event so the board stays pinned when a phone's address bar slides. Every one of those
+  calls ran a full `resize()`: rebuild the terrain, repaint the entire background, drop the sprite
+  cache. And the background was scaling its decoration count with *world* area — 272,000 blades of
+  grass on the largest map — so one `resize()` there took **4.5 seconds**. On a phone, where that
+  event fires continuously while scrolling, the game was freezing for seconds at a time no matter how
+  fast the simulation ran. Every optimisation before this was invisible next to it.
+
+  Two fixes. `resize()` is idempotent now — it early-outs unless the box, the pixel ratio or the world
+  actually changed, so a repeated `fit()` costs **0.01 ms** instead of 3.6 seconds. And decoration
+  density is a screen property, not a world one: the whole world is always on screen, so it is capped
+  at 1,200. Background repaint on the largest map went **4,452 ms → 1.6 ms**.
+- **Resolution is a dial the governor can turn.** Rendering cost is per pixel — three full-screen
+  blits a frame for ground, decals and the troop layer, plus the batch's own rasterisation — and none
+  of that cares how many troops there are. On a fill-bound machine, shedding troops does nothing at
+  all, which is exactly the shape of a lag report that survives round after round of CPU optimisation.
+  So the governor now turns the backing store down before it starts removing troops: the canvas keeps
+  its CSS size and the browser scales it back up. At 64% the pixel count drops 2.4×, and at
+  two-pixel bodies it is barely visible. Losing sharpness costs a player far less than losing half
+  their army. The empty decal layer is no longer blitted at all.
+
 - **The most expensive thing in the frame was not in the frame budget at all.** After several rounds
   of optimising JavaScript that measured fast, the game was still reported as laggy — which meant the
   cost was somewhere the governor could not see. It was: `updateHUD` ran every frame doing thirty
