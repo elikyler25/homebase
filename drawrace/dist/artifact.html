@@ -1,0 +1,371 @@
+<style>
+  :root {
+    --bg: #0b0e12;
+    --panel: rgba(17, 21, 27, 0.9);
+    --panel-solid: #12161c;
+    --line: rgba(255, 255, 255, 0.09);
+    --text: #e9eef4;
+    --dim: #8d99a6;
+    --accent: #ff3b30;
+    --amber: #ffc247;
+    --gold: #ffd24a;
+    --silver: #cdd6de;
+    --bronze: #cd8544;
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #app { position: fixed; inset: 0; overflow: hidden; }
+
+  #game {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+  }
+
+  .hidden { display: none !important; }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, #0b0e12 0%, #10151b 100%);
+    padding: calc(var(--safe-t) + 20px) 18px calc(var(--safe-b) + 18px);
+    overflow-y: auto;
+    z-index: 20;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: calc(var(--safe-t) + 12px) 12px calc(var(--safe-b) + 12px);
+  }
+  .overlay button, .overlay .interactive { pointer-events: auto; }
+
+  /* ---------------------------------------------------------- typography */
+  h1 {
+    font-size: 30px;
+    letter-spacing: -0.03em;
+    margin: 0 0 2px;
+    font-weight: 800;
+  }
+  h1 .accent { color: var(--accent); }
+  .sub { color: var(--dim); font-size: 13px; margin: 0 0 20px; line-height: 1.45; }
+
+  /* -------------------------------------------------------------- menu */
+  #track-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .track-card {
+    text-align: left;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 13px 14px;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+  }
+  .track-card:active { transform: scale(0.985); border-color: rgba(255,255,255,0.2); }
+  .tc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .tc-name { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+  .tc-meta { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+  .tc-best { margin-top: 9px; font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+
+  .pill {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.07);
+    color: var(--dim);
+    font-weight: 600;
+  }
+  .pill.surf-asphalt { background: rgba(120,140,160,0.18); color: #b9c7d4; }
+  .pill.surf-gravel  { background: rgba(180,140,80,0.2);   color: #e0c9a0; }
+  .pill.surf-ice     { background: rgba(120,180,220,0.18); color: #bcdcf0; }
+
+  .medal {
+    width: 14px; height: 14px; border-radius: 50%;
+    display: inline-block; flex: none;
+    box-shadow: inset 0 -2px 3px rgba(0,0,0,0.35);
+  }
+  .medal.gold   { background: linear-gradient(160deg, #ffe89a, var(--gold)); }
+  .medal.silver { background: linear-gradient(160deg, #f2f6fa, var(--silver)); }
+  .medal.bronze { background: linear-gradient(160deg, #eaa96b, var(--bronze)); }
+  .medal.none   { background: rgba(255,255,255,0.1); }
+  .medal.big    { width: 54px; height: 54px; }
+
+  /* -------------------------------------------------------------- draw */
+  .draw-top {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 10px 13px;
+    backdrop-filter: blur(12px);
+  }
+  #draw-hint { font-size: 13px; line-height: 1.4; color: var(--text); }
+  #draw-hint.warn { color: var(--amber); }
+  .bar-wrap {
+    margin-top: 9px;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .bar {
+    flex: 1; height: 5px; border-radius: 3px;
+    background: rgba(255,255,255,0.11); overflow: hidden;
+  }
+  #draw-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #7fd4ff, var(--amber), var(--accent));
+    transition: width 0.06s linear;
+  }
+  #draw-pct { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
+
+  .draw-bottom { display: flex; justify-content: center; gap: 10px; }
+
+  /* -------------------------------------------------------------- race */
+  .hud-row { display: flex; gap: 8px; align-items: flex-start; }
+  .hud-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 7px 11px;
+    backdrop-filter: blur(12px);
+  }
+  .hud-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--dim); font-weight: 600; }
+  .hud-value { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.15; }
+  .hud-value.small { font-size: 15px; }
+  .hud-spacer { flex: 1; }
+
+  .race-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+
+  #btn-turbo {
+    width: 84px; height: 84px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.16);
+    background: radial-gradient(circle at 35% 30%, #2b333d, #171c23);
+    color: var(--dim);
+    font-size: 12px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: transform 0.1s ease, box-shadow 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  #btn-turbo.ready {
+    color: #fff;
+    border-color: rgba(120,200,255,0.75);
+    box-shadow: 0 0 22px rgba(90,180,255,0.4), inset 0 0 18px rgba(90,180,255,0.16);
+  }
+  #btn-turbo.fired { transform: scale(0.9); }
+
+  .turbo-wrap { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .turbo-bar { width: 84px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.11); overflow: hidden; }
+  #turbo-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #4a9fd8, #7fd4ff); transition: width 0.1s linear; }
+
+  #countdown {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 84px; font-weight: 900; letter-spacing: -0.05em;
+    color: #fff;
+    text-shadow: 0 8px 40px rgba(0,0,0,0.7);
+    pointer-events: none;
+  }
+
+  /* ----------------------------------------------------------- results */
+  .result-head { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
+  .result-pos { font-size: 46px; font-weight: 900; letter-spacing: -0.04em; line-height: 1; }
+  .result-side { display: flex; flex-direction: column; gap: 3px; }
+  #result-time { font-size: 26px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+  #result-ref, #result-best { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .medal-row { display: flex; align-items: center; gap: 12px; margin: 16px 0 18px; }
+  #result-medal-label { font-size: 15px; font-weight: 650; }
+
+  #result-table { display: flex; flex-direction: column; gap: 1px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+  #result-table .row {
+    display: grid;
+    grid-template-columns: 26px 12px 1fr auto auto;
+    align-items: center; gap: 9px;
+    padding: 10px 12px;
+    background: var(--panel-solid);
+    font-size: 13.5px;
+  }
+  #result-table .row.me { background: rgba(255,59,48,0.13); }
+  #result-table .pos { color: var(--dim); font-variant-numeric: tabular-nums; }
+  #result-table .dot { width: 9px; height: 9px; border-radius: 50%; }
+  #result-table .tm, #result-table .gp { font-variant-numeric: tabular-nums; }
+  #result-table .gp { color: var(--dim); min-width: 56px; text-align: right; }
+
+  /* ----------------------------------------------------------- buttons */
+  .btn {
+    font: inherit;
+    font-weight: 650;
+    font-size: 14.5px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.07);
+    color: var(--text);
+    cursor: pointer;
+    transition: transform 0.1s ease, background 0.15s ease;
+    backdrop-filter: blur(12px);
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary { background: var(--accent); border-color: transparent; color: #fff; }
+  /* Dark translucent rather than light: these sit over the canvas, and the ice
+     track is nearly white — a light ghost button vanished completely on it. */
+  .btn.ghost {
+    background: rgba(10,14,19,0.6);
+    color: #d3dbe3;
+    border-color: rgba(255,255,255,0.14);
+  }
+  .btn.small { font-size: 12.5px; padding: 8px 13px; border-radius: 10px; }
+
+  .btn-row { display: flex; gap: 9px; margin-top: 18px; }
+  .btn-row .btn { flex: 1; text-align: center; }
+
+  .spacer { flex: 1; }
+
+  @media (min-width: 620px) {
+    .screen { padding-left: max(18px, calc(50% - 290px)); padding-right: max(18px, calc(50% - 290px)); }
+    h1 { font-size: 36px; }
+  }
+</style>
+
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <!-- ------------------------------------------------------------ menu -->
+  <div id="screen-menu" class="screen">
+    <h1>Draw<span class="accent">Race</span></h1>
+    <p class="sub">
+      Trace your racing line around the circuit. How fast you draw is how fast the car
+      goes &mdash; so slow your finger through the corners, or watch it run wide.
+    </p>
+    <div id="track-list"></div>
+    <div class="spacer"></div>
+    <p class="sub" style="margin-top:22px;opacity:0.7">
+      Tap anywhere during a race to deploy turbo. It charges while you brake &mdash;
+      and spends grip you might need for the corner.
+    </p>
+  </div>
+
+  <!-- ------------------------------------------------------------ draw -->
+  <div id="screen-draw" class="overlay hidden">
+    <div class="draw-top interactive">
+      <div id="draw-hint">Trace your line from the start</div>
+      <div class="bar-wrap">
+        <div class="bar"><div id="draw-bar"></div></div>
+        <span id="draw-pct">0%</span>
+      </div>
+    </div>
+    <div class="draw-bottom">
+      <button id="btn-clear" class="btn small ghost">Clear line</button>
+      <button id="btn-menu" class="btn small ghost">Tracks</button>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------------ race -->
+  <div id="screen-race" class="overlay hidden">
+    <div class="hud-row">
+      <div class="hud-card">
+        <div class="hud-label">Pos</div>
+        <div class="hud-value" id="hud-pos">1/5</div>
+      </div>
+      <div class="hud-card">
+        <div class="hud-label">Lap</div>
+        <div class="hud-value" id="hud-lap">1/2</div>
+      </div>
+      <div class="hud-card">
+        <div class="hud-label">Time</div>
+        <div class="hud-value small" id="hud-time">0:00.000</div>
+      </div>
+      <div class="hud-spacer"></div>
+      <div class="hud-card" style="text-align:right">
+        <div class="hud-label" id="hud-track">Track</div>
+        <div class="hud-value" id="hud-speed">0</div>
+        <div class="hud-label">km/h</div>
+      </div>
+    </div>
+
+    <div class="race-bottom">
+      <button id="btn-skip" class="btn small ghost">Skip</button>
+      <div class="turbo-wrap">
+        <div class="turbo-bar"><div id="turbo-fill"></div></div>
+        <button id="btn-turbo">Turbo</button>
+      </div>
+    </div>
+    <div id="countdown" class="hidden">3</div>
+  </div>
+
+  <!-- --------------------------------------------------------- results -->
+  <div id="screen-results" class="screen hidden">
+    <div class="result-head">
+      <div class="result-pos" id="result-pos">1st</div>
+      <div class="result-side">
+        <div id="result-time">0:00.000</div>
+        <div id="result-ref">+0.000 vs reference</div>
+        <div id="result-best">New personal best</div>
+      </div>
+    </div>
+
+    <div class="medal-row">
+      <span id="result-medal" class="medal big none"></span>
+      <span id="result-medal-label">No medal</span>
+    </div>
+
+    <div id="result-table"></div>
+
+    <div class="btn-row">
+      <button id="btn-retry" class="btn primary">Redraw</button>
+      <button id="btn-next" class="btn">Next track</button>
+    </div>
+    <div class="btn-row" style="margin-top:9px">
+      <button id="btn-menu-2" class="btn ghost">All tracks</button>
+    </div>
+    <div class="spacer"></div>
+  </div>
+</div>
+
+<script>
+"use strict";(()=>{var y=(o,e)=>({x:o.x+e.x,y:o.y+e.y}),k=(o,e)=>({x:o.x-e.x,y:o.y-e.y}),b=(o,e)=>({x:o.x*e,y:o.y*e});var C=o=>Math.hypot(o.x,o.y);var R=(o,e)=>Math.hypot(o.x-e.x,o.y-e.y),re=(o,e)=>{let s=o.x-e.x,t=o.y-e.y;return s*s+t*t};function O(o){let e=Math.hypot(o.x,o.y);return e>1e-9?{x:o.x/e,y:o.y/e}:{x:0,y:0}}var pe=o=>({x:-o.y,y:o.x});var m=(o,e,s)=>o<e?e:o>s?s:o,w=(o,e,s)=>o+(e-o)*s;var _=(o,e,s,t)=>e+(o-e)*Math.exp(-s*t);function ue(o){let e=o>>>0||1;return()=>(e^=e<<13,e>>>=0,e^=e>>17,e^=e<<5,e>>>=0,e/4294967296)}function me(o,e,s,t,n){let r=n*n,i=r*n;return{x:.5*(2*e.x+(-o.x+s.x)*n+(2*o.x-5*e.x+4*s.x-t.x)*r+(-o.x+3*e.x-3*s.x+t.x)*i),y:.5*(2*e.y+(-o.y+s.y)*n+(2*o.y-5*e.y+4*s.y-t.y)*r+(-o.y+3*e.y-3*s.y+t.y)*i)}}function q(o){if(!isFinite(o)||o<0)return"--:--.---";let e=Math.floor(o/60),s=Math.floor(o-e*60),t=Math.floor((o-Math.floor(o))*1e3);return`${e}:${s.toString().padStart(2,"0")}.${t.toString().padStart(3,"0")}`}function ie(o){return isFinite(o)?`${o>=0?"+":"-"}${Math.abs(o).toFixed(3)}`:"--"}var We=.3,Fe=3.5,He=1.5,W=class o{constructor(){this.nodes=[];this.length=0;this.closed=!1}static fromNodes(e,s,t=!1){let n=new o;return n.closed=t,n.build(t?[...e,e[0]]:e,t?[...s,s[0]]:s),n}static fromInput(e,s,t=!0){if(e.length<2)return new o;let n=new Array(e.length).fill(0);for(let l=1;l<e.length;l++){let h=Math.max(1,e[l].t-e[l-1].t)/1e3;n[l]=R(e[l].p,e[l-1].p)/h}n[0]=n[1]??0;let r=Ne(n,5),i=je(e.map(l=>l.p),2),a=r.map(l=>m(l*We,Fe,s)),c=new o;return c.closed=t,t&&(i.push(i[0]),a.push(a[0])),c.build(i,a),c}build(e,s){if(e.length<2)return;let t=[0];for(let c=1;c<e.length;c++)t.push(t[c-1]+R(e[c],e[c-1]));let n=t[t.length-1];if(n<1)return;let r=Math.max(2,Math.round(n/He)),i=0;for(let c=0;c<=r;c++){let l=c/r*n;for(;i<t.length-2&&t[i+1]<l;)i++;let h=t[i+1]-t[i],d=h>1e-9?(l-t[i])/h:0;this.nodes.push({pos:{x:w(e[i].x,e[i+1].x,d),y:w(e[i].y,e[i+1].y,d)},tan:{x:0,y:0},s:l,speed:w(s[i]??0,s[i+1]??s[i]??0,d)})}this.length=n;let a=this.nodes.length;for(let c=0;c<a;c++){let l=this.closed?(c-1+a)%a:Math.max(0,c-1),h=this.closed?(c+1)%a:Math.min(a-1,c+1);this.nodes[c].tan=O(k(this.nodes[h].pos,this.nodes[l].pos))}}wrapS(e){if(!this.closed)return m(e,0,this.length);let s=this.length||1;return(e%s+s)%s}get valid(){return this.nodes.length>8&&this.length>20}at(e){let s=this.nodes;if(s.length===0)return{pos:{x:0,y:0},tan:{x:1,y:0},speed:0};let t=this.wrapS(e)/this.length*(s.length-1),n=m(Math.floor(t),0,s.length-2),r=t-n,i=s[n],a=s[n+1];return{pos:{x:w(i.pos.x,a.pos.x,r),y:w(i.pos.y,a.pos.y,r)},tan:O({x:w(i.tan.x,a.tan.x,r),y:w(i.tan.y,a.tan.y,r)}),speed:w(i.speed,a.speed,r)}}nearestS(e,s,t=14,n=6){let r=this.nodes;if(r.length<2)return 0;let i=r.length-1,a=this.length/i,c=Math.round(this.wrapS(s)/a),l=Math.max(2,Math.round(t/a)),h=Math.max(2,Math.round(n/a)),d=this.wrapS(s),p=1/0;for(let g=-h;g<=l;g++){let u=c+g;if(this.closed)u=(u%i+i)%i;else if(u<0||u>=i)continue;let f=r[u].pos,v=r[u+1].pos,M=k(v,f),V=M.x*M.x+M.y*M.y;if(V<1e-9)continue;let L=m(((e.x-f.x)*M.x+(e.y-f.y)*M.y)/V,0,1),A=f.x+M.x*L,j=f.y+M.y*L,U=(e.x-A)**2+(e.y-j)**2;U<p&&(p=U,d=r[u].s+(r[u+1].s-r[u].s)*L)}return d}get maxSpeed(){let e=0;for(let s of this.nodes)e=Math.max(e,s.speed);return e||1}get minSpeed(){let e=1/0;for(let s of this.nodes)e=Math.min(e,s.speed);return isFinite(e)?e:0}};function Ne(o,e){let s=new Array(o.length);for(let t=0;t<o.length;t++){let n=0,r=0;for(let i=-e;i<=e;i++){let a=t+i;a<0||a>=o.length||(n+=o[a],r++)}s[t]=n/Math.max(1,r)}return s}function je(o,e){let s=o;for(let t=0;t<e;t++){let n=[s[0]];for(let r=1;r<s.length-1;r++)n.push({x:(s[r-1].x+s[r].x*2+s[r+1].x)/4,y:(s[r-1].y+s[r].y*2+s[r+1].y)/4});n.push(s[s.length-1]),s=n}return s}var ze=9.81,Be=.85,fe=[{name:"Aalto",skill:.97,colour:"#c084fc"},{name:"Bergman",skill:.91,colour:"#34d399"},{name:"Costa",skill:.85,colour:"#fb923c"},{name:"Duval",skill:.79,colour:"#60a5fa"},{name:"Eskola",skill:.73,colour:"#f472b6"},{name:"Falk",skill:.67,colour:"#a3e635"}];function ge(o,e,s=900,t=0,n=0){let r=o.samples.length,i=Math.max(.5,o.halfWidth-e),a=new Float64Array(r);if(n>0){let h=ue(t||1),d=4,p=[],g=[];for(let u=0;u<d;u++)p.push((h()*2-1)*n),g.push(h()*Math.PI*2);for(let u=0;u<r;u++){let f=0;for(let v=0;v<d;v++)f+=p[v]*Math.sin(u/r*(v+1)*Math.PI*2+g[v]);a[u]=m(f,-i,i)}}let c=h=>{let d=o.samples[(h+r)%r];return y(d.pos,b(d.nor,a[(h+r)%r]))};for(let h=0;h<s;h++)for(let p=0;p<r;p++){let g=c(p-1),u=c(p+1),f={x:(g.x+u.x)/2,y:(g.y+u.y)/2},v=o.samples[p],M=k(f,v.pos).x*v.nor.x+k(f,v.pos).y*v.nor.y;a[p]=m(a[p]+(M-a[p])*.35,-i,i)}let l=[];for(let h=0;h<r;h++)l.push(c(h));return _e(o,l,e)}function _e(o,e,s){let t=Math.max(.4,o.halfWidth-s),n=e.map(r=>({...r}));for(let r=0;r<3;r++){let i=!1;for(let l=0;l<n.length;l++){let h=o.project(n[l]);if(Math.abs(h.lateral)<=t)continue;let d=o.samples[h.index],p=m(h.lateral,-t,t);n[l]=y(d.pos,b(d.nor,p)),i=!0}if(!i)break;let a=n.map(l=>({...l})),c=n.length;for(let l=0;l<c;l++){let h=a[(l-1+c)%c],d=a[l],p=a[(l+1)%c];n[l]={x:(h.x+d.x*2+p.x)/4,y:(h.y+d.y*2+p.y)/4}}}for(let r=0;r<n.length;r++){let i=o.project(n[r]);if(Math.abs(i.lateral)>t){let a=o.samples[i.index];n[r]=y(a.pos,b(a.nor,m(i.lateral,-t,t)))}}return n}function qe(o){let e=o.length,s=new Array(e).fill(0);for(let r=0;r<e;r++){let i=o[(r-1+e)%e],a=o[r],c=o[(r+1)%e],l=k(a,i),h=k(c,a),d=l.x*h.y-l.y*h.x,p=C(l),g=C(h),u=R(i,c),f=p*g*u;s[r]=f>1e-6?2*d/f:0}let t=new Array(e);for(let r=0;r<e;r++){let i=0;for(let a=-2;a<=2;a++)i+=s[(r+a+e)%e];t[r]=i/5}let n=new Array(e);for(let r=0;r<e;r++){let i=0;for(let a=-3;a<=3;a++){let c=t[(r+a+e)%e];Math.abs(c)>Math.abs(i)&&(i=c)}n[r]=i}return n}function be(o,e,s,t){let n=o.length,r=qe(o),i=e.grip*s*ze*t*Be,a=new Array(n);for(let l=0;l<n;l++)a[l]=R(o[l],o[(l+1)%n])||.01;let c=new Array(n);for(let l=0;l<n;l++){let h=Math.abs(r[l]),d=h>1e-5?Math.sqrt(i/h):1/0;c[l]=Math.min(d,e.maxSpeed*t)}for(let l=0;l<3;l++){for(let h=n-1;h>=0;h--){let d=(h+1)%n,p=Math.sqrt(c[d]*c[d]+2*e.brake*t*a[h]);c[h]=Math.min(c[h],p)}for(let h=0;h<n;h++){let d=(h-1+n)%n,p=e.accel*Math.max(.15,1-(c[d]/e.maxSpeed)**2),g=Math.sqrt(c[d]*c[d]+2*p*a[d]);c[h]=Math.min(c[h],g)}}return c}function xe(o,e,s,t){let n=(1-s)*o.halfWidth*.45,r=ge(o,e.radius+2,900,t,n),i=be(r,e,o.surface.grip,s);return W.fromNodes(r,i,!0)}function ve(o,e){let s=ge(o,e.radius+2,1200,0,0),t=be(s,e,o.surface.grip,.95);return W.fromNodes(s,t,!0)}var Ge={asphalt:{id:"asphalt",grip:1,drag:.35,slide:.28,name:"Asphalt"},gravel:{id:"gravel",grip:.82,drag:1.1,slide:.55,name:"Gravel"},ice:{id:"ice",grip:.56,drag:.22,slide:.86,name:"Ice"}},ye={id:"offtrack",grip:.38,drag:5.2,slide:.7},Ke=1,E=10,J=class{constructor(e){this.samples=[];this.left=[];this.right=[];this.grid=new Map;this.gridCols=0;this.def=e,this.surface=Ge[e.surface],this.halfWidth=e.width/2;let s=this.tessellate(e.points);this.length=this.resample(s),this.computeFrames();for(let r of this.samples)this.left.push(y(r.pos,b(r.nor,this.halfWidth))),this.right.push(y(r.pos,b(r.nor,-this.halfWidth)));let t={x:1/0,y:1/0},n={x:-1/0,y:-1/0};for(let r of[...this.left,...this.right])t.x=Math.min(t.x,r.x),t.y=Math.min(t.y,r.y),n.x=Math.max(n.x,r.x),n.y=Math.max(n.y,r.y);this.bounds={min:t,max:n},this.gridOrigin={x:t.x-E,y:t.y-E},this.buildGrid()}tessellate(e){let s=e.map(([i,a])=>({x:i,y:a})),t=s.length,n=[],r=48;for(let i=0;i<t;i++){let a=s[(i-1+t)%t],c=s[i],l=s[(i+1)%t],h=s[(i+2)%t];for(let d=0;d<r;d++)n.push(me(a,c,l,h,d/r))}return n}resample(e){let s=e.length,t=0,n=new Array(s);for(let l=0;l<s;l++)n[l]=C(k(e[(l+1)%s],e[l])),t+=n[l];let r=Math.max(16,Math.round(t/Ke)),i=t/r,a=0,c=0;for(let l=0;l<r;l++){let h=l*i,d=0;for(d=c;a<s&&d+n[a]<h;)d+=n[a],a++;c=d;let p=a%s,g=n[p]>1e-9?(h-d)/n[p]:0,u=e[p],f=e[(p+1)%s];this.samples.push({pos:{x:u.x+(f.x-u.x)*g,y:u.y+(f.y-u.y)*g},tan:{x:0,y:0},nor:{x:0,y:0},s:h,curv:0})}return t}computeFrames(){let e=this.samples.length;for(let t=0;t<e;t++){let n=this.samples[(t-1+e)%e].pos,r=this.samples[(t+1)%e].pos,i=O(k(r,n));this.samples[t].tan=i,this.samples[t].nor=pe(i)}for(let t=0;t<e;t++){let n=this.samples[(t-1+e)%e].tan,r=this.samples[(t+1)%e].tan,i=Math.atan2(n.x*r.y-n.y*r.x,n.x*r.x+n.y*r.y),a=C(k(this.samples[(t+1)%e].pos,this.samples[(t-1+e)%e].pos))||1e-6;this.samples[t].curv=i/a}let s=this.samples.map(t=>t.curv);for(let t=0;t<e;t++){let n=0;for(let r=-3;r<=3;r++)n+=s[(t+r+e)%e];this.samples[t].curv=n/7}}cellKey(e,s){return s*this.gridCols+e}buildGrid(){let e=this.bounds.max.x-this.gridOrigin.x+E*2,s=this.bounds.max.y-this.gridOrigin.y+E*2;this.gridCols=Math.max(1,Math.ceil(e/E));let t=Math.max(1,Math.ceil(s/E));for(let n=0;n<this.samples.length;n++){let r=this.samples[n].pos,i=m(Math.floor((r.x-this.gridOrigin.x)/E),0,this.gridCols-1),a=m(Math.floor((r.y-this.gridOrigin.y)/E),0,t-1),c=this.cellKey(i,a),l=this.grid.get(c);l||this.grid.set(c,l=[]),l.push(n)}}nearestIndex(e){let s=Math.floor((e.x-this.gridOrigin.x)/E),t=Math.floor((e.y-this.gridOrigin.y)/E),n=-1,r=1/0;for(let i=0;i<=4;i++){for(let a=-i;a<=i;a++)for(let c=-i;c<=i;c++){if(i>0&&Math.abs(c)!==i&&Math.abs(a)!==i)continue;let l=this.grid.get(this.cellKey(s+c,t+a));if(l)for(let h of l){let d=re(this.samples[h].pos,e);d<r&&(r=d,n=h)}}if(n>=0&&i>=1)return n}if(n>=0)return n;for(let i=0;i<this.samples.length;i++){let a=re(this.samples[i].pos,e);a<r&&(r=a,n=i)}return n}project(e){let s=this.nearestIndex(e),t=this.samples[s],n=k(e,t.pos),r=n.x*t.tan.x+n.y*t.tan.y,i=n.x*t.nor.x+n.y*t.nor.y,a=t.s+r;return a<0&&(a+=this.length),a>=this.length&&(a-=this.length),{index:s,s:a,lateral:i,onTrack:Math.abs(i)<=this.halfWidth}}sampleAt(e){let s=this.samples.length,t=Math.floor((e%this.length+this.length)%this.length/this.length*s);return t=m(t,0,s-1),this.samples[t]}wrapDelta(e,s){let t=s-e;for(;t>this.length/2;)t-=this.length;for(;t<-this.length/2;)t+=this.length;return t}get startPos(){return this.samples[0].pos}get startTan(){return this.samples[0].tan}};var Ue=9.81,F={rally:{id:"rally",name:"Rally",accel:14,brake:18,grip:1.7,maxSpeed:52,turboThrust:11,radius:2.1,colour:"#ffd23f"},gt:{id:"gt",name:"GT",accel:17,brake:22,grip:1.95,maxSpeed:63,turboThrust:13,radius:2.1,colour:"#ff5c5c"},formula:{id:"formula",name:"Formula",accel:21,brake:27,grip:2.35,maxSpeed:76,turboThrust:15,radius:2,colour:"#4fc3f7"}},G=class{constructor(e,s,t,n,r,i=""){this.car=e;this.line=s;this.track=t;this.label=i;this.vel={x:0,y:0};this.slipAngle=0;this.lineS=0;this.trackS=0;this.crossings=0;this.finished=!1;this.finishTime=1/0;this.distance=0;this.turboCharge=0;this.turboTimer=0;this.turboReady=!0;this.telemetry={speed:0,understeer:0,slipAngle:0,onTrack:!0,gripUsed:0};this.skidEmit=[];this.dustEmit=[];this.pos={...n},this.heading=r;let a=t.project(n);this.trackS=a.s,this.lineS=s.nearestS(n,0,s.length,s.length)}get speed(){return C(this.vel)}get lapsDone(){return Math.max(0,this.crossings-1)}get currentLap(){return Math.max(1,this.crossings)}deployTurbo(){return this.turboCharge<.25||this.turboTimer>0?!1:(this.turboTimer=1.1+this.turboCharge*.5,this.turboCharge=0,!0)}step(e){if(this.finished)return;this.skidEmit.length=0,this.dustEmit.length=0;let s=this.speed,t=this.track.project(this.pos),n=t.onTrack,r=n?this.track.surface:ye,i=this.track.length,a=this.trackS;a>i*.75&&t.s<i*.25?this.crossings++:a<i*.25&&t.s>i*.75&&this.crossings--,this.trackS=t.s,this.lineS=this.line.nearestS(this.pos,this.lineS,m(s*.4+6,8,26),6);let c=m(s*.22+3,3.5,14),l=this.line.at(this.lineS+c),h=this.line.at(this.lineS+s*.18),d=Math.min(h.speed,this.car.maxSpeed),p=k(l.pos,this.pos),g=Math.max(2,C(p)),u=O(p),f=s>.6?O(this.vel):{x:Math.cos(this.heading),y:Math.sin(this.heading)},v=Math.atan2(f.x*u.y-f.y*u.x,f.x*u.x+f.y*u.y),M=2*Math.sin(v)/g,V=s*s*M,L=this.car.grip*r.grip*Ue,A=this.line.at(this.lineS),j={x:-A.tan.y,y:A.tan.x},U=(this.pos.x-A.pos.x)*j.x+(this.pos.y-A.pos.y)*j.y,Ce=this.vel.x*j.x+this.vel.y*j.y,Le=m(s/9,0,1),Pe=m(-3.2*U-2.6*Ce,-L*.55,L*.55)*Le,Y=V+Pe,Ve=Math.max(0,Math.abs(V)/Math.max(L,.01)-1),P=L*(1-.34*m(Ve,0,1)),Ee=this.car.accel*Math.max(0,1-(s/this.car.maxSpeed)**2),se=d-s,X=se>=0?Math.min(Ee,se*2.6):Math.max(-this.car.brake,se*2.6),le=this.turboTimer>0;le&&(this.turboTimer-=e,X=Math.max(X,this.car.turboThrust),this.dustEmit.push({pos:{...this.pos},vel:b(f,-s*.35),kind:"smoke"}));let D,$;if(le){$=m(X,-P,P);let B=Math.sqrt(Math.max(0,P*P-$*$));D=m(Y,-B,B)}else{D=m(Y,-P,P);let B=Math.sqrt(Math.max(0,P*P-D*D));$=m(X,-B,B)}let z=Math.max(0,Math.abs(Y)-Math.abs(D)),Ae=z*(.09+r.slide*.1),T=s+$*e-Ae*e;if(T-=r.drag*e,T=Math.max(0,T),$<-1&&(this.turboCharge=m(this.turboCharge+-$/this.car.brake*e*.55,0,1)),s>.5){let ce=D/Math.max(s,.5)*e,he=Math.cos(ce),de=Math.sin(ce),$e=this.vel.x*he-this.vel.y*de,Oe=this.vel.x*de+this.vel.y*he;this.vel={x:$e,y:Oe}}else this.vel=b(u,Math.max(T,.01));let Re=C(this.vel)||1e-6;this.vel=b(this.vel,T/Re),this.pos=y(this.pos,b(this.vel,e)),this.distance+=T*e;let Ie=m(z/Math.max(P,1),0,1.4)*Math.sign(Y||1)*.5+m(-D/Math.max(P,1),-1,1)*r.slide*.32;this.slipAngle=_(this.slipAngle,Ie,6+(1-r.slide)*8,e);let De=Math.atan2(this.vel.y,this.vel.x);this.heading=De+this.slipAngle;let ne=Math.hypot(D,$)/Math.max(P,.01);(z>.6||ne>.94)&&T>4&&this.skidEmit.push({pos:{...this.pos},heading:this.heading,intensity:m(z/6+(ne-.9)*3,.15,1)}),!n&&T>3?this.dustEmit.push({pos:{...this.pos},vel:b(f,-T*.3),kind:"dust"}):r.id==="gravel"&&T>8&&z>.2&&this.dustEmit.push({pos:{...this.pos},vel:b(f,-T*.25),kind:"dust"}),this.telemetry={speed:T,understeer:z,slipAngle:this.slipAngle,onTrack:n,gripUsed:ne}}};var I=1/120,Ye=2.6,Q=class{constructor(e,s,t,n,r){this.track=e;this.state="countdown";this.elapsed=0;this.countdown=Ye;this.entrants=[];this.accumulator=0;let i=Xe(e,n.length+1);this.player={vehicle:new G(t,s,e,i[0].pos,i[0].heading,"You"),name:"You",colour:t.colour,isPlayer:!0},this.entrants.push(this.player),n.forEach((a,c)=>{let l=xe(e,r,a.skill,1e3+c*7919),h=i[c+1];this.entrants.push({vehicle:new G(r,l,e,h.pos,h.heading,a.name),name:a.name,colour:a.colour,isPlayer:!1})})}get finished(){return this.state==="finished"}update(e){let s=Math.min(e,.1);if(this.state==="countdown"){this.countdown-=s,this.countdown<=0&&(this.state="running");return}if(this.state==="finished")return;this.accumulator+=s;let t=0;for(;this.accumulator>=I&&t++<240;)this.stepOnce(I),this.accumulator-=I}stepOnce(e){this.elapsed+=e;for(let s of this.entrants)s.vehicle.finished||(s.vehicle.step(e),s.vehicle.lapsDone>=this.track.def.laps&&(s.vehicle.finished=!0,s.vehicle.finishTime=this.elapsed));if(Je(this.entrants.map(s=>s.vehicle)),this.entrants.every(s=>s.vehicle.finished))this.state="finished";else if(this.player.vehicle.finished){let s=0;for(;!this.entrants.every(t=>t.vehicle.finished)&&s++<2e4;){this.elapsed+=I;for(let t of this.entrants)t.vehicle.finished||(t.vehicle.step(I),t.vehicle.lapsDone>=this.track.def.laps&&(t.vehicle.finished=!0,t.vehicle.finishTime=this.elapsed))}this.state="finished"}}deployPlayerTurbo(){return this.state!=="running"?!1:this.player.vehicle.deployTurbo()}standings(){let e=this.entrants.map(t=>({name:t.name,colour:t.colour,isPlayer:t.isPlayer,position:0,time:t.vehicle.finishTime,finished:t.vehicle.finished,gap:0,lap:Math.min(t.vehicle.currentLap,this.track.def.laps),_dist:t.vehicle.distance}));e.sort((t,n)=>t.finished&&n.finished?t.time-n.time:t.finished?-1:n.finished?1:n._dist-t._dist);let s=e[0];return e.forEach((t,n)=>{t.position=n+1,t.gap=t.finished&&s.finished?t.time-s.time:NaN}),e}};function Xe(o,e){let s=[];for(let t=0;t<e;t++){let n=6+t*7,r=o.length-n,i=o.sampleAt(r),a=(t%2===0?1:-1)*o.halfWidth*.35;s.push({pos:y(i.pos,b(i.nor,a)),heading:Math.atan2(i.tan.y,i.tan.x)})}return s}function Je(o){for(let e=0;e<o.length;e++)for(let s=e+1;s<o.length;s++){let t=o[e],n=o[s];if(t.finished||n.finished)continue;let r=t.car.radius+n.car.radius,i=k(n.pos,t.pos),a=C(i);if(a>=r||a<1e-6)continue;let c=b(i,1/a),l=(r-a)*.5;t.pos=k(t.pos,b(c,l)),n.pos=y(n.pos,b(c,l));let h=k(n.vel,t.vel),d=h.x*c.x+h.y*c.y;if(d<0){let p=b(c,d*.45);t.vel=y(t.vel,p),n.vel=k(n.vel,p)}}}function Qe(o,e,s,t,n=400){let r=o.sampleAt(o.length-4),i=new G(e,s,o,r.pos,Math.atan2(r.tan.y,r.tan.x)),a=0,c=0,l=0,h=Math.floor(n/I);for(let d=0;d<h;d++)if(i.step(I),a+=I,c=Math.max(c,i.telemetry.speed),i.telemetry.onTrack||(l+=I),i.lapsDone>=t)return{time:a,finished:!0,peakSpeed:c,offTrackTime:l};return{time:a,finished:!1,peakSpeed:c,offTrackTime:l}}function Me(o,e){let s=F[e]??F.gt,t=ve(o,s),n=Qe(o,s,t,o.def.laps);return n.finished?n.time:1/0}function ke(o,e,s){return!isFinite(o)||!isFinite(e)?null:o<=e*s.gold?"gold":o<=e*s.silver?"silver":o<=e*s.bronze?"bronze":null}var ae={asphalt:{ground:"#243026",groundAlt:"#2b3a2d",road:"#3c4148",roadAlt:"#44494f",edge:"#eef3f7",kerbA:"#e63946",kerbB:"#f7f7f7",grain:"rgba(255,255,255,0.028)"},gravel:{ground:"#37421f",groundAlt:"#404d26",road:"#8d7a5c",roadAlt:"#9a8668",edge:"#d9cdb4",kerbA:"#c4713a",kerbB:"#efe3cb",grain:"rgba(0,0,0,0.05)"},ice:{ground:"#e4eef4",groundAlt:"#d6e4ed",road:"#a9c9dd",roadAlt:"#b6d3e4",edge:"#ffffff",kerbA:"#5b9bd5",kerbB:"#ffffff",grain:"rgba(255,255,255,0.06)"}},S=6,Z=14,oe=class{constructor(){this.center={x:0,y:0};this.scale=2;this.targetCenter={x:0,y:0};this.targetScale=2}update(e,s=!1){if(s){this.center={...this.targetCenter},this.scale=this.targetScale;return}this.center={x:_(this.center.x,this.targetCenter.x,7,e),y:_(this.center.y,this.targetCenter.y,7,e)},this.scale=_(this.scale,this.targetScale,4.5,e)}apply(e,s,t){e.translate(s/2,t/2),e.scale(this.scale,this.scale),e.translate(-this.center.x,-this.center.y)}screenToWorld(e,s,t,n){return{x:(e-t/2)/this.scale+this.center.x,y:(s-n/2)/this.scale+this.center.y}}},ee=class{constructor(e){this.canvas=e;this.camera=new oe;this.particles=[];this.trackLayer=null;this.skidLayer=null;this.skidCtx=null;this.layerOrigin={x:0,y:0};this.palette=ae.asphalt;this.cssWidth=0;this.cssHeight=0;this.dpr=1;let s=e.getContext("2d",{alpha:!1});if(!s)throw new Error("2D canvas unavailable");this.ctx=s,this.resize()}resize(){let e=this.canvas.getBoundingClientRect();this.dpr=Math.min(window.devicePixelRatio||1,2.5),this.cssWidth=Math.max(1,e.width),this.cssHeight=Math.max(1,e.height),this.canvas.width=Math.round(this.cssWidth*this.dpr),this.canvas.height=Math.round(this.cssHeight*this.dpr)}setTrack(e){this.palette=ae[e.def.surface]??ae.asphalt;let{min:s,max:t}=e.bounds;this.layerOrigin={x:s.x-Z,y:s.y-Z};let n=Math.ceil((t.x-s.x+Z*2)*S),r=Math.ceil((t.y-s.y+Z*2)*S),i=document.createElement("canvas");i.width=n,i.height=r;let a=i.getContext("2d");this.bakeTrack(a,e,n,r),this.trackLayer=i;let c=document.createElement("canvas");c.width=n,c.height=r,this.skidLayer=c,this.skidCtx=c.getContext("2d"),this.particles.length=0}clearMarks(){this.skidCtx&&this.skidLayer&&this.skidCtx.clearRect(0,0,this.skidLayer.width,this.skidLayer.height),this.particles.length=0}toLayer(e){return{x:(e.x-this.layerOrigin.x)*S,y:(e.y-this.layerOrigin.y)*S}}bakeTrack(e,s,t,n){let r=this.palette;e.fillStyle=r.ground,e.fillRect(0,0,t,n),e.save();for(let a=0;a<260;a++){let c=H(a*3.7)*t,l=H(a*7.1+11)*n,h=30+H(a*2.3)*120;e.globalAlpha=.05+H(a)*.05,e.fillStyle=r.groundAlt,e.beginPath(),e.arc(c,l,h,0,Math.PI*2),e.fill()}e.restore();let i=a=>{e.beginPath();let c=s.left,l=s.right,h=(d,p,g)=>{let u=s.samples[d],f=y(u.pos,b(u.nor,p*(s.halfWidth-a))),v=this.toLayer(f);g?e.moveTo(v.x,v.y):e.lineTo(v.x,v.y)};for(let d=0;d<c.length;d++)h(d,1,d===0);for(let d=l.length-1;d>=0;d--)h(d,-1,!1);e.closePath()};e.save(),e.shadowColor="rgba(0,0,0,0.45)",e.shadowBlur=14,e.fillStyle=r.road,i(0),e.fill(),e.restore(),e.save(),i(0),e.clip(),e.fillStyle=r.roadAlt;for(let a=0;a<1400;a++){let c=H(a*1.37+3)*t,l=H(a*5.11+17)*n,h=1+H(a*.7)*5;e.globalAlpha=.05+H(a*9.3)*.14,e.beginPath(),e.arc(c,l,h,0,Math.PI*2),e.fill()}e.globalAlpha=.16,e.strokeStyle="rgba(0,0,0,0.5)",e.lineWidth=s.halfWidth*.55*S,e.lineCap="round",e.beginPath(),s.samples.forEach((a,c)=>{let l=this.toLayer(a.pos);c===0?e.moveTo(l.x,l.y):e.lineTo(l.x,l.y)}),e.closePath(),e.stroke(),e.restore(),this.bakeKerbs(e,s),e.save(),e.strokeStyle=r.edge,e.globalAlpha=.85,e.lineWidth=.45*S;for(let a of[s.left,s.right])e.beginPath(),a.forEach((c,l)=>{let h=this.toLayer(c);l===0?e.moveTo(h.x,h.y):e.lineTo(h.x,h.y)}),e.closePath(),e.stroke();e.restore(),this.bakeStartLine(e,s)}bakeKerbs(e,s){let t=this.palette,n=s.samples.length,r=2.2;e.save(),e.lineCap="butt";for(let i=0;i<n;i++){let a=s.samples[i].curv;if(Math.abs(a)<.009)continue;let c=m((Math.abs(a)-.009)/.03,0,1),l=a>0?1:-1;for(let h of[l,-l]){let p=(h===l?1.5:1.1)*c;if(p<.25)continue;let g=s.samples[i],u=s.samples[(i+1)%n],f=s.halfWidth-p/2,v=this.toLayer(y(g.pos,b(g.nor,h*f))),M=this.toLayer(y(u.pos,b(u.nor,h*f))),V=Math.floor(g.s/r)%2===0;e.strokeStyle=V?t.kerbA:t.kerbB,e.globalAlpha=.55+c*.45,e.lineWidth=p*S,e.beginPath(),e.moveTo(v.x,v.y),e.lineTo(M.x,M.y),e.stroke()}}e.restore()}bakeStartLine(e,s){let t=s.samples[0],n=10,r=2,i=3.2;e.save();for(let a=0;a<r;a++)for(let c=0;c<n;c++){let l=(c/n-.5)*2*s.halfWidth,h=((c+1)/n-.5)*2*s.halfWidth,d=a*(i/r),p=(a+1)*(i/r),g=y(y(t.pos,b(t.nor,l)),b(t.tan,d)),u=y(y(t.pos,b(t.nor,h)),b(t.tan,d)),f=y(y(t.pos,b(t.nor,h)),b(t.tan,p)),v=y(y(t.pos,b(t.nor,l)),b(t.tan,p));e.fillStyle=(c+a)%2===0?"#f4f4f4":"#1c1f22",e.beginPath();let M=this.toLayer(g),V=this.toLayer(u),L=this.toLayer(f),A=this.toLayer(v);e.moveTo(M.x,M.y),e.lineTo(V.x,V.y),e.lineTo(L.x,L.y),e.lineTo(A.x,A.y),e.closePath(),e.fill()}e.restore()}addSkid(e,s,t){if(!this.skidCtx)return;let n=this.skidCtx,r=this.toLayer(e),i=1.5*S,a=Math.cos(s)*i*.5,c=Math.sin(s)*i*.5,l=-Math.sin(s)*.85*S,h=Math.cos(s)*.85*S;n.strokeStyle=`rgba(20,18,18,${m(t*.5,.04,.42)})`,n.lineWidth=.45*S,n.lineCap="round";for(let d of[1,-1])n.beginPath(),n.moveTo(r.x+l*d-a,r.y+h*d-c),n.lineTo(r.x+l*d+a,r.y+h*d+c),n.stroke()}addParticle(e,s,t){if(this.particles.length>420)return;let n=t==="dust"?.7+Math.random()*.5:.45+Math.random()*.35;this.particles.push({pos:{...e},vel:{x:s.x*.35+(Math.random()-.5)*6,y:s.y*.35+(Math.random()-.5)*6},life:n,maxLife:n,size:t==="dust"?.5+Math.random()*.9:.4+Math.random()*.7,kind:t})}stepParticles(e){for(let s=this.particles.length-1;s>=0;s--){let t=this.particles[s];if(t.life-=e,t.life<=0){this.particles.splice(s,1);continue}t.pos=y(t.pos,b(t.vel,e)),t.vel=b(t.vel,Math.exp(-2.6*e)),t.size+=e*1.1}}beginFrame(){let e=this.ctx;e.setTransform(this.dpr,0,0,this.dpr,0,0),e.fillStyle=this.palette.ground,e.fillRect(0,0,this.cssWidth,this.cssHeight),e.save(),this.camera.apply(e,this.cssWidth,this.cssHeight)}endFrame(){this.ctx.restore()}drawTrackLayer(){if(!this.trackLayer)return;let e=this.ctx;e.imageSmoothingEnabled=!0,e.drawImage(this.trackLayer,this.layerOrigin.x,this.layerOrigin.y,this.trackLayer.width/S,this.trackLayer.height/S),this.skidLayer&&e.drawImage(this.skidLayer,this.layerOrigin.x,this.layerOrigin.y,this.skidLayer.width/S,this.skidLayer.height/S)}drawLine(e,s={}){if(e.nodes.length<2)return;let t=this.ctx,n=s.alpha??1,r=s.upTo??1/0,i=Math.max(e.maxSpeed,1),a=Math.min(e.minSpeed,i-.001),c=h=>{let d=m((h-a)/Math.max(.001,i-a),0,1);return w(3.4,1.15,d)},l=h=>{let d=m((h-a)/Math.max(.001,i-a),0,1);if(d<.5){let g=d/.5;return`rgb(${Math.round(w(226,255,g))},${Math.round(w(240,194,g))},${Math.round(w(252,71,g))})`}let p=(d-.5)/.5;return`rgb(${Math.round(w(255,255,p))},${Math.round(w(194,59,p))},${Math.round(w(71,48,p))})`};if(s.glow!==!1){t.save(),t.globalAlpha=n*.22,t.globalCompositeOperation="lighter",t.lineJoin="round",t.lineCap="round";for(let h=0;h<e.nodes.length-1;h++){let d=e.nodes[h];if(d.s>r)break;let p=e.nodes[h+1];t.strokeStyle=l(d.speed),t.lineWidth=c(d.speed)*2.6,t.beginPath(),t.moveTo(d.pos.x,d.pos.y),t.lineTo(p.pos.x,p.pos.y),t.stroke()}t.restore()}t.save(),t.globalAlpha=n;for(let h=0;h<e.nodes.length-1;h++){let d=e.nodes[h];if(d.s>r)break;let p=e.nodes[h+1],g=c(d.speed)/2,u=c(p.speed)/2,f={x:-d.tan.y,y:d.tan.x},v={x:-p.tan.y,y:p.tan.x};t.fillStyle=l((d.speed+p.speed)/2),t.beginPath(),t.moveTo(d.pos.x+f.x*g,d.pos.y+f.y*g),t.lineTo(p.pos.x+v.x*u,p.pos.y+v.y*u),t.lineTo(p.pos.x-v.x*u,p.pos.y-v.y*u),t.lineTo(d.pos.x-f.x*g,d.pos.y-f.y*g),t.closePath(),t.fill()}t.restore()}drawParticles(){let e=this.ctx;e.save();for(let s of this.particles){let t=s.life/s.maxLife;e.globalAlpha=t*(s.kind==="dust"?.34:.24),e.fillStyle=s.kind==="dust"?"#c8b48c":"#e8eef2",e.beginPath(),e.arc(s.pos.x,s.pos.y,s.size,0,Math.PI*2),e.fill()}e.restore()}drawCar(e,s){let t=this.ctx,n=e.vehicle,r=n.car.radius*2,i=n.car.radius*.95;t.save(),t.translate(n.pos.x,n.pos.y),t.rotate(n.heading),t.save(),t.translate(.45,.6),t.fillStyle="rgba(0,0,0,0.32)",K(t,-r/2,-i/2,r,i,.55),t.fill(),t.restore(),t.fillStyle="#15181b";for(let c of[-1,1])for(let l of[-1,1])K(t,c*r*.26-.42,l*(i/2)-.16,.84,.34,.14),t.fill();let a=t.createLinearGradient(0,-i/2,0,i/2);a.addColorStop(0,we(e.colour,1.22)),a.addColorStop(.5,e.colour),a.addColorStop(1,we(e.colour,.72)),t.fillStyle=a,K(t,-r/2,-i/2,r,i,.55),t.fill(),t.fillStyle="rgba(18,26,34,0.82)",K(t,-r*.08,-i*.32,r*.3,i*.64,.22),t.fill(),t.fillStyle="rgba(255,255,255,0.5)",K(t,r*.36,-i*.28,r*.1,i*.56,.12),t.fill(),n.turboTimer>0&&(t.fillStyle="rgba(120,200,255,0.75)",t.beginPath(),t.moveTo(-r/2,-i*.3),t.lineTo(-r/2-1.6-Math.random()*1.2,0),t.lineTo(-r/2,i*.3),t.closePath(),t.fill()),t.restore(),s&&(t.save(),t.strokeStyle="rgba(255,255,255,0.5)",t.lineWidth=.18,t.beginPath(),t.arc(n.pos.x,n.pos.y,n.car.radius*1.9,0,Math.PI*2),t.stroke(),t.restore())}drawPlayerMarker(e,s){let t=this.ctx;t.save(),t.strokeStyle=`rgba(255,255,255,${.28+s*.22})`,t.lineWidth=.22,t.beginPath(),t.arc(e.vehicle.pos.x,e.vehicle.pos.y,e.vehicle.car.radius*(2.4+s*.35),0,Math.PI*2),t.stroke(),t.restore()}};function K(o,e,s,t,n,r){let i=Math.min(r,t/2,n/2);o.beginPath(),o.moveTo(e+i,s),o.arcTo(e+t,s,e+t,s+n,i),o.arcTo(e+t,s+n,e,s+n,i),o.arcTo(e,s+n,e,s,i),o.arcTo(e,s,e+t,s,i),o.closePath()}function we(o,e){let s=o.replace("#",""),t=s.length===3?s.split("").map(a=>a+a).join(""):s,n=m(Math.round(parseInt(t.slice(0,2),16)*e),0,255),r=m(Math.round(parseInt(t.slice(2,4),16)*e),0,255),i=m(Math.round(parseInt(t.slice(4,6),16)*e),0,255);return`rgb(${n},${r},${i})`}function H(o){let e=Math.sin(o*12.9898)*43758.5453;return e-Math.floor(e)}var N=[{id:"harbour",name:"Harbour Sweep",surface:"asphalt",width:16,laps:2,classes:["gt","rally"],medals:{gold:1.025,silver:1.075,bronze:1.16},points:[[0,-78],[42,-70],[70,-46],[76,-14],[50,-2],[44,16],[68,32],[58,56],[28,70],[-8,76],[-40,68],[-64,48],[-78,16],[-74,-24],[-52,-56],[-26,-74]]},{id:"gravelpit",name:"Gravel Pit",surface:"gravel",width:18,laps:2,classes:["rally"],medals:{gold:1.03,silver:1.085,bronze:1.18},points:[[0,-70],[38,-62],[60,-40],[52,-14],[20,-6],[14,18],[44,30],[58,54],[30,72],[-10,70],[-40,58],[-62,32],[-70,-2],[-58,-38],[-32,-62]]},{id:"frostring",name:"Frost Ring",surface:"ice",width:18,laps:2,classes:["rally","gt"],medals:{gold:1.035,silver:1.09,bronze:1.2},points:[[0,-80],[50,-68],[78,-32],[82,12],[60,48],[22,74],[-22,76],[-58,54],[-80,18],[-80,-24],[-56,-58],[-28,-76]]},{id:"vantaa",name:"Vantaa GP",surface:"asphalt",width:17,laps:2,classes:["formula","gt"],medals:{gold:1.02,silver:1.07,bronze:1.15},points:[[0,-72],[36,-68],[64,-52],[76,-22],[60,-8],[34,-14],[18,4],[36,24],[62,30],[70,58],[40,76],[0,78],[-36,70],[-64,50],[-76,20],[-72,-16],[-52,-48],[-28,-66]]}];var Se="drawrace.progress.v1";function Ze(){try{let o=localStorage.getItem(Se);if(o)return{best:{},medals:{},...JSON.parse(o)}}catch{}return{best:{},medals:{}}}function et(o){try{localStorage.setItem(Se,JSON.stringify(o))}catch{}}var x=o=>{let e=document.getElementById(o);if(!e)throw new Error(`missing element #${o}`);return e},te=class{constructor(e){this.canvas=e;this.phase="menu";this.carClass=F.gt;this.race=null;this.reference=1/0;this.fitScale=2;this.progress=Ze();this.drawing=!1;this.raw=[];this.previewLine=null;this.lapCovered=0;this.lastProjS=0;this.strokeStarted=!1;this.lastFrame=0;this.pulse=0;this.frame=e=>{let s=this.lastFrame?Math.min((e-this.lastFrame)/1e3,.05):.016;if(this.lastFrame=e,this.pulse=(Math.sin(e/320)+1)/2,this.phase==="race"&&this.race){this.race.update(s);for(let t of this.race.entrants){for(let n of t.vehicle.skidEmit)this.renderer.addSkid(n.pos,n.heading,n.intensity);for(let n of t.vehicle.dustEmit)this.renderer.addParticle(n.pos,n.vel,n.kind)}this.renderer.stepParticles(s),this.updateRaceHud(),this.raceCamera(s),this.race.finished&&this.showResults()}else this.renderer.camera.update(s),this.renderer.stepParticles(s);this.draw(),requestAnimationFrame(this.frame)};this.renderer=new ee(e),this.bindUi(),this.bindInput(),window.addEventListener("resize",()=>{this.renderer.resize(),this.fitCamera(!0)}),this.buildTrackMenu(),this.setPhase("menu"),requestAnimationFrame(this.frame)}bindUi(){x("btn-retry").addEventListener("click",()=>this.startDraw());for(let e of["btn-menu","btn-menu-2"])x(e).addEventListener("click",()=>this.setPhase("menu"));x("btn-clear").addEventListener("click",()=>this.resetStroke()),x("btn-skip").addEventListener("click",()=>this.finishRaceFast()),x("btn-turbo").addEventListener("click",()=>this.tryTurbo()),x("btn-next").addEventListener("click",()=>{let e=N.findIndex(s=>s.id===this.track.def.id);this.selectTrack(N[(e+1)%N.length].id)})}buildTrackMenu(){let e=x("track-list");e.innerHTML="";for(let s of N){let t=document.createElement("button");t.className="track-card";let n=this.progress.medals[s.id],r=this.progress.best[s.id];t.innerHTML=`
+        <div class="tc-top">
+          <span class="tc-name">${s.name}</span>
+          ${n?`<span class="medal ${n}"></span>`:""}
+        </div>
+        <div class="tc-meta">
+          <span class="pill surf-${s.surface}">${s.surface}</span>
+          <span class="pill">${F[s.classes[0]].name}</span>
+          <span class="pill">${s.laps} laps</span>
+        </div>
+        <div class="tc-best">${r?`Best ${q(r)}`:"Not raced"}</div>
+      `,t.addEventListener("click",()=>this.selectTrack(s.id)),e.appendChild(t)}}selectTrack(e){let s=N.find(t=>t.id===e)??N[0];this.track=new J(s),this.carClass=F[s.classes[0]]??F.gt,this.renderer.setTrack(this.track),this.reference=Me(this.track,this.carClass.id),x("hud-track").textContent=s.name,this.startDraw()}setPhase(e){this.phase=e;for(let s of["screen-menu","screen-draw","screen-race","screen-results"])x(s).classList.add("hidden");x(`screen-${e==="results"?"results":e}`).classList.remove("hidden"),document.body.dataset.phase=e,e==="menu"&&(this.buildTrackMenu(),this.race=null)}startDraw(){this.resetStroke(),this.renderer.clearMarks(),this.race=null,this.setPhase("draw"),this.fitCamera(!0),x("draw-hint").textContent="Trace your line from the start \u2014 how fast you draw is how fast you go",x("draw-hint").classList.remove("warn")}resetStroke(){this.raw=[],this.previewLine=null,this.lapCovered=0,this.strokeStarted=!1,this.drawing=!1,this.updateDrawProgress()}beginRace(){let e=W.fromInput(this.raw,this.carClass.maxSpeed,!0);if(!e.valid){this.warn("That line is too short to race \u2014 trace the whole lap");return}let s=fe.slice(0,4);this.race=new Q(this.track,e,this.carClass,s,this.carClass),this.renderer.clearMarks(),this.setPhase("race"),this.previewLine=e}finishRaceFast(){if(!this.race)return;let e=0;for(;!this.race.finished&&e++<6e3;)this.race.update(1/60);this.showResults()}showResults(){if(!this.race)return;let e=this.race.standings(),s=e.find(h=>h.isPlayer),t=ke(s.time,this.reference,this.track.def.medals),n=this.progress.best[this.track.def.id],r=!n||s.time<n;r&&(this.progress.best[this.track.def.id]=s.time);let i={bronze:1,silver:2,gold:3},a=this.progress.medals[this.track.def.id];t&&(!a||i[t]>i[a])&&(this.progress.medals[this.track.def.id]=t),et(this.progress),x("result-pos").textContent=tt(s.position),x("result-time").textContent=q(s.time),x("result-ref").textContent=`${ie(s.time-this.reference)} vs reference`;let c=x("result-medal");c.className=t?`medal big ${t}`:"medal big none",c.title=t??"No medal",x("result-medal-label").textContent=t?t[0].toUpperCase()+t.slice(1):"No medal",x("result-best").textContent=r?"New personal best":`Best ${q(n??1/0)}`;let l=x("result-table");l.innerHTML=e.map(h=>`
+        <div class="row ${h.isPlayer?"me":""}">
+          <span class="pos">${h.position}</span>
+          <span class="dot" style="background:${h.colour}"></span>
+          <span class="nm">${h.name}</span>
+          <span class="tm">${q(h.time)}</span>
+          <span class="gp">${h.position===1?"":ie(h.gap)}</span>
+        </div>`).join(""),this.setPhase("results")}warn(e){let s=x("draw-hint");s.textContent=e,s.classList.add("warn")}bindInput(){let e=this.canvas;e.addEventListener("pointerdown",s=>this.onPointerDown(s)),e.addEventListener("pointermove",s=>this.onPointerMove(s)),e.addEventListener("pointerup",s=>this.onPointerUp(s)),e.addEventListener("pointercancel",s=>this.onPointerUp(s)),e.addEventListener("contextmenu",s=>s.preventDefault()),window.addEventListener("keydown",s=>{s.code==="Space"&&(s.preventDefault(),this.tryTurbo())})}worldOf(e){let s=this.canvas.getBoundingClientRect();return this.renderer.camera.screenToWorld(e.clientX-s.left,e.clientY-s.top,this.renderer.cssWidth,this.renderer.cssHeight)}onPointerDown(e){if(this.phase==="race"){this.tryTurbo();return}if(this.phase!=="draw")return;e.preventDefault();let s=this.worldOf(e);if(R(s,this.track.startPos)>this.track.halfWidth*3.2){this.warn("Start your line on the grid");return}this.canvas.setPointerCapture(e.pointerId),this.raw=[{p:s,t:e.timeStamp}],this.drawing=!0,this.strokeStarted=!0,this.lapCovered=0,this.lastProjS=this.track.project(s).s,x("draw-hint").classList.remove("warn"),x("draw-hint").textContent="Slow through the corners, quick down the straights"}onPointerMove(e){if(!this.drawing||this.phase!=="draw")return;e.preventDefault();let s=typeof e.getCoalescedEvents=="function"&&e.getCoalescedEvents().length?e.getCoalescedEvents():[e];for(let t of s){let n=this.worldOf(t),r=this.raw[this.raw.length-1];if(r&&R(n,r.p)<.35)continue;this.raw.push({p:n,t:t.timeStamp});let i=this.track.project(n).s,a=this.track.wrapDelta(this.lastProjS,i);Math.abs(a)<this.track.length*.2&&(this.lapCovered+=a),this.lastProjS=i}if(this.raw.length>3&&(this.previewLine=W.fromInput(this.raw,this.carClass.maxSpeed,!1)),this.updateDrawProgress(),this.lapCovered>=this.track.length*.985){this.drawing=!1;try{this.canvas.releasePointerCapture(e.pointerId)}catch{}this.beginRace()}}onPointerUp(e){this.phase!=="draw"||!this.drawing||(e.preventDefault(),this.drawing=!1,this.lapCovered>=this.track.length*.9?this.beginRace():this.strokeStarted&&this.warn(`Line stops at ${Math.round(this.lapCovered/this.track.length*100)}% of the lap \u2014 keep going to the finish`))}tryTurbo(){this.phase!=="race"||!this.race||this.race.deployPlayerTurbo()&&(x("btn-turbo").classList.add("fired"),setTimeout(()=>x("btn-turbo").classList.remove("fired"),220))}fitCamera(e){let{min:s,max:t}=this.track.bounds,n=6,r=t.x-s.x+n*2,i=t.y-s.y+n*2,a=Math.min(this.renderer.cssWidth/r,this.renderer.cssHeight/i);this.fitScale=a,this.renderer.camera.targetCenter={x:(s.x+t.x)/2,y:(s.y+t.y)/2},this.renderer.camera.targetScale=a,this.renderer.camera.update(0,e)}raceCamera(e){if(!this.race)return;let s=this.race.player.vehicle,t=m(s.telemetry.speed/this.carClass.maxSpeed,0,1),n=.45+t*.7;this.renderer.camera.targetCenter={x:s.pos.x+s.vel.x*n,y:s.pos.y+s.vel.y*n};let r=this.renderer.camera,i=this.track.bounds,a=Math.max(this.renderer.cssWidth/Math.max(1,i.max.x-i.min.x),this.renderer.cssHeight/Math.max(1,i.max.y-i.min.y)),c=m(a,this.fitScale,this.fitScale*2.4);r.targetScale=Math.max(this.fitScale,c*w(1.12,.94,t));let l=12,h=this.renderer.cssWidth/(2*r.targetScale),d=this.renderer.cssHeight/(2*r.targetScale),p=(i.min.x+i.max.x)/2,g=(i.min.y+i.max.y)/2,u=i.min.x-l+h,f=i.max.x+l-h,v=i.min.y-l+d,M=i.max.y+l-d;r.targetCenter.x=u>f?p:m(r.targetCenter.x,u,f),r.targetCenter.y=v>M?g:m(r.targetCenter.y,v,M),r.update(e)}draw(){if(!this.track)return;let e=this.renderer;if(e.beginFrame(),e.drawTrackLayer(),this.phase==="draw")this.previewLine&&e.drawLine(this.previewLine,{alpha:.95}),this.drawStartArrow();else if((this.phase==="race"||this.phase==="results")&&(this.previewLine&&e.drawLine(this.previewLine,{alpha:this.phase==="race"?.4:.85}),e.drawParticles(),this.race)){let s=this.race.standings()[0];for(let t of this.race.entrants)t.isPlayer&&e.drawPlayerMarker(t,this.pulse);for(let t of this.race.entrants)e.drawCar(t,!t.isPlayer&&t.name===s.name)}e.endFrame()}drawStartArrow(){if(this.strokeStarted)return;let e=this.renderer.ctx,s=this.track.samples[0],t=Math.atan2(s.tan.y,s.tan.x);e.save(),e.translate(s.pos.x,s.pos.y),e.rotate(t),e.globalAlpha=.35+this.pulse*.45,e.fillStyle="#ffffff";for(let n=0;n<3;n++){let r=4+n*4.5;e.beginPath(),e.moveTo(r,-3.2),e.lineTo(r+3.2,0),e.lineTo(r,3.2),e.lineTo(r-1.5,3.2),e.lineTo(r+1.7,0),e.lineTo(r-1.5,-3.2),e.closePath(),e.fill()}e.restore()}updateDrawProgress(){let e=m(this.lapCovered/this.track.length*100,0,100);x("draw-bar").style.width=`${e}%`,x("draw-pct").textContent=`${Math.round(e)}%`}updateRaceHud(){if(!this.race)return;let e=this.race.standings(),s=e.find(r=>r.isPlayer),t=this.race.player.vehicle;x("hud-pos").textContent=`${s.position}/${e.length}`,x("hud-lap").textContent=`${m(t.currentLap,1,this.track.def.laps)}/${this.track.def.laps}`,x("hud-time").textContent=q(this.race.elapsed),x("hud-speed").textContent=`${Math.round(t.telemetry.speed*3.6)}`,x("turbo-fill").style.width=`${Math.round(t.turboCharge*100)}%`,x("btn-turbo").classList.toggle("ready",t.turboCharge>=.25&&t.turboTimer<=0);let n=x("countdown");if(this.race.state==="countdown"){let r=Math.ceil(this.race.countdown-.6);n.textContent=r>0?String(r):"GO",n.classList.remove("hidden")}else n.classList.add("hidden")}};function tt(o){let e=["th","st","nd","rd"],s=o%100;return o+(e[(s-20)%10]||e[s]||e[0])}function Te(){let o=document.getElementById("game");if(!o)throw new Error("canvas #game missing");requestAnimationFrame(()=>{let e=new te(o);window.__drawrace=e})}document.readyState==="loading"?document.addEventListener("DOMContentLoaded",Te):Te();})();
+
+</script>
