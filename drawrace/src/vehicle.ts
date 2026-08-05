@@ -114,7 +114,9 @@ export class Vehicle {
 
   /** Recent skid segments, consumed by the renderer. */
   skidEmit: { pos: Vec2; heading: number; intensity: number }[] = [];
-  dustEmit: { pos: Vec2; vel: Vec2; kind: "dust" | "smoke" }[] = [];
+  dustEmit: { pos: Vec2; vel: Vec2; kind: "dust" | "tyre" | "smoke" }[] = [];
+  /** Alternates so smoke leaves one rear wheel then the other. */
+  private smokeSide = 1;
 
   constructor(
     public readonly car: CarClass,
@@ -355,6 +357,25 @@ export class Vehicle {
         pos: { ...this.pos },
         vel: vscale(velDir, -newSpeed * 0.25),
         kind: "dust",
+      });
+    }
+
+    // Tyre smoke off the rear wheels once they are genuinely sliding. This is
+    // the clearest read the player gets that a corner was overcooked: it shows
+    // up exactly when the grip budget has been blown, not on a timer, so the
+    // smoke is diegetic feedback rather than decoration. Alternating sides
+    // keeps the plume from stacking into one dense blob.
+    if (understeer > 1.2 && newSpeed > 6 && onTrack) {
+      const lat = { x: -velDir.y, y: velDir.x };
+      const rear = vsub(this.pos, vscale(velDir, this.car.radius * 0.75));
+      this.smokeSide = -this.smokeSide;
+      this.dustEmit.push({
+        pos: vadd(rear, vscale(lat, this.smokeSide * this.car.radius * 0.42)),
+        vel: vadd(
+          vscale(velDir, -newSpeed * 0.22),
+          vscale(lat, this.smokeSide * 1.8),
+        ),
+        kind: "tyre",
       });
     }
 

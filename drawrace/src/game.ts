@@ -449,7 +449,7 @@ export class Game {
       this.drawStartArrow();
     } else if (this.phase === "race" || this.phase === "results") {
       if (this.previewLine) {
-        r.drawLine(this.previewLine, { alpha: this.phase === "race" ? 0.4 : 0.85 });
+        r.drawLine(this.previewLine, { alpha: this.phase === "race" ? 0.26 : 0.85 });
       }
       r.drawParticles();
       if (this.race) {

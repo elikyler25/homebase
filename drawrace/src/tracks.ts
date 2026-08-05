@@ -119,6 +119,122 @@ export const TRACKS: TrackDef[] = [
       [-28, -66],
     ],
   },
+  {
+    id: "riverside",
+    name: "Riverside",
+    surface: "asphalt",
+    width: 16,
+    laps: 2,
+    classes: ["gt", "rally"],
+    medals: { gold: 1.025, silver: 1.075, bronze: 1.16 },
+    // One enormous right-hand sweeper you can hold flat, paid for by a hairpin
+    // that folds back into the infield. The two halves want opposite strokes.
+    points: [
+      [0, -84],
+      [54, -76],
+      [84, -44],
+      [86, 4],
+      [66, 44],
+      [28, 68],
+      [-6, 58],
+      [-18, 34],
+      [-2, 12],
+      [-24, -6],
+      [-58, -6],
+      [-78, -36],
+      [-58, -72],
+    ],
+  },
+  {
+    id: "dustbowl",
+    name: "Dust Bowl",
+    surface: "gravel",
+    width: 19,
+    laps: 2,
+    classes: ["rally"],
+    medals: { gold: 1.03, silver: 1.085, bronze: 1.18 },
+    // Two hairpins on loose gravel: the grip is never there when you want it,
+    // so the stroke has to be slow well before the corner actually arrives.
+    points: [
+      [0, -72],
+      [42, -66],
+      [68, -44],
+      [60, -16],
+      [26, -10],
+      [10, 12],
+      [32, 32],
+      [64, 42],
+      [58, 70],
+      [20, 80],
+      [-22, 76],
+      [-58, 60],
+      [-76, 28],
+      [-74, -14],
+      [-52, -48],
+      [-26, -68],
+    ],
+  },
+  {
+    id: "glacier",
+    name: "Glacier Pass",
+    surface: "ice",
+    width: 20,
+    laps: 2,
+    classes: ["gt", "rally"],
+    medals: { gold: 1.035, silver: 1.09, bronze: 1.2 },
+    // Wide and fast, but on ice the grip budget is barely half of asphalt, so
+    // corners that look gentle still punish a confident finger.
+    points: [
+      [0, -84],
+      [56, -72],
+      [84, -38],
+      [86, 6],
+      [70, 46],
+      [34, 74],
+      [-10, 82],
+      [-52, 70],
+      [-80, 42],
+      [-86, 0],
+      [-76, -42],
+      [-40, -74],
+    ],
+  },
+  {
+    id: "nordic",
+    name: "Nordic GP",
+    surface: "asphalt",
+    width: 19,
+    laps: 2,
+    classes: ["formula", "gt"],
+    medals: { gold: 1.02, silver: 1.07, bronze: 1.15 },
+    // Long straights into one heavy braking zone: a hairpin at the north-west,
+    // and nothing else tight anywhere.
+    //
+    // This started as a chicane and had to become a hairpin. A chicane reverses
+    // direction over a few car lengths, and a path-follower carrying 250 km/h
+    // cannot swap lateral load that fast — it overshoots, blows the grip budget
+    // and ploughs on. The effect was that the *best* AI line became the least
+    // drivable one and the whole field inverted. A hairpin asks for the same
+    // corner speed without the reversal, so the fastest line stays the fastest.
+    points: [
+      [0, -86],
+      [46, -82],
+      [76, -62],
+      [88, -30],
+      [86, 8],
+      [76, 44],
+      [52, 70],
+      [18, 84],
+      [-20, 86],
+      [-52, 74],
+      [-70, 52],
+      [-58, 34],
+      [-76, 16],
+      [-88, -16],
+      [-76, -52],
+      [-42, -80],
+    ],
+  },
 ];
 
 export const trackById = (id: string): TrackDef =>

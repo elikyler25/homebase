@@ -5,6 +5,7 @@
 // per frame. That keeps a phone at 60 fps while still allowing a fairly dense
 // track surface (kerbs, edge lines, surface grain).
 
+import { SPRITE_L, SPRITE_W, carSprite } from "./carart";
 import { RacingLine } from "./line";
 import { Vec2, clamp, damp, lerp, vadd, vscale } from "./math";
 import { Entrant } from "./race";
@@ -19,6 +20,11 @@ export interface Palette {
   kerbA: string;
   kerbB: string;
   grain: string;
+  /** Apron just outside the racing surface — gravel trap, sand, snow bank. */
+  runoff: string;
+  /** Trackside cover: trees, scrub, drifts. Two tones for depth. */
+  scenery: string;
+  sceneryAlt: string;
 }
 
 export const PALETTES: Record<string, Palette> = {
@@ -31,6 +37,9 @@ export const PALETTES: Record<string, Palette> = {
     kerbA: "#e63946",
     kerbB: "#f7f7f7",
     grain: "rgba(255,255,255,0.028)",
+    runoff: "#6d6a5c",
+    scenery: "#1c2a1e",
+    sceneryAlt: "#2c4030",
   },
   gravel: {
     ground: "#37421f",
@@ -41,6 +50,9 @@ export const PALETTES: Record<string, Palette> = {
     kerbA: "#c4713a",
     kerbB: "#efe3cb",
     grain: "rgba(0,0,0,0.05)",
+    runoff: "#5e5138",
+    scenery: "#2a3316",
+    sceneryAlt: "#3d4a20",
   },
   ice: {
     ground: "#e4eef4",
@@ -51,8 +63,18 @@ export const PALETTES: Record<string, Palette> = {
     kerbA: "#5b9bd5",
     kerbB: "#ffffff",
     grain: "rgba(255,255,255,0.06)",
+    runoff: "#c6d8e6",
+    scenery: "#9fb8c9",
+    sceneryAlt: "#b9cede",
   },
 };
+
+/**
+ * dust  — gravel and grass thrown up by a wheel off the racing surface
+ * tyre  — white smoke off a sliding tyre, the visual tell that you overcooked it
+ * smoke — turbo exhaust
+ */
+export type ParticleKind = "dust" | "tyre" | "smoke";
 
 export interface Particle {
   pos: Vec2;
@@ -60,8 +82,14 @@ export interface Particle {
   life: number;
   maxLife: number;
   size: number;
-  kind: "dust" | "smoke";
+  kind: ParticleKind;
 }
+
+const PARTICLE_SPEC: Record<ParticleKind, { life: [number, number]; size: [number, number]; grow: number; alpha: number; colour: string }> = {
+  dust:  { life: [0.7, 1.2], size: [0.5, 1.4], grow: 1.1, alpha: 0.34, colour: "200,180,140" },
+  tyre:  { life: [0.6, 1.3], size: [0.4, 1.0], grow: 2.4, alpha: 0.3,  colour: "232,236,240" },
+  smoke: { life: [0.45, 0.8], size: [0.4, 1.1], grow: 1.4, alpha: 0.24, colour: "190,215,240" },
+};
 
 const BAKE_PPM = 6; // pixels per metre in the baked track layer
 const BAKE_PAD = 14; // metres of margin around the track bounds
@@ -207,10 +235,26 @@ export class Renderer {
       c.closePath();
     };
 
-    // Shadow under the road so it sits on the ground rather than floating.
+    // Trackside cover, outside the run-off. Placed by walking the centreline and
+    // stepping out past the apron, so it hugs the circuit's shape instead of
+    // being scattered over the whole field.
+    this.bakeScenery(c, track);
+
+    // Run-off apron. `ribbon` insets from the half-width, so a negative inset
+    // expands: this is the same outline as the road, just wider.
     c.save();
-    c.shadowColor = "rgba(0,0,0,0.45)";
-    c.shadowBlur = 14;
+    c.fillStyle = pal.runoff;
+    ribbon(-5.5);
+    c.fill();
+    c.restore();
+
+    // No canvas shadow on the road fill. The ribbon is an annulus drawn as one
+    // path — outer edge forward, inner edge back — so its outline includes a
+    // seam straight across the track at s=0. A fill ignores that seam under
+    // nonzero winding, but `shadowBlur` traces the whole outline and painted a
+    // dark hairline across the start/finish line. The run-off apron already
+    // separates road from ground, so the shadow was doing no work anyway.
+    c.save();
     c.fillStyle = pal.road;
     ribbon(0);
     c.fill();
@@ -267,6 +311,47 @@ export class Renderer {
     c.restore();
 
     this.bakeStartLine(c, track);
+  }
+
+  /**
+   * Trees, scrub or snow drifts along both sides of the circuit. Clustered and
+   * gated pseudo-randomly so the trackside has rhythm rather than a hedge.
+   */
+  private bakeScenery(c: CanvasRenderingContext2D, track: Track): void {
+    const pal = this.palette;
+    const n = track.samples.length;
+    c.save();
+    for (let i = 0; i < n; i += 7) {
+      for (const side of [-1, 1]) {
+        const gate = pseudo(i * 0.37 + (side > 0 ? 91 : 17));
+        if (gate > 0.42) continue;
+        const smp = track.samples[i];
+        const clump = 2 + Math.floor(pseudo(i * 1.9 + side) * 3);
+        for (let k = 0; k < clump; k++) {
+          const off =
+            track.halfWidth + 11 + pseudo(i * 3.1 + k * 5.7 + side * 3) * 16;
+          const along = (pseudo(i * 2.3 + k * 1.7) - 0.5) * 9;
+          const p = vadd(
+            vadd(smp.pos, vscale(smp.nor, side * off)),
+            vscale(smp.tan, along),
+          );
+          const q = this.toLayer(p);
+          const r = (1.6 + pseudo(i * 4.4 + k) * 2.4) * BAKE_PPM;
+          // Shadow first, then the canopy, offset the same way as the cars.
+          c.globalAlpha = 0.28;
+          c.fillStyle = "#000";
+          c.beginPath();
+          c.arc(q.x + r * 0.18, q.y + r * 0.24, r, 0, Math.PI * 2);
+          c.fill();
+          c.globalAlpha = 1;
+          c.fillStyle = pseudo(i + k * 2.2) > 0.5 ? pal.scenery : pal.sceneryAlt;
+          c.beginPath();
+          c.arc(q.x, q.y, r, 0, Math.PI * 2);
+          c.fill();
+        }
+      }
+    }
+    c.restore();
   }
 
   private bakeKerbs(c: CanvasRenderingContext2D, track: Track): void {
@@ -344,7 +429,7 @@ export class Renderer {
     const dy = Math.sin(heading) * len * 0.5;
     const nx = -Math.sin(heading) * 0.85 * BAKE_PPM;
     const ny = Math.cos(heading) * 0.85 * BAKE_PPM;
-    c.strokeStyle = `rgba(20,18,18,${clamp(intensity * 0.5, 0.04, 0.42)})`;
+    c.strokeStyle = `rgba(24,22,22,${clamp(intensity * 0.34, 0.03, 0.26)})`;
     c.lineWidth = 0.45 * BAKE_PPM;
     c.lineCap = "round";
     for (const s of [1, -1]) {
@@ -355,18 +440,19 @@ export class Renderer {
     }
   }
 
-  addParticle(pos: Vec2, vel: Vec2, kind: "dust" | "smoke"): void {
-    if (this.particles.length > 420) return;
-    const life = kind === "dust" ? 0.7 + Math.random() * 0.5 : 0.45 + Math.random() * 0.35;
+  addParticle(pos: Vec2, vel: Vec2, kind: ParticleKind): void {
+    if (this.particles.length > 360) return;
+    const spec = PARTICLE_SPEC[kind];
+    const life = spec.life[0] + Math.random() * (spec.life[1] - spec.life[0]);
     this.particles.push({
       pos: { ...pos },
       vel: {
-        x: vel.x * 0.35 + (Math.random() - 0.5) * 6,
-        y: vel.y * 0.35 + (Math.random() - 0.5) * 6,
+        x: vel.x * 0.35 + (Math.random() - 0.5) * 5,
+        y: vel.y * 0.35 + (Math.random() - 0.5) * 5,
       },
       life,
       maxLife: life,
-      size: kind === "dust" ? 0.5 + Math.random() * 0.9 : 0.4 + Math.random() * 0.7,
+      size: spec.size[0] + Math.random() * (spec.size[1] - spec.size[0]),
       kind,
     });
   }
@@ -381,7 +467,7 @@ export class Renderer {
       }
       p.pos = vadd(p.pos, vscale(p.vel, dt));
       p.vel = vscale(p.vel, Math.exp(-2.6 * dt));
-      p.size += dt * 1.1;
+      p.size += dt * PARTICLE_SPEC[p.kind].grow;
     }
   }
 
@@ -435,7 +521,7 @@ export class Renderer {
 
     const widthFor = (sp: number) => {
       const t = clamp((sp - vmin) / Math.max(1e-3, vmax - vmin), 0, 1);
-      return lerp(3.4, 1.15, t);
+      return lerp(2.9, 1.05, t);
     };
     const colourFor = (sp: number) => {
       const t = clamp((sp - vmin) / Math.max(1e-3, vmax - vmin), 0, 1);
@@ -499,9 +585,11 @@ export class Renderer {
     const ctx = this.ctx;
     ctx.save();
     for (const p of this.particles) {
+      const spec = PARTICLE_SPEC[p.kind];
+      // Fade in briefly as well as out, so puffs bloom instead of popping.
       const t = p.life / p.maxLife;
-      ctx.globalAlpha = t * (p.kind === "dust" ? 0.34 : 0.24);
-      ctx.fillStyle = p.kind === "dust" ? "#c8b48c" : "#e8eef2";
+      const fade = Math.min(1, (1 - t) * 6) * t;
+      ctx.fillStyle = `rgba(${spec.colour},${(fade * spec.alpha).toFixed(3)})`;
       ctx.beginPath();
       ctx.arc(p.pos.x, p.pos.y, p.size, 0, Math.PI * 2);
       ctx.fill();
@@ -512,55 +600,33 @@ export class Renderer {
   drawCar(e: Entrant, isLeader: boolean): void {
     const ctx = this.ctx;
     const v = e.vehicle;
-    const L = v.car.radius * 2;
-    const W = v.car.radius * 0.95;
+    const spr = carSprite(v.car.id, e.colour);
+
+    // Shadow. The silhouette rotates with the car but the offset is world-fixed,
+    // because the sun does not turn with the vehicle — baking the offset into
+    // the rotating sprite would swing the shadow around through the corners.
+    ctx.save();
+    ctx.globalAlpha = 0.36;
+    ctx.translate(v.pos.x + 0.5, v.pos.y + 0.72);
+    ctx.rotate(v.heading);
+    ctx.drawImage(spr.shadow, -SPRITE_L / 2, -SPRITE_W / 2, SPRITE_L, SPRITE_W);
+    ctx.restore();
 
     ctx.save();
     ctx.translate(v.pos.x, v.pos.y);
     ctx.rotate(v.heading);
-
-    // Shadow, offset opposite a notional sun.
-    ctx.save();
-    ctx.translate(0.45, 0.6);
-    ctx.fillStyle = "rgba(0,0,0,0.32)";
-    roundRect(ctx, -L / 2, -W / 2, L, W, 0.55);
-    ctx.fill();
-    ctx.restore();
-
-    // Tyres.
-    ctx.fillStyle = "#15181b";
-    for (const sx of [-1, 1]) {
-      for (const sy of [-1, 1]) {
-        roundRect(ctx, sx * L * 0.26 - 0.42, sy * (W / 2) - 0.16, 0.84, 0.34, 0.14);
-        ctx.fill();
-      }
-    }
-
-    // Body.
-    const grad = ctx.createLinearGradient(0, -W / 2, 0, W / 2);
-    grad.addColorStop(0, shade(e.colour, 1.22));
-    grad.addColorStop(0.5, e.colour);
-    grad.addColorStop(1, shade(e.colour, 0.72));
-    ctx.fillStyle = grad;
-    roundRect(ctx, -L / 2, -W / 2, L, W, 0.55);
-    ctx.fill();
-
-    // Cockpit glass.
-    ctx.fillStyle = "rgba(18,26,34,0.82)";
-    roundRect(ctx, -L * 0.08, -W * 0.32, L * 0.3, W * 0.64, 0.22);
-    ctx.fill();
-
-    // Nose highlight so heading is readable at small sizes.
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    roundRect(ctx, L * 0.36, -W * 0.28, L * 0.1, W * 0.56, 0.12);
-    ctx.fill();
+    ctx.drawImage(spr.body, -SPRITE_L / 2, -SPRITE_W / 2, SPRITE_L, SPRITE_W);
 
     if (v.turboTimer > 0) {
-      ctx.fillStyle = "rgba(120,200,255,0.75)";
+      const flare = 1.4 + Math.random() * 1.3;
+      const g = ctx.createLinearGradient(-v.car.radius, 0, -v.car.radius - flare, 0);
+      g.addColorStop(0, "rgba(160,220,255,0.85)");
+      g.addColorStop(1, "rgba(90,160,255,0)");
+      ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.moveTo(-L / 2, -W * 0.3);
-      ctx.lineTo(-L / 2 - 1.6 - Math.random() * 1.2, 0);
-      ctx.lineTo(-L / 2, W * 0.3);
+      ctx.moveTo(-v.car.radius, -0.42);
+      ctx.lineTo(-v.car.radius - flare, 0);
+      ctx.lineTo(-v.car.radius, 0.42);
       ctx.closePath();
       ctx.fill();
     }
@@ -568,10 +634,10 @@ export class Renderer {
 
     if (isLeader) {
       ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.5)";
-      ctx.lineWidth = 0.18;
+      ctx.strokeStyle = "rgba(255,255,255,0.45)";
+      ctx.lineWidth = 0.16;
       ctx.beginPath();
-      ctx.arc(v.pos.x, v.pos.y, v.car.radius * 1.9, 0, Math.PI * 2);
+      ctx.arc(v.pos.x, v.pos.y, v.car.radius * 1.95, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -588,34 +654,6 @@ export class Renderer {
     ctx.stroke();
     ctx.restore();
   }
-}
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-): void {
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
-}
-
-/** Multiply a hex colour's channels, clamped. Used for cheap body shading. */
-function shade(hex: string, mul: number): string {
-  const m = hex.replace("#", "");
-  const n = m.length === 3 ? m.split("").map((c) => c + c).join("") : m;
-  const r = clamp(Math.round(parseInt(n.slice(0, 2), 16) * mul), 0, 255);
-  const g = clamp(Math.round(parseInt(n.slice(2, 4), 16) * mul), 0, 255);
-  const b = clamp(Math.round(parseInt(n.slice(4, 6), 16) * mul), 0, 255);
-  return `rgb(${r},${g},${b})`;
 }
 
 /** Deterministic hash-noise in [0,1) — keeps the baked texture stable. */

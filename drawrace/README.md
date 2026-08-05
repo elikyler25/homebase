@@ -21,8 +21,16 @@ to be at that speed, there, with the grip it actually has.
 - **Turbo charges under braking** and takes its cut of the grip budget *first* — which is why
   deploying it mid-corner is a good way to end up in the scenery.
 - **Surfaces bite differently.** Asphalt, gravel, ice: 1.0 / 0.82 / 0.56 friction.
+- **Smoke is diegetic.** Tyre smoke appears exactly when the grip budget is blown, off the
+  rear wheels — it is the feedback, not a decoration on top of it.
 
-Four circuits, three car classes, two laps, medals scaled off a simulated ideal lap.
+Eight circuits, three car classes, two laps, medals scaled off a simulated ideal lap.
+
+Cars are drawn per class rather than tinted from one shape: a rally hatchback with light pods
+and a roof spoiler, a GT coupe with haunches and a swan-neck wing, an open-wheeler with
+exposed tyres, wings and a visible helmet. Sprites are baked once per (class, colour) and
+blitted rotated, because re-pathing that much detail for five cars every frame does not hold
+60 fps on a phone.
 
 ## Running it
 
@@ -33,7 +41,7 @@ npm run dev        # unminified
 ```
 
 Open `dist/index.html` in any browser, or add it to your iPhone home screen for full-screen
-play. No CDN, no external requests, no network at runtime. The whole game is ~49 kB.
+play. No CDN, no external requests, no network at runtime. The whole game is ~57 kB.
 
 ## Verification
 
@@ -61,7 +69,8 @@ off a technical circuit, and a planning margin that inverted the entire AI field
 |------|------|
 | `src/math.ts` | vectors, damping, deterministic PRNG |
 | `src/track.ts` | closed spline, arc-length resampling, surfaces, spatial-grid projection |
-| `src/tracks.ts` | the four circuits |
+| `src/tracks.ts` | the eight circuits |
+| `src/carart.ts` | per-class car sprites, baked offscreen |
 | `src/line.ts` | pointer input → arc-length path with a speed at every node |
 | `src/vehicle.ts` | the physics: friction circle, tyre falloff, path following, turbo |
 | `src/ai.ts` | racing-line optimiser + speed profile; opponents share the player's physics |
@@ -80,6 +89,6 @@ speed by the same factor, so the mapping holds on a phone and a desktop alike.
 
 ## Not yet built
 
-The original shipped 180 challenges across 30 tracks. This is the engine and four circuits —
+The original shipped 180 challenges across 30 tracks. This is the engine and eight circuits —
 the career tree, balloon skill runs, hot-seat, and the remaining layouts are content on top of
 a core that is already doing the hard part.
