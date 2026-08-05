@@ -1,0 +1,3736 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hustle Lite — simultaneous-turn duelling, with the counters shown</title>
+<style>
+/* Press Start 2P, latin subset, embedded as a data URI so the page stays self-contained.
+   Copyright (c) CodeMan38, licensed under the SIL Open Font License 1.1, which permits
+   embedding and redistribution. https://openfontlicense.org */
+@font-face {
+  font-family: 'Press Start 2P';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(data:font/woff2;base64,d09GMgABAAAAADDgABAAAAAAo5QAADB/AAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGhYcgzwGYACEbAiBYgmaFhEICoKJUIHrZAuDRAABNgIkA4Z0BCAFhEoHhF4MgTEbyJFVB2LEHeDgkiZSjEQIGweAQH3FQFVvB3IcbeUK+A9wihJYG6OnUAshhGYwU8sJisSmGdGEOziHGsMYsqVz0we/TuoFtPqyNKPSs/LvM7A+RxU8I/hz29u6bf1GpfgMuypbQre8/NnueIYU2tGu8t/PwLaRP8nJC8/De9afm7QdQBnYK2GwylrveWn/ASjxj7d7G/DGv8iSwOPpzHIv//91ZvdJXyacUYBky5JBMrHs/PG3HQAyBmEBQ9xUe3rPQp9yi3a7av1PW0owvQNqnua7upM2RBvSkRGkoGRzFcCizKirnjbA5n/TqkoSmFHg2/2YkDYfj+6lQ6YnR/z/X6Pd9/58sTHZv5Y2LxYaPojNOQzifyuRUIiNVPGQKIWMnc2HqKbl9OQNku7+HRIDKi7EDAAwpLbQVvnRG1Km9RPNmZBlUBu6DF1G4sxB6CTBVaJOVAlANO6XalL/2qGBBkDOyK6z0dkk1dSsziok10KhipXPIfpR8AnCaTaJJa369XQGzB8w8v9nqlVaVQAIUOPINS6yfEvt7vkgkT1nMv9yE10G/l9dxa5CN8SGEwCBOgKiHCjKYKQ11OqhuhtUE9I80j+uc1jjOLrzkZYacbzRGWczb7K7LJrJzqXJJUlyOsb0DbRPSUh27Zdfhec7NNGQVhEQW0REQc2k9n+ytWtu+C8tYPf5ySPPistc5oIc2a14jGl1uk42W8spJBZUUMrQFJIvt0cAW75+9YSbKKioCGCtjqUoJXedJiTtjhX9sMcTKb72GtYwmzGgYMQSKxC4zzZggQHKPx2omLBeq+8AGlDt/3KDr0Kt73T37N6Rkmb/zn3IQ6eFxNSY8rMJJt6zkUFqyWGPARAsEfxRcMWaYKANhbnECQTeUkGjNeFafxmRob3p4Qq2mBgxMrH9cAqNSbRBdiKGgruqB5uFymLGoWCPiZmgnkHrMYpfM5qxmGYqhLCmAlIap10RDRoRR2OoeeNKBAH8tlDCVFOBUTszU0NT4Sa38ifSmEF9KrMxgjJVaQFq063STlKOIl5WvrIFN1j8NCrFYQga6lMA9alUFRYBKK/bBFoN/TpXVEQbFP7qptAw4ArYiZdpJLMkpnHbr5xU7ir3VdFcNW/NXwsqszo1rPWBp54T+AYNsxm4t9dIkGVxstGborlonprvrtqtYv4E1He8ew/Gb9/fbr+Nvw2/bsLjefIXZeDjAY8rH9d4bP9o06OMP/1bjQCQAOq4DjKbr5xMJoHk/21A5R8W8B97OM15FrKSVczmIH+xlv9ZzJ8s4hhHOMo8zmHAFjsOOOGOB5544U8AGkGChYoVL0GiJMkyZMqSLddy5rCCGyzhAXnKlKuptgYaaqSxllppra12Ouihl9766Ke/CpWqVBtmKddYxgl28i+72Mdu9nOdi9znErr1nGQdl3nIVY4zlWnc4RQXmMtdpjDSBmYyg1nMxxIjJqxZYMUGe9xwxgVX/PDGB18cCREpTLhoEQ4RJV2KVGlyxOmrSL4CJQoVK1VDfXXUVU8LTTXTXC3tddFRJ910dpiuBhtgoEGG6GmoGN2tYTVb2MpmKv8xvvNdGWg+Oj3V2van6O01OtSnvxn9EQzkSUujRPiFUf4xXcEGccb3ArD0C6ETS3SdeuJZU6tMiMfIZzwlI/32wIP5geyrhCYuEEK6DQgiOkuyqcVjS8nGIfjtOJn5pMkM+0TvoEfXyGvKRth86rVo9fE8eHz93M+DUlhrqhUCCtdEOmQmWWDax0qqxEG+nYJj5I/THvHZ0VAai/IBrEEavwMmIQS1IisEIY77oxAsZRs9kBnpEFTEuqeiO7p0pxI6kCaWzBYtGodFmTkUgDyjkAC1n2zSJijn9NDPjEDW8oqsUho3yMwNH9fV9GTwEnQA+ZYnWWqKFo50OV+x6RbtBpLBiGvUnR67gNBdojQ7Js1JEyo5S7eNMZ/uFwe/GGajI3uFx0BysRvfncdu3H6InmtpGxCvaZOMT1qZLLGvR2ZE9LKecGg2DztMe5KaWnFj3Y6yIak71OX4xYwxNU0RmJAATOyRNn6fPPJa6Tq0tGXQLpI04sL9xSxDNmmCSkAsihnpHNddYBCkJ2mw1TJsg5G5eSv8YphnPc2/WkTkyWhokMjVIvbSti9s0Q1zXweW+ufRqHFowy9tfY+pRIvFh8fsgrDY2SQcFqTpgGHLdc+gZLgSeKDBzUiqDsrGui+zuI8sV/NHbfhyTst3AWUUG5FGJBanBgbEgME4YvosWZiFvN8CxPUuSRD9hoh+fwfE7aFNSKNtz7Du0KNfd/TpZBOHSJr+E40SQhi4PCkxl8UPlkrulmt2QdyyXLcL0URlEtnCZLKVMbKNKWQ7c5EdzE12Mg/ZxbzjWSPm35SuydK2F1SkKxslXaO5Tkk1/mhHK2nGH/+g3m0PrYKWnnQP3U01oEmCSSTJZKIzRlJMIQZzEZO5SZp5SIZ5G7ZBvV5J/vTI6AQd6YNLqLQFle2yb1UwzLeZb9FrigYYBFuzLum2BMbwjEoZgZSsr2uTuiq2ikLrI385TFSXDRSuW6NicAO3XfUvQ6PBaiRrFAHt9wn1bwDA8IHcLpXh9Ul+v9QMagxGvp8Q/JfIsm6qybFs9JkgiYNvb900RYJqoKIKoW+Powv54z4RxxP8vgqw6dd7bRrDtL6Ws2wZQl1F4hgzrtj96vSK9lEuCFDn1ugu2nlUMveRGcBRASfe4z75hv8qaaOa+ksyR7dfcB616RHIOtcVSj+SiX2polfj58dVJBEPhbJIhzzSHUuqqOjRfHkfVRKAzJR+uq10ekSfknFHZctGJBnxnaPsgMX45IqRqEivkJmaaWM0KSNyn9mm8nCw7JjDhllQTLJf6tZIspujh220H2FwsKLrsOCkLEPfHU77CrVotZIa14HKUoy5DHXOwinPFzFwfVsWU+Libu8OVhCFilcB36mLZd7fN+IHY6blPUeEX1cng0cdqlIYXrNcO+/9ppvq+KW5jNCcn/aGYas98KkDw3Y7ayu42Qpzq89pZKJiYZKIHFQXpaZYyem6r8bu3JZ+ytAUDzOWNYX6/Z9i4L6gDfiqj6/ltko4SkEHrGQ0jlbbHPZYTa8FLamlkZw83ZdZ3+hegz09GrdTtdae7D96wBRQd2xVLxMHDZt3cmgrqCNBhX7Wk8G8w2Ytj/FQ77QjpgGGRI8yIse2EehxRuTEIDCiJxmRU9sI9DSj08+YrwA2QM/GiJy7iUDPx4hceBFA9GKMyKWbCPRyjNQV1VSwqxCRa9sIdMKITAeBMZ0xIvNtBLpgpJf46IBdx5jcuIlAb8ZI3yJA6O0YkTs3EejdGJ28Z6CzkPo+OMZ+jT+ge9XD2ceI8slHBrGSxwmKPUkQeVpCVzp9Fu/S7+Jd/T3BG/3BupEfE0R+ShD5uQTnRn+JO/TXuEN/izv0d4uQ5wkiLxJEXpbQI/RVvEdfx3v0TbxH31qEvEsQeZ+gcz7YX71MurRu4dr0LFdyav3zefxzbosIYjbjAMATADkK8hOcKuDyHTABEahzYJ5TVPg/YDlGUaFMc0K05lhDImGLnquSqEpuky1LuBs5s6oyagy8jIokJoIKKAV6f/Vx5bQfe3fRrnUDxx0EIHWXvJJGpqCaUGEqs0F0cGip9cQdvWKqA9RdCYSGa0iDqM+jNth2sGl40HhKpvI9s3rvafbkL8thm2nbycxCzh/cMTk9/+h7m6ZZO/8YEcQQqGfavcz2/unjYAf9k8G2syiLyw8e/DczsH0w2geCGALknv0gA6tKGaDYr+vw7Whp7p7nA2Rj/kD/kKPfMyxsyI2W3pnbYNOTFFDfDjaU8O1NB/LvPW0a8smTbT9NNk19P6U0eKV/MNXTmBOHROTsiYUgM/Swe4tMZJK/ykyWG6amfU9SAGgRIQhFTv734EnGonHkJHm7fhh66xHBAqCC6j3rTZ094JL4cP5kCRECFkyGn+F50/rnZYmCS9DZBYOFQJgzoUWnw1cnjiVvuAZrDNqZqii2Oi5DOQtyTV8G/UgW8BKWvqoqJn38jsH5ibcGqzFlOJ4TPSeu4HwmjXWDDU58OyQdWuOmtZzueF6kSTUPIFGjoIzocsCxwn2gzmucT71M85uG+BVw3AyEuppHVtJqT/yvwbfJDiMKiQbDZw/B8rar2G4lybDuddDA0U7OtwrnO6EmIhrWGlK7+3CWcBNSGr0rayU6NxgxRIXsehw3KNUzIC2DTBIRFrq1QRS9lhGrEToT1YU5VAsLa6/FQuftxLwJK0o/1wVYgAvQovEdaRtE6IvoBOQwOrUkMkDGNEveQVThTJG0s81xU5GgvxQjCSY8pfwGtuj7B5yV5cA5Vz0mxBDmoM3si79gKmXaZwZ6CaTaOlITCgLcyvvoAMNUTqgTfHBKptQrYG6219OCQ9YY2Np9xm/g5FwUS2hWIVI80s4CA9rRNjvEwt5L53pggCd6GRfnrAQ9TcfEDl8Lj+06arGFErZhPWTYvyqhr47FbRIOxt06JEY0RG1hUWWumhX77cEFDUIrG0ru4JnCtcFiTrr2vsDFHcvWPrBPiJKEhqcdCFDFvaMNi6ayUWXAo78nRsulVANJDyfEJIGullDYOjPG3ijsqI5o/rCc4vmC1zWL0b+HHOfmT1r6Vr8zj6oWp9znvqFoBkO0mFyDIemR3AJUwbfgzVmY9JKCZwm1NrLLsADjoFPmJZWoCEHibb8iTkZz4yWDd6bCG8DAM6it/GTVCdoFoAoWaEcsS4GcNMCuWdaeC9HObBLDKupuwiaRnudkM+p1/KhVB6lG1YLzNTehfohjZsC1Pko52yZqf6aHeRNw8S4KSbLGBbeclZhQxFyLSLpCARYExZ25lDU63AFjmn/KWopYMsnTwBy4A/PKlZi7w0owxNjSNslLrb1GWOv2sy1KrsnUHhWvDC9RUO1KRZjIKcd4ZHdvZEh8ZYn4AmGsMpBKEosBsXayurhaTLpSWEYjzYUiFvJhuMqO57EAb6zpqPMm0oZzLeEIqBsGZrW/8ECLTvtAVocDiVgi0z5a8hIsiC+DzmlzKgQkOIQSvMbcdfzGuEd3z3FF5T38ahGAAvM1s/w/Lx9jo6i1TiyK7MPw0sICwKiosWGGa3bnoMjIWnmGQ13O4TZ1ysDyuRQb4ZKBIwLdT1q7d9rBT/Ya7IUZaZsKVVHvIKoVOk6ouT0IodQV1bpiZ4kzHJpWrOjBLdgit3eI0zlE7rB8+ESxyxxTvoycsym4Bbd1357UpCSVSVW5y198yhad+/rFH2NWYPwNGFba7eDVYZ2Be7MyRu0F3FN+S9fQsnOpLPbEbIxv2VciCR7g0g8QDofzSlw9cfTorAuf9cmyHguuA6sKPQYtiaTllpOtAgCXkuQ18ECXzTBwm+hCL4wYDO0XTCct22/k4BXb8EDHHX5aHuOBhzx4H8wCjeatJvICA8oufImp5Qv7nmDgC7Mg87GV+XSA8DeaFv8A5+3A7oJaBgYKxA5Af7yVb2htSItS8biWZE9sxch9mK8yaiF07+IW5bsMjN5T3dgJlwjCjXCIeuudNtQ6aefQFXjkuBgIEsKa2wLH12RdnWspBrgL6DrypG/VoS3ATlca8CwkT/FYQ6/9RYUQ023PefxUnS2uwfXlHwKiFRL+tMsm+jcacqTxmuf8DnPOb/ZFnQYS5wNtcIpTWATNT7ay4fLk1Gsfa2f8+gWcdBGlle5AEhRIbkojSZCkSRAgkuRDs66QHB369a8M4UOC8gn264/6kuh4mF83ulYokuJ8jsQc4JW/bDX478uuw8a+Z1oBNeSH+nCSkoiIKLweD45LzfxpgKZRUt1LcbeIr7C0FKLteodgB486NNDJgtI5PcVTpsq3qyaBlhD79vf5uqtYzF7wEFV/LgKN2eyCgwqtH+QLlkJTMmVcZZ/RYVASesV6RO9dUNlloFfOeXQZSlZK55S595WYfXrYBVgyeSSIWgnxjPdYBEDUl51FUCa27BKkOaEtg5lRBzMTyDuCmetRxtTOWTlup8PInC6Ngp6QIs9EUyNXjidK0aZbXkd/RBS15E70ae6S1s4mmN51jqGUC40U/NmJPGC6uTjEcA+SMbD/YRkpSp01MteqZ/WAYYMhco62LJyqDuDRflmsIgLtjmxXT+REi03WOSkFhdeAs5YtkHR9GQuOFylgKPHiwedqrtBNThiAFwVl264Yq6Hrg24EKpfbw4bZymSDYjqx3/S1ECQWhhwMXUs4yROlWJZ3kRym8LYtbc1TmWDjHI9mea/twl5tajYX7kUCthBXfEEqkQfFfNdARKqGi34IkMcbFvvBcPo4C2MahUR97HIrglhybIR53j6mXLIG4xIkss+uL0m0X0v+K9/pWjUA5l6kVVa9lCqRR+21Plkg9QfBQufoz6kB4vB1V8rWiZdjMfbIx7zC+QrZs29CfBKgwr0qCkF2+DHCiqEm8jWjsQ4h4sWLiO8t35o3euNDw8mHzGMWGIHcEpn91/UY2z/HjKumpkOUF6cJCF4p6jDuwhWV2r9lIU2KQ1Fyh6+S8Ib40IBwPTdnVua/px3EAYbGJp9d+M7Eq1sb+1slyOh+JjGHcC8ug8mJjz1SEwS6ptww60SVZpTVFA5hMRO6slqxxiti96pwPykeEAHNma2/A5XNEEtiv63Em99ZPKYQ0pyjC/hJ9soROx3GA4pgc9kAIFycCtIIenoNGzXasryp8NSNfWltUrzuLnv+yZAzms/HZshG701+gfOF6I9FO+xuphQXrZ5vBOISuBFe0YOgUT5sUTvjInolf0uyobCfZfXWqndEjTyouQYuO8E1aSufPGyqjN+VZZBByeB5nu58UDmHyiURAXSuraNs2OdyDgjEczOS0tpJFoU6KgQbvnKSF40xXVgPTuq+eF+uKUmbuf5st4jxfAgjFyawnrSOkZPQQncfCZHzrJYtwCsfiUhrf6bSDioX2pSt/pF1itrnnqFo1FQhEu4Hll4vrr1uRfEqiPY9J/lWBJepKi5DLEODCGuER5j89YR1EEfbHB14u8euFJfOurqrdO/vPwlDM0OFPLzVOuY1KHwxprHv7RGlGRydVB6e6mm5F01IIFAoocqNfuVaf0GEUG1PgJUg+/qsAZ+zF5jVO4a93qB6KZmT1zS2/f2qE1yZuiL8/t/J27Wxw0qXEvEdQezDlfLV/gWPKWAiK6NPfOVOoiGS8y4YoXKFhJDamzE6O6wbYOPIjf76W2joB+/+EUDX7+hjc5dno1rYwV31mqH30N+qj67yHDeAurLnueH88Hxu2XFbN2JmJDHBrcCjRkjaZvia3EFn+CD48twoHEhCSluPyvtR1+qI9HYfgN5mzAXvaO/QZN8NwMI9u9NlFS1/XLQ2RpR8S3H2eGcZz7KH7c1poisHtG6W/Js7Jgt3jIPPopYY43gzQVOLtflCHF268BiXfyBaC96n6xit1//5pLUoVmSve/Njrk1XgOwqHKRwkNRuPkdHnAmqYWN2BmEqpLXCW0CAyNRopRi9AIoZlXRuCRZHv+plLnmLLpGZeKUzwUWXMcj0Uxov6vqwkVsiMqpkqfTIMT50quW1XANteM1Z5ZCT9U1u8TnFPtjSzyMebCycKODBaPQ3wZX/1JkWuo8Kh9l4/9pJMAx5E8l9HFpdyYadxhB1BvTXDqemXjOZvPT6anlzfo6aPisrzTgXjexDR4EkR5SL8SyLbo9z8cr/pjGCxqmxNECE65/nTuMF1X2l4SpIhJUrknN533dEqCW+83vDIW6JKvi0E1g1scyl8GfCnhf6yksy+/DbdlPPhKga+dZygmKEx1V2G8ElX+KdHD0h26sddscLQjRFNL4eHXzci3tY/JJr7Vn5B/bbHeVRVLbxUKbGWTZ3+QvRwQ1zz/vwg3vP3h/aXr32DaR1J842ayq+Hluoy1pZbZcUvXaTW2Kh+YRxz1Fjl3d98IiR09X0v5/28xui+H9UvpLid83/jr/H/39nS0qQv1uH/s9/Pj+LMhQFdAwKonxoJMtpmMEb5Zc1AVzXWWx2kU+6y9GhoDL/YFgVbjC9n1sF/yDBFFas55taL5935hE7ndSbpUOjp9yHC8KrYEBAKejGNq351nC/rtfFZrwzmC/8pLtHpuc9tQnT+7nb9V9MqOqzdph39Ky78+lcvrz7XTMM6LSCjhsrTituCpKIm/BwIsoSw9F14/qyep3aZrfrWgHKHltcysU+6R6R+5idaJ1w4X4myffJQ+vBS/EM61X2viC9n0lbutpxoevSP2xEaTFudhIibO8AL6tzSZtMZ1yk2nG9l86hxfqEtdIbYJe/cCG3KjCenzNfiP+l8iHU1ZNBIOf78tj98MJBrn6wq1uyP8uE8IHkFgO3ZuvdfEje3buToaWDjgSv1MFx2Eb2lltXlY3JeJFIzdi8APgeGex+0RyNZHq9UJ8A5a0COK7DPcSirXysYy9TO+n0oqvox/PkjG7jdM8fINzRGKTk28Qd/y431tU2Ydf1MVkEuwRwwZPufQQ/FqbrDc7fz8zPL+DHFGeXP/vyswZ9eSc84j75+ONvQyrosCD1g8NCbZjIKfJgIpGUSmuLZLbq0mgI1Qmrxw0kq4nqz2Lab5gPAU7EQ6JIKoNBs+hQjs1CaelsW0c6FiEC1UBFfX7stXz6J340I5kSSxqD0ghRQEqohRzUSnJ9yBl9D9H7JT4QfI7ZbzvS9RHyxf3izoTWMTISlFRSuqoX8qz+DlrQfy6FVWVOXeeLAiLnqff5tXnux/E17kIVP46GJi75UKLJD0AT6TDKSIgxRvZO2u5Du6gWgTplntATcZ2AExM8orxjwzmmaI37GpZyOSbUCUaYJZJIKq4667kwZuM4TPoeQmzUgFRdQif02Eqa0NjPnTJPQcaQrltzm0KUZYCGPe1qW+Ea2cekDy9puOcNDWqiJu9LUfatD64Kk87eRZlwqNsbZJ+QTpAJvuBeNWOypipHf8WVSHhOzo5WbN0ZuJ0sewCtoqu1e1MJE0KvPvcotYPDQicZ0wH0Ehs3Ru9Bvs8GKNkvWWYx6QJ2N5KV2amNFogHsDnIuNC2DDc55IyM6qUQjRcVlFoqn1TD+1LY0jWLkP0wUSgUEgHBMmHy5D461z1ArRf/pJsTqkviCT0lxwScMmmTmIVKrW0qfKqutASLXISIb8hNGSJ7MtRiKPEe4yU3LyxAa0ZEdzAt3KNtupvKLMfQvACAmrC7XJ/46nSNj1yFJ8DCWSwQV1a77BfTfQEMm2m2Hhbzg8MnXcJuRkditpUFAHorAKyMVSirH3c/t12tqVPuE6O3QI9XOIm3gl6oj0WdSauyuBvPpGbUwifzXd9Bg2aPe2kTUNa+W3wJTUVP+DsuvLldRnowyAGD7dfylGPFRkF1PDLXBnHlLlQCqaSSvSHz69UOKFNySqODt5Tn+/CAAgViRgfIQlmLUJs1Ivd+esCQYBkOeOoOEIZYvqbOsV2vJhFXq7y6e5E4nyzs9nXT4uyO+zmo0JtKSIQ5rEW4X6bSV00zmyyVikJK9LgzU+JqbFrOmJG2irALK9a7CFMAtXsETxOg3OZqLmgsvEMJfWxeOE8FSoQgHLhYAy2Sc53F5oDvAcMczjH9m/LTgWXSMB3L2tqtWbXab0bZcSPRcKs3u5oXpzpqu1pkhoW+2mzVB0dRtDCMGmDLXVyxV+rR+kiCWlgHT9w6SrF8LIE74vuU+Qfwyeei+NmnY2pyS/L046knOLnzUaFC6IQxSUm2jF/T8G2gJe/n6LGHibi4J92N5r1L7BNQJojju8YjCuVgf4YcGHCp8aCr4+J2YfETFFZVxeJnNiwgalLIZKL7AlguzDTN/4Z4C3AmHxJqSQe6Dbng7osfMguBAmMlq/LxlNYrsVTYzEHOvO3NMuuU8Rvw9KkofvI8NYfR0TGn+5m/+thMYgqeME8qh1RPH8NjpTngUiy0dlQ6vgc6FjSnT6bhkiashd5gfD+3rMP1OMNaIF9c66xWy28aw1p8QiakhgyLUN9AI7CI4qJEs7XavvlDB3cryZpiAoMMOrxs5Zm4TI0fK1MuvieHgV143KrK3T2t8kwrB5RawIWqwhM/IKAZi0NGw4NS9jS40kRcdfO2Ng4baM9tncmKLr74wqs4DzRwxc5e+aPfR4PEWfq3u7GMKtURtdbKs6D9GHJeyMB0FDQIVTEqzLLFEj4SVjf8qa1aH40RJoS3NFFttEZOAmdBOU5bNh5Ofi43PgQBgaLHOuU84WNA6+LeNFZKq5Ko61ax/w5fWZaRfvsJ0PfYm0UQUDQSahinCT1caZmAwb00zNtQ5TU0RRAnHNkipQnlyrhv1YHVid9+RAKf8PH7GRHIOVos8/52gUVSO0R+pyKQKwT5UCe2uUK6Wrs3YWkCTGuxc2BQLpi22fn5PiRVNB1KWJwnNAvnG5ok0w0UoXKDlAgcXFWjwAEWWpQclzlCdXUy4aMoiAnhefLMDYSw2ImayMRZ51AfZ+KhlsqR2hIQhZ0Mh7uk/1qLSJbCJgJVrQ4OabpqazJFNBEt0x3joe6G43BRaEEk33MVyXfSRw2SJxfFF/D6UnS+xtASDp/V4owxHTApyA+brJr3IDlfTHuR1McktExIp4FtggADw5af1MLw5CVNJJqlNgS0mo5tXZWaNk9pVduCK1J4fo/yYw5hJ0/Oxuzt+SYrLPQNZp2YeCCpEnBr4MEAK/WMQWBN1/5IzUmZB7LEFtaLu2lfEOZPOppVbTctiPW+mU7oHMnxdjdFQTPv0RkLssZWungLw1UKnnITmD6XukcUgx5SU7m8SA9mBF5IhqBClZXD1mxHgxsl4vQOpQ54A0GUy8OtKJROa3e+Hn6YNgPkrcBFwvfbq6vH7TZQlQg2dLwSwkqbwijZgBKLhUgkt3VxBX+Fh+k+HaO8WtRNawR4ZuR3cfqPMEx33H1jt1VYuE0PikV0eb8OFiasgqGHcgNeLIV99sV369uN3q8zr5V2QBdydmCG2xwe0ztnd1t1FBSu7wetLnbuLpyoM2WfaP/tbLA1fl+TE0ySyejbVsX5xzEYT3dHXcwukfDq/anxUwmOElwmFhJqes9os+IML7u4m0S+rTzsceYVC1lrfrf0uxc5LJQEuX4MRomt6NZh6y42WWEh2Z1dKrMjeU/wCldWZkskh1xLyijN/1jifQeEVMWc+A07gMXUZSUQuT14LfKcT1ajzWlXJFtAtr8Two2TEgciYzzskL+oKOMSXYfJSiQVJraPSDUoer2QtwZGUjQJrmpOozW+4E+VzrlSwVH2ONJKM8wcSe2PMBrV2KYQcW9qmcd2YP2bj9xKVoSWRjVvg7dFsew5H1hrDGhxpIJ6tWPnz0ue84HW5Xmf+XyWxQTs6atYB68OJrUnllE8HUAkikFRnEsIQnCitYJrgcWaRzlE6mw0oVeRyoTQ2Fjyxp6/RJq/h17zjWOrYTy2cBOIHr1VCqw0MxmRMSRXIAYhDhHxlQuC5SVSaFDLzlXA5srWeRkygI6JmTeF+5PTIxlQgO4cx2JBnNrOa2KWTBDiuZwlQPu/n9c/nAf/bTQVRfbDqEjlMDvVEqtd1Hl3PB6opLtNoU4eE3pSCyaATXvKlwfg4Vks/fQY3P3vafmzMceAoqCxUge8APpGQIiUtpAB3th1T16/SwpJLAPldDO021c47xspyJgIGJBfQhdfLENADCq4anHU6N6FjWW15nrkOByMLEvDEuSJNi5keB7b5ClBrAdvPP1JTuyDK5Aqhk2/aWZ6QxdizayeMH3E0g26h1jDR2S1KeXboq7pNYwbsSCF334alHU3HG6nv9LsWtZ3ozklpbsq3fGEiMpeAtXax16az2uT9yI2pMmvX7vo4Z9CBgv39rp31+O8WZxR5PExwlQQdZ1WEuA8nR12zu2+jZfkTtpE4meYmOsPH9iJFtgSOg143E0/NKHZfwQXdJiDklJeWUnhnKK9zUeJvAYcs4eDoHcy4Ro+n6XOsVCYSq7TNUkRJhr6I/PzGhbZdiWNwA88qAvZC+q2qfXVcxsvOtybxL14fdjjOb/tv19INwDQRw40+KdFuPUdfP/6HyCEG3SeJBGpOUW7CFzMlvQ2XEoWkw2d68dyXxD1kpdKWNf7Biw4O6tPFLF/yEyW7DfKtIu//ps+9UfK41y70YrpBthfP7lPI1rUwZyM+yu6e3e/xtNQoPpXL+FWWw5C9CNPsIqQgBpRv6wU3KSmO5+vQcciFaj0hjom4LSR7cFJpWQFg0Q0BcapoGkVtieQPL7JxEETVKZ6g9TWcLjYN/BmSCicyqCo4PrO1Tfl/hBGN2Xa47tL9wGSva1oE3CoIU0W78HfXddIlsrRUUhVed+UBFtPnKc/7FZlnAqkstY2ofN2/viKIMzoYAiSGBVLBDe8G2Wq0Rpyh/RXpYY9CbIJ6N75502w9rfYQBH8DWQCU6bYOJOHlSpbGyLt+7FTNWWbCFL7kKie6lA4jVQUsUpYIhsLwI1JZ63oBuGTDUWO6+kFFRaFYlmwxQQZ9MFkb6INV5sy02kRWMgTPkKmfIPwSjNz8boBFmre1pcRzALrt65avNa03n1Hj/Fr54niM7rwDDpQ408IN1iovGGCPXgUFE7qw6r9WCiYD+VQ6bFTnhA+5dM15A6q0rrBflO/PvErGqqc5UGJlI/P5HBpDWq625vpJsH7T4xBNub1D/6aAGGu1R/bnRnz71duEwLsJxruLK9TZsG2NErkkoZD7RZQn5AdpWRWHqJ2pDqIo58LmS3M+2PYNH2Kz/SWixAoWBRZCR8c5Fl/hoK4VHqByiHDoabYVDF30qDtmzZP7twPQ799TOOpv9kqQz88mD2NAS6VinHWtnLZzMzM2x+Yj2a/bCCw/QrOplnQw8amCddb+O0f4ymnCU+o6Us0UqOt6vaeqp7KoSovuMU4bNj/TOPrD4lDvG8sgU5xIQ/3uNPye2+ur2QukhCkmDJMmmAVssN6MtGaXNsfiVhR6GPIg/QYu37Mk3QztUvXXvBqmmWD19K8/pFmae4z68Neq1UrDMPdhNBF4hj3uB6XJiELkY2wJQpM2QGvbMq/h22Ij11+cLg2e+5AAiwF58bDofZv14qF8dbkTjxc9I7z0HeJXRtfJEY5MnqXz5s9+76uQ8CXvC88TFCuu7rVQhWsfRNr0mEG3wGIsJ2MvDdB98FfMZFJWUZUAoLgqjDAHyR2viDfd1oRgje7fGMW9wtDuAHnZslNRhLRYvdky/rZ5WvdTsrQUsMlmffCh+k/HFb+LCoZJiGWiTitLq5piEzRdyplalnObNyFA1hQNPyj/Gn4MIJlzdcm4bEHUwtGHSfMIdFH1qslz4MFgJ1dlfEwPPHQHl4qIGqeChc5SluSRiVQ3ilL6eKMrCQwaUChl0J5AtgzbdElU8VHl4t7Gp482doPJ8k/GhLEVXhMdko1a2WfyxbO7dBYI7mBCMyFvM4Li4/jCcXUD1uWHgEsqXpSk/3X5VWSiAQ0yEBklw6rmZNcVPXUNL9AtEb41YqSqfv+CwS+mwpyplJnLBOcEu/w4aW9QFLRIIcFMiwXTUh+7QWlpDlG1RCc3yflAnsJ/rXAej6XUXRy7YNR+o5SZyTCl6JTPFQiUFnAKBXL7Wwf5OnL6JAkOi7DC8nz9K+ETfrrcCcLez4eFEKUo6BnclEfV3glKkxjEw+da9TfJkDMxkbUPSoNyTyhV1QwYXo/TYgeDyd56aPV5YkrbKwO8tUAldyYV+7kjozlkhgYChGxQuUKpNIwzhN6VCgmzO5Nl7LIg+1MRS7v1g4qufy2chyj2rXK7x02Di/ouyrnHEOWauFcCSoovyWgpgm74sflHTYOJd4PXG6VRZTAglFgDkChRXACyGuWnJa6oDHGS/5WI2L6NQkMknpP5QV151YbLFhz0CX0Ce9yj0BJIL9SjiJ2Z/Um/qK0pg1QXylItO83MIjH4b74yYyslFnyMCsPwsKAS1BpF3JDxIn0NT7RGRK5oYu3kJOSMsMJY2+O+7VLjfprC3t49SO5uK6ewz8I83uBL74Wi776Um8Z+FLqLvqwGb/qxlbKarnFLWfiKGwaKVWuUB8oLcq0me7e78OvFHr/68EnsTevAK8YE61krjZUUE6eB+i0eZ1e1oUIbxvmvGut6jjI3OQKgst9OdKnaCuOdIB001DHzBjtUMqO3relgrOX9N5pivxGWUrGb6hcZMG/S7afqtZHD7sT4r83vLfmY+e6TMPM5enM67L+Gh06pXxhs2v0TuEjna4KfKNrZ0ivyETh7PlwjyQ/IO9kGdXdTIM7mLb2Hqv9hOJfYUJtiOXXxKWvdhxXTtuPuWfTbbWR6i8+bCC4xLmKBm4jX8S80mihIACo9hOsu+YJvazUJsxeMHD4WJt6fuhFaPUQKGJlMESM6mgBXhOnXAAhR6PzQLBuWSf0liomdH6ziLc3At3qBbZvcOQueueNywPJjTTQdnWbGuBP1kcSy84M44EsZuwA9Fq/fFWrVKcK7doLdhox+P8QEuyCqwKHFRAmG+5wecXAEuBN9brhCtLb2q3BzZ+3fdWUCrEnPmOjL62viFfc0XoPgYMZD3R+vD+PY+iVH2flbY9VJEX+Q/ri8fFp38bT02V8VMYRAnA9OJ/pbhrv+Hn55E9/DdDfPzwAv9hIUEn6voovHjSvHhN6krtr8Z2ui3LOAWgzUabzIJKdW6QL4WDBK6wm225h0brcVYf2t/YdonATC7uFuj/wAtEN0Op5h0wQ5XiyTqWLySox+/ReXLa45eDI5TDJ4wO/3O3AjaCO98nWUm0lJwaqWu0JLjHx0XPQDdSOcmWHzL0ouvz88yeGqBSd8BCNW6w5AZwwHm8OnJY4DWenui51gBjg5ivWMFmVNIzUXHn7Adx9HxMWY+uMPuACur9PQoAQRkKejNPw7u5r5Wd1lOZFjB+v89M1JJ2XNO6/+HxPp4fzaYgQ2qCxTTnzp1Ps/OLhwZSLRz4lbWZdCJXxhAto3efl05Bc9I/OJT591d+ZP2Nr6/UlnWI9mXt6/jn3/uquf94sPZzTeBkZwP1I3dR3GR7zPG3wmObXPKf5/llYMrnb/+AgkiWWV9nMmq2cNIK4vDtwN/N/feRgvdST59fuxOnUNxV0ztK+nJwNi9JKupjSWm3Y28kpbaCEiZN79dQBUYzYfA131g/Bs0yc3FgONF/YJRqVL3CZ/XlCYGMB8kQWQxhzY/RrsUyAyMPMYhOzZQWH2GTzWDhhIzKnVCWgMKKyIV+GP6yHSkzEn90/paqkAvUvluSv1fr9tlHPs96N2W94kRhbDZekLx4LYOhoORBLL/JUhPeh5V9XUyk710b617RJSrVl/L87Je9Xkk49oRqZwykyqo8xpePU2ugJuVQS9oYgAATw6G9M8Vo455OlKv4B8D0cn6H08arn/rz5AQ3Y/hoNBioEwEClXQgRMSv2HyujMz5/67vUA1guvqrO8TzfdDTVhNX7P4OuMq5ffHPsrR75Xu+cNa6bvDt+76azJ2B6GLZL63wmSzDey9ZNGRqeJXcSGPJSXd8OHf+z1ELy+4C++I5Of6um0+lklwg8IYMtISxQKNDQNGC33UQQwJJuVMRgBe6KNTQk+PJ6SMGex0MqeZYOGYhRNWTEmzZDJiKk2PZ0DHqoEK8ZIEv86YN1NkhP3a7Ig3EG232eP/v9DdJdvPrK1NHAIF0NNlhjFToapEKSBmI10lV3lfq0NpvpapCsa/XXj0ayOAm1tiKqRVrLd6G1c/9Vk61YS42UysZiguHVtxbrb4ChZqh116Odf4ZKWaOJQbuGlsSZWvvrpavORblQZdQ9zAic5QidtdYuhiowzDi0q53BAFyrQqQYGtV6cnOD6MHGtKtyswuNshhUNOvpqC+2yw/KnaDzoIx5hx5Y+d3xBERBQSXEGU7RyQY628hsQoXpItwzInR1mrOcI1KUaDHOc4GLXCJWnPioBrO78YNf5grdXWMOm9hMslcfv3K9dBmuc4Mebn7Sy8wcL8hVoufHuti9uNnXYkp1bS33nBoGmO/3z0A11VJbHbeoUKVapbrqqR8DDTQ0RCNDDTfCMEvQbaGx1zTRVDNTaK6FkUYzhlEfCfPU2njJXto6zBEWsBAXXHH7EBn+ES//p4tRTGLBfj7yic/YyXeMSfjhwDoMLMOEE0GWYsSaP84UaaeDPAVssGUbW3EUS9awloMc4gTb2cFOdnFcrIznABZibQJ/iw32vGU3GoEC+IOOlostlmIXe4JZmcxEpjGV6YyjvacUxkEcxYkZPOQ2Myl2lwfo/Y8d3VleHjt8+Or92N3bO0w+u392+bK7Qyeuxq/d8rjrXR77+73h6eTVq1dudE6nLzN9/PbVpw+vp+EDiOZO/2+VzD36rxNpTqf5h/c5cj3wVdcZOvQL/570hejrBdJf6rD56wL34Pvd7XpuDDnouo9mns/0ZuzMOS/zNHyZM9eJifZEUt6bf/B/y/Poc/9zF8DgBQkX8K2G5OoyhiU1/P6EJ/9yXiULZp7yx/McxNbKfNt3tcPlET6aSZ4DU+WpHW4WyP2i/9+s2JdNyXPmV2UxgWEXAAA=) format('woff2');
+}
+
+/* HUSTLE LITE — presentation layer.
+ *
+ * Three rules shape everything here.
+ *
+ * 1. The whole game fits the viewport and nothing scrolls. You should never have to hunt
+ *    for a move button.
+ * 2. There are no panels. The source game has no cards, no boxes, no framed regions — the
+ *    health bars, the arena and the move bar all sit directly on one continuous black
+ *    field, edge to edge. Every border you draw around a region makes it a dashboard.
+ * 3. Flat saturated colour, square corners, bitmap type. No gradients, no shadows.
+ */
+
+:root {
+  --bg: #000000;
+  --bg-2: #000000;
+  --panel: #000000;
+  --panel-2: #0d0d0d;
+  --line: #3a3a3a;
+  --line-2: #6a6a6a;
+  --ink: #ffffff;
+  --ink-2: #b9b9b9;
+  --ink-3: #7a7a7a;
+
+  --you: #7fd4ff;
+  --them: #ff6b7f;
+  --hp: #ffe000;              /* the health bar yellow */
+  --burst: #3d7bff;
+  --good: #7dffb0;
+  --warn: #ffe14d;
+  --bad: #ff6b7f;
+  --gold: #ffe14d;
+
+  --px: "Press Start 2P", ui-monospace, monospace;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: var(--mono);
+  --r: 0px;
+}
+
+/* The bitmap face is used for labels and chrome. Dense rows stay in a plain monospace —
+   Press Start 2P at 9px is unreadable, and the threat board is meant to be read. */
+.px, .brand h1, .clock, .movegroup h3, .mv .n, .board h2, .as .an,
+.overlay h2, dialog h2, dialog h3, .modes button, .card h3, .link .depth,
+.riskbar .t, .side .who, .assistbar .lbl, .stat .k, .crown, .rd + .rd {
+  font-family: var(--px);
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;                 /* the shell never scrolls; panels scroll internally */
+}
+
+.wrap {
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 328px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "top board" "stage board" "moves board";
+  gap: 0;
+  padding: 0;
+}
+
+/* ------------------------------------------------------------------ header */
+
+.top { grid-area: top; display: flex; align-items: center; gap: 9px; flex-wrap: nowrap; padding: 5px 10px 3px; overflow-x: auto; }
+.top::-webkit-scrollbar { height: 0; }
+.brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.brand h1 {
+  margin: 0; font-size: 13px; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--hp); white-space: nowrap;
+}
+.brand span {
+  font-family: var(--px); font-size: 7px; color: #6a6a6a; letter-spacing: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+@media (max-width: 1560px) { .brand span { display: none; } }
+
+.ctl { display: flex; align-items: center; gap: 5px; }
+.ctl label { font-size: 9px; letter-spacing: .14em; color: var(--ink-3); text-transform: uppercase; }
+.note { font-size: 10px; color: var(--ink-3); max-width: 118px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1500px) { .note { display: none; } }
+
+select, button {
+  font-family: var(--mono); font-size: 11.5px; white-space: nowrap; color: var(--ink);
+  background: #000; border: 2px solid var(--line);
+  border-radius: 0; padding: 6px 9px; cursor: pointer;
+  transition: border-color .12s, background .12s, color .12s;
+}
+select:hover, button:hover { border-color: #ffffff; background: #151515; }
+button:active { transform: translateY(1px); }
+button.primary {
+  background: var(--hp); border-color: #ffffff; color: #000;
+  font-family: var(--px); font-size: 10px; letter-spacing: 0;
+}
+button.primary:hover { background: #fff05a; }
+button.toggle.on { border-color: var(--gold); color: #000; background: var(--gold); }
+button:disabled { opacity: .38; cursor: not-allowed; }
+
+/* ------------------------------------------------------------------- stage */
+
+.stage { grid-area: stage; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 0; }
+
+.hud {
+  display: grid; grid-template-columns: auto 1fr auto 1fr auto; gap: 10px; align-items: center;
+  background: transparent; border: 0; padding: 2px 10px 6px;
+}
+.portrait { width: 42px; height: 46px; flex: 0 0 auto; image-rendering: pixelated; align-self: center; }
+.side { display: grid; gap: 4px; min-width: 0; }
+.side.rt { justify-items: end; }
+.side .who {
+  font-size: 8px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700;
+  display: flex; align-items: center; gap: 6px;
+}
+.side.lt .who { color: var(--you); }
+.side.rt .who { color: var(--them); }
+.side .nm { font-weight: 800; }
+
+.hp { height: 22px; background: #000; border: 2px solid #d8d8d8; border-radius: 0; overflow: hidden; width: 100%; }
+.hp i { display: block; height: 100%; background: var(--hp); transition: width .3s cubic-bezier(.2,.8,.2,1); }
+.side.rt .hp i { margin-left: auto; }
+
+.pips { display: flex; gap: 4px; align-items: center; flex-wrap: nowrap; font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.pip { width: 12px; height: 6px; border-radius: 0; background: #111; border: 1px solid #2a2a2a; }
+.pip.on { background: var(--gold); border-color: var(--gold); }
+.burst { width: 74px; height: 6px; border-radius: 0; background: #101010; border: 1px solid #2a2a2a; overflow: hidden; }
+.burst i { display: block; height: 100%; background: var(--burst); }
+.burst.ready i { background: #6ea0ff; }
+.burstlbl { font-family: var(--px); font-size: 8px; color: var(--burst); visibility: hidden; margin: 0 3px 0 9px; }
+.burst.ready + .burstlbl, .burstlbl.on { visibility: visible; color: #6ea0ff; }
+
+.clock { text-align: center; font-family: var(--mono); }
+.clock .t { font-size: 15px; color: var(--hp); }
+.clock .l { font-size: 8px; letter-spacing: .12em; color: var(--ink-3); text-transform: uppercase; }
+.clock.low .t { color: var(--warn); }
+
+.rounds { display: inline-flex; gap: 3px; }
+.rd { width: 8px; height: 8px; border-radius: 0; background: #1a1a1a; border: 1px solid #333; display: inline-block; }
+.rd.won { background: var(--hp); border-color: var(--hp); }
+
+.arena {
+  position: relative; min-height: 0; border: 0; overflow: hidden; background: #000; display: block;
+}
+.arena canvas { display: block; width: 100%; height: 100%; }
+
+.banner {
+  position: absolute; inset: auto 0 10px; text-align: center; pointer-events: none;
+  font-family: var(--mono); font-size: 12px; letter-spacing: .09em; text-transform: uppercase;
+  opacity: 0; transition: opacity .2s;
+}
+.banner.show { opacity: 1; }
+.banner span { background: #000; border: 2px solid var(--line); padding: 5px 11px; border-radius: 0; font-family: var(--px); font-size: 9px; }
+
+.overlay {
+  position: absolute; inset: 0; display: grid; place-content: center; gap: 12px; text-align: center;
+  background: #000000e8; z-index: 3;
+}
+.overlay[hidden] { display: none; }
+.overlay h2 { margin: 0; font-size: 20px; letter-spacing: 0; text-transform: uppercase; }
+.overlay p { margin: 0; color: var(--ink-2); max-width: 360px; font-size: 13px; }
+
+.underbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 2px 10px 6px; }
+.coach {
+  font-size: 11.5px; line-height: 1.4; color: var(--ink-2); min-width: 0;
+  background: transparent; border: 0; border-left: 3px solid var(--warn);
+  border-radius: 0; padding: 3px 10px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.coach[hidden] { visibility: hidden; }
+.coach.good { border-left-color: var(--good); }
+.coach b { color: var(--ink); font-weight: 700; }
+
+.scrub { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.scrub[hidden] { visibility: hidden; }
+.scrub input { width: 140px; accent-color: var(--hp); }
+/* The tag is not decoration: a preview of a move you have not thrown and a record of one
+   you have look identical in an arena, and confusing them is the whole bug. */
+.scrub .tag {
+  font-family: var(--px); font-size: 8px; letter-spacing: 1px;
+  color: #000; background: var(--hp); padding: 3px 5px 2px;
+}
+.scrub .cap { color: var(--ink-2); white-space: nowrap; }
+.scrub .cap:empty { display: none; }
+.scrub.past .tag { background: var(--ink-3); color: #000; }
+.scrub.past input { accent-color: var(--ink-2); }
+#lastex[hidden] { display: none; }
+
+/* --------------------------------------------------------------- move strip */
+
+/*
+ * Always on screen, never scrolled to. Groups sit side by side and the buttons shrink
+ * before the strip ever grows — a small button beats a button you have to go looking for.
+ */
+.moves {
+  /* Wraps rather than scrolling sideways: a clipped button is a button you have to hunt
+     for, which is the one thing this strip exists to prevent. */
+  grid-area: moves; display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap;
+  background: #000; border: 0; padding: 6px 10px 12px;
+}
+.moves::-webkit-scrollbar { height: 5px; }
+.moves::-webkit-scrollbar-thumb { background: #333; border-radius: 0; }
+
+.assistbar { display: flex; align-items: center; gap: 5px; padding-right: 12px; border-right: 0; flex: 0 0 auto; }
+.assistbar[hidden] { display: none; }
+.assistbar .lbl {
+  font-size: 7px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+  font-weight: 800; writing-mode: vertical-rl; transform: rotate(180deg);
+}
+.as {
+  display: grid; gap: 1px; text-align: left; padding: 4px 8px 6px; border-radius: 0;
+  background: transparent; border: 0; border-bottom: 2px solid #262626; flex: 0 0 auto;
+}
+.as.on { border-bottom-color: var(--gold); background: #1a1600; }
+.as .an { font-size: 8.5px; }
+.as .ad { font-family: var(--mono); font-size: 8.5px; color: var(--ink-3); }
+
+#moves { display: flex; gap: 8px; flex: 1 1 auto; min-width: 0; flex-wrap: wrap; }
+.movegroup { display: grid; grid-template-rows: auto 1fr; gap: 4px; min-width: 0; flex: 1 1 auto; }
+.movegroup + .movegroup { padding-left: 8px; border-left: 1px solid var(--line); }
+.movegroup h3 { margin: 0; font-size: 8px; letter-spacing: .16em; color: var(--ink-3); text-transform: uppercase; font-weight: 800; }
+.grid { display: flex; gap: 5px; min-width: 0; flex-wrap: wrap; }
+
+.mv {
+  position: relative; text-align: left; padding: 6px 7px 8px; border-radius: 0;
+  background: #000; border: 2px solid var(--line); display: grid; gap: 2px;
+  cursor: pointer; overflow: hidden; min-width: 88px; flex: 1 1 88px;
+}
+.mv:hover, .mv:focus-visible { border-bottom-color: #ffffff; background: #101010; outline: none; }
+.mv[aria-pressed="true"] { border-bottom-color: var(--hp); background: #1a1600; }
+.mv[aria-pressed="true"] .n { color: var(--hp); }
+.mv:disabled { opacity: .3; cursor: not-allowed; }
+.mv .n { font-size: 8.5px; letter-spacing: 0; font-weight: 400; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.mv .k {
+  font-family: var(--mono); font-size: 8px; color: #000; background: var(--ink-3);
+  border-radius: 0; padding: 0 3px; margin-left: auto;
+}
+.mv .d { font-family: var(--mono); font-size: 8.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv .risk { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: #171e26; }
+.mv .risk i { display: block; height: 100%; transition: width .2s; }
+
+/* ------------------------------------------------------------ threat board */
+
+.board {
+  grid-area: board; background: #000; border: 0; border-left: 1px solid #1c1c1c;
+  border-radius: 0; padding: 10px 10px 8px; min-height: 0;
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 8px;
+}
+.board header { display: grid; gap: 2px; }
+.board h2 { margin: 0; font-size: 9px; letter-spacing: .16em; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+.board h2::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--them); box-shadow: 0 0 7px var(--them); }
+.board .sub { font-size: 10.5px; color: var(--ink-3); line-height: 1.35; }
+.board .sub b { color: var(--you); font-weight: 700; }
+
+.rows { display: grid; gap: 3px; align-content: start; overflow-y: auto; padding-right: 2px; min-height: 0; }
+.rows::-webkit-scrollbar { width: 5px; }
+.rows::-webkit-scrollbar-thumb { background: #333; border-radius: 0; }
+
+.row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 7px; align-items: center;
+  padding: 5px 7px; border-radius: 0; background: #0a0a0a; border-left: 3px solid transparent;
+}
+.row.best { background: #1e0b10; border-left-color: var(--them); }
+.row .nm { font-size: 11.5px; font-weight: 700; display: flex; align-items: center; gap: 5px; min-width: 0; }
+.row .nm > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .crown { font-size: 6.5px; color: var(--gold); letter-spacing: .08em; flex: 0 0 auto; }
+.row .meta { grid-column: 1 / -1; font-family: var(--mono); font-size: 9px; color: var(--ink-3); }
+.row .vd { font-family: var(--mono); font-size: 9px; letter-spacing: .04em; padding: 2px 5px; border-radius: 0; white-space: nowrap; font-weight: 700; }
+.vd.lose, .vd.parried { background: #3b131b; color: #ff9aa8; }
+.vd.win, .vd.plus { background: #0f2e22; color: #6ee7a8; }
+.vd.trade, .vd.clash { background: #342c12; color: var(--warn); }
+.vd.guard, .vd.blocked, .vd.neutral { background: #1b232d; color: var(--ink-2); }
+.vd.parry { background: #132a41; color: #7cc4ff; }
+.vd.minus { background: #341d11; color: #ffab7a; }
+
+.riskbar { display: grid; gap: 3px; }
+.riskbar[hidden] { display: none; }
+.riskbar .t { display: flex; justify-content: space-between; font-size: 7px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.riskbar .b { height: 4px; border-radius: 2px; background: #171e26; overflow: hidden; }
+.riskbar .b i { display: block; height: 100%; transition: width .2s, background .2s; }
+
+.empty { color: var(--ink-3); font-size: 11px; text-align: center; padding: 18px 8px; line-height: 1.45; }
+
+.log {
+  font-family: var(--mono); font-size: 9px; color: var(--ink-3);
+  display: grid; gap: 1px; align-content: start; height: 58px; overflow-y: auto;
+  border-top: 1px solid var(--line); padding-top: 6px;
+}
+.log::-webkit-scrollbar { width: 5px; }
+.log::-webkit-scrollbar-thumb { background: #333; border-radius: 0; }
+
+/* --------------------------------------------------------------- yomi chain */
+
+.chain { display: grid; gap: 2px; }
+.link { background: var(--bg-2); border-radius: 7px; padding: 6px 9px; border-left: 3px solid var(--line); display: grid; gap: 1px; }
+.link.mine { border-left-color: var(--you); }
+.link.theirs { border-left-color: var(--them); }
+.link.loops { opacity: .7; border-left-style: dashed; }
+.link .depth { font-size: 7px; letter-spacing: .14em; color: var(--ink-3); }
+.link .nm { font-size: 12px; font-weight: 700; }
+.link .who { font-size: 9.5px; color: var(--ink-3); }
+.link .vd { justify-self: start; margin-top: 2px; }
+.link .meta { font-size: 9px; color: var(--warn); font-family: var(--mono); }
+.chain .arrow { text-align: center; color: var(--ink-3); font-size: 10px; line-height: 1; }
+
+/* ------------------------------------------------------------- squad extras */
+
+.squadbars { display: grid; gap: 2px; width: 100%; }
+.squadbars[hidden] { display: none; }
+.sq { display: grid; grid-template-columns: 52px 1fr 20px; gap: 5px; align-items: center; opacity: .5; }
+.sq.point { opacity: 1; }
+.sq.out { opacity: .25; }
+.sq .sqn { font-family: var(--px); font-size: 6.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 800; }
+.sq .sqb { height: 5px; border-radius: 0; background: #000; border: 1px solid #2a2a2a; overflow: hidden; }
+.sq .sqb i { display: block; height: 100%; transition: width .3s; }
+.sq .sqc { font-family: var(--mono); font-size: 7.5px; color: var(--ink-3); text-align: right; }
+.sq.point .sqc { color: var(--ink); }
+.side.rt .sq { grid-template-columns: 20px 1fr 52px; }
+.side.rt .sq .sqn { text-align: right; }
+.side.rt .sq .sqc { text-align: left; }
+
+/* ------------------------------------------------------------------ dialogs */
+
+dialog {
+  border: 2px solid var(--line); border-radius: 0; background: #000;
+  color: var(--ink); max-width: 640px; padding: 20px 22px; font-size: 13px;
+  max-height: 88dvh; overflow-y: auto;
+}
+dialog::backdrop { background: #000000d0; }
+dialog h2 { margin: 0 0 8px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+dialog h3 { margin: 16px 0 6px; font-size: 9px; letter-spacing: 0; text-transform: uppercase; color: var(--hp); }
+dialog p, dialog li { color: var(--ink-2); font-size: 12.5px; }
+dialog ul { margin: 4px 0; padding-left: 17px; }
+dialog kbd { font-family: var(--mono); font-size: 9.5px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; padding: 1px 4px; color: var(--ink); }
+dialog .close { margin-top: 16px; }
+
+dialog#select { max-width: 780px; }
+.lead { margin: 0 0 13px; }
+.modes { display: flex; gap: 6px; margin: 0 0 12px; }
+.modes button { flex: 1; padding: 8px; font-size: 12px; }
+.modes button.on { border-color: var(--hp); color: #000; background: var(--hp); }
+
+.roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 9px; }
+.card { text-align: left; padding: 11px 12px; border-radius: 10px; display: grid; gap: 6px; background: var(--bg-2); border: 1px solid var(--line); cursor: pointer; }
+.card:hover { border-color: var(--line-2); }
+.card.picked { border-color: var(--hp); background: #141100; }
+.card h3 { margin: 0; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.card p { margin: 0; font-size: 11px; line-height: 1.4; min-height: 46px; }
+.stats { display: grid; gap: 3px; }
+.stat { display: grid; grid-template-columns: 58px 1fr 32px; gap: 6px; align-items: center; }
+.stat .k { font-size: 7px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.stat .b { height: 4px; border-radius: 2px; background: #05080b; overflow: hidden; }
+.stat .b i { display: block; height: 100%; }
+.stat .v { font-family: var(--mono); font-size: 9.5px; color: var(--ink-2); text-align: right; }
+
+.lh { margin: 16px 0 7px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--you); }
+.lineup { display: grid; gap: 5px; }
+.lrow { display: grid; grid-template-columns: 16px 1fr 46px 1.4fr; gap: 7px; align-items: center; }
+.lrow .ln { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.lrow .lrole { font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.lrow select { width: 100%; }
+.lnote { font-size: 10.5px; color: var(--ink-3); margin: 7px 0 0; }
+.selfoot { display: flex; align-items: center; gap: 11px; margin-top: 16px; }
+.selfoot .primary { margin-left: auto; padding: 8px 20px; }
+
+/* ---------------------------------------------------------------- responsive */
+
+/* Below this the board cannot hold its own column, so it folds under the arena and the
+   page becomes one sheet — but the move strip stays pinned to the bottom of the viewport,
+   because needing to scroll to pick a move is the one thing this layout must never do. */
+@media (max-width: 1000px) {
+  body { overflow: auto; }
+  .wrap {
+    height: auto; min-height: 100dvh;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "top" "stage" "board" "moves";
+    padding-bottom: 132px;
+  }
+  .arena canvas { max-height: none; }
+  .rows { max-height: 44vh; }
+  .moves {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0;
+    background: #0b0f14f2; backdrop-filter: blur(8px);
+  }
+}
+
+@media (max-width: 620px) {
+  .hud { grid-template-columns: 1fr 1fr; grid-template-areas: "lt rt" "clk clk"; row-gap: 6px; }
+  .side.lt { grid-area: lt; }
+  .side.rt { grid-area: rt; }
+  .clock { grid-area: clk; }
+  .pips { flex-wrap: wrap; gap: 2px; }
+  .pip { width: 8px; }
+  .burst { width: 28px; }
+  .brand span, .note { display: none; }
+  /* The scrub row carries a tag, two buttons and a slider; on a phone it wraps under the
+     coach line rather than pushing the page sideways. */
+  .underbar { grid-template-columns: minmax(0, 1fr); }
+  .scrub { flex-wrap: wrap; }
+  .scrub input { width: 100%; min-width: 0; }
+  .lrow { grid-template-columns: 14px 1fr; }
+  .lrow .lrole, .lrow .lmove { grid-column: 2; }
+  .sq { grid-template-columns: 42px 1fr 16px; }
+  .side.rt .sq { grid-template-columns: 16px 1fr 42px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: .01ms !important; }
+}
+
+
+/* ------------------------------------------------------------------ lock in */
+
+/* Choosing is two steps — pick, then commit — so the button is the loudest thing in the
+   move bar and sits where your eye already is after picking. */
+.lockin {
+  flex: 0 0 auto; align-self: stretch; min-width: 150px;
+  font-family: var(--px); font-size: 9px; line-height: 1.5;
+  border: 2px solid var(--line); background: #000; color: var(--ink-3);
+  padding: 6px 12px; white-space: normal; text-align: left;
+}
+.lockin.ready {
+  background: var(--hp); border-color: #ffffff; color: #000;
+}
+.lockin.ready:hover { background: #fff05a; }
+.lockin:disabled { opacity: 1; cursor: default; }
+
+</style>
+</head>
+<body>
+
+<!-- Dev entry point. `python3 build.py` inlines all of this into dist/. -->
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <h1>Hustle Lite</h1>
+      <span>1-5 QWER ASDF: pick a move &nbsp;·&nbsp; ←→: step frames &nbsp;·&nbsp; ?: help</span>
+    </div>
+    <div class="ctl">
+      <label for="oracle">Oracle</label>
+      <select id="oracle">
+        <option value="full">Full board</option>
+        <option value="chain">Yomi chain</option>
+        <option value="risk">Risk only</option>
+        <option value="off">Off</option>
+      </select>
+    </div>
+    <div class="ctl">
+      <label for="difficulty">Rival</label>
+      <select id="difficulty">
+        <option value="rookie">Rookie</option>
+        <option value="fighter" selected>Fighter</option>
+        <option value="yomi">Yomi</option>
+        <option value="oracle">Oracle</option>
+      </select>
+      <span id="diffnote" class="note"></span>
+    </div>
+    <div class="ctl">
+      <label for="speed">Speed</label>
+      <select id="speed">
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.75">1.75x</option>
+      </select>
+    </div>
+    <button id="boxes" class="toggle" type="button" title="Show hitboxes and hurtboxes during playback">Boxes</button>
+    <button id="sound" type="button">Sound on</button>
+    <button id="helpbtn" type="button">How to play</button>
+    <button id="restart" type="button">New match</button>
+  </header>
+
+  <section class="stage">
+    <div class="hud">
+      <canvas class="portrait" id="por0" width="21" height="23" aria-hidden="true"></canvas>
+      <div class="side lt" id="p0">
+        <div class="who"><span class="nm">Duelist</span> <span class="st"></span> <span class="rounds"></span></div>
+        <div class="hp"><i style="width:100%"></i></div>
+        <div class="squadbars" hidden></div>
+        <div class="pips">
+          <span class="hpv">150</span>
+          <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          <span class="pip"></span><span class="pip"></span>
+          <span class="burst ready"><i style="width:100%"></i></span>
+          <span class="burstlbl">BURST!!</span>
+        </div>
+      </div>
+
+      <div class="clock" id="clock">
+        <div class="t">70</div>
+        <div class="l">turns left</div>
+      </div>
+
+      <div class="side rt" id="p1">
+        <div class="who"><span class="rounds"></span> <span class="st"></span> <span class="nm">Rival</span></div>
+        <div class="hp"><i style="width:100%"></i></div>
+        <div class="squadbars" hidden></div>
+        <div class="pips">
+          <span class="burstlbl">BURST!!</span>
+          <span class="burst ready"><i style="width:100%"></i></span>
+          <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          <span class="pip"></span><span class="pip"></span>
+          <span class="hpv">150</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arena">
+      <canvas id="arena" aria-label="The duel. Both fighters commit a move, then it plays out."></canvas>
+      <div class="banner" id="banner"><span></span></div>
+      <div class="overlay" id="overlay" hidden>
+        <h2>YOU WIN</h2>
+        <p></p>
+        <div><button class="primary" id="playagain" type="button">Next round</button></div>
+      </div>
+    </div>
+
+    <div class="underbar">
+      <div class="coach" id="coach" hidden></div>
+      <div class="scrub" id="scrubwrap" hidden>
+        <span class="tag" id="scrubtag">PREVIEW</span>
+        <span class="cap" id="scrubcap"></span>
+        <button id="replay" type="button">▶ Again</button>
+        <input id="scrub" type="range" min="0" max="40" value="0" aria-label="Scrub the exchange frame by frame">
+        <span id="scrubval">0f</span>
+        <button id="lastex" type="button" hidden title="Watch the exchange that just happened">Last exchange</button>
+      </div>
+    </div>
+  </section>
+
+  <aside class="board">
+    <header>
+      <h2>Threat board</h2>
+      <div class="sub" id="boardsub">Hover a move to see how they can answer it.</div>
+    </header>
+    <div class="riskbar" id="riskwrap" hidden>
+      <div class="t"><span>Risk</span><span id="riskval"></span></div>
+      <div class="b"><i id="riskfill" style="width:0%"></i></div>
+    </div>
+    <div class="rows" id="rows"></div>
+    <div class="log" id="log"></div>
+  </aside>
+
+  <section class="moves">
+    <button id="lockin" class="lockin" type="button" disabled>SELECT A MOVE</button>
+    <div class="assistbar" id="assistbar" hidden></div>
+    <div id="moves"></div>
+  </section>
+</div>
+
+<dialog id="select">
+  <h2>Pick your fighter</h2>
+  <div class="modes" id="modewrap">
+    <button type="button" data-mode="solo" class="on">Solo — one on one</button>
+    <button type="button" data-mode="squad">Squad — three a side</button>
+  </div>
+  <p class="lead">Three archetypes, one shared defensive skeleton. Guards, Parry, Dodge,
+     movement and Burst work the same for everyone — what changes is where you sit on the
+     speed, reach and damage triangle.</p>
+  <div class="roster" id="roster"></div>
+
+  <div id="squadwrap" hidden>
+    <h3 class="lh">Your lineup</h3>
+    <div class="lineup" id="lineup"></div>
+    <p class="lnote" id="lineupnote"></p>
+  </div>
+
+  <div class="selfoot">
+    <div class="ctl" id="rivalwrap">
+      <label for="rival">Rival plays</label>
+      <select id="rival">
+        <option value="random">Random</option>
+        <option value="duelist">Duelist</option>
+        <option value="bruiser">Bruiser</option>
+        <option value="blade">Blade</option>
+      </select>
+    </div>
+    <button class="primary" id="startfight" type="button">Fight</button>
+  </div>
+</dialog>
+
+<dialog id="help">
+  <h2>How to play</h2>
+  <p>Pick a move, study how they can answer it, then <strong>Lock In</strong> (or press
+     <kbd>Space</kbd>) to commit. Both fighters' choices resolve at the same time and the
+     turn plays out frame by frame.
+     There are no reflexes here — only the guess, and what you know about the person guessing back.
+     First to two rounds wins.</p>
+
+  <h3>The threat board</h3>
+  <p>This is the part the original game makes you work out for yourself. Hover any move and
+     the panel on the right runs <em>every</em> reply your rival currently has, simulates it
+     against your move, and ranks the results. The top row is their best answer. The bar on
+     each button is the share of their options that beat it.</p>
+
+  <h3>The yomi chain</h3>
+  <p>Switch the Oracle to <strong>Yomi chain</strong> and it stops showing a list and starts
+     showing a ladder: what beats your move, what beats <em>that</em>, and what beats that.
+     Layer 1 is the obvious answer. Layer 2 is what to play if you think they have read you.
+     The chain ends where the read loops — that is the point where thinking deeper stops
+     helping and it is a coin flip again.</p>
+  <p>After each exchange, the line under the arena tells you what would actually have worked.</p>
+
+  <h3>What beats what</h3>
+  <ul>
+    <li><strong>Speed decides trades.</strong> A 4-frame Jab beats a 6-frame Grab, every time.</li>
+    <li><strong>Counter-hits.</strong> Catch someone in their wind-up and it hurts 40% more.</li>
+    <li><strong>High Guard</strong> stops highs and mids; lows go under it.</li>
+    <li><strong>Low Guard</strong> stops lows and mids; highs come over it.</li>
+    <li><strong>Grabs</strong> ignore both guards and the Parry — but lose to anything faster.</li>
+    <li><strong>Parry</strong> is live on frames 2–9 only. It eats fast moves and misses slow ones.</li>
+    <li><strong>Dodge Roll</strong> is invulnerable and retreats. Chasing moves still catch it.</li>
+    <li><strong>Armour</strong> tanks one strike on the way in, at the cost of some of your own damage. Grabs go straight through it.</li>
+  </ul>
+
+  <h3>Resources</h3>
+  <ul>
+    <li><strong>Meter</strong> (gold pips) buys your super. <strong>Hustle</strong> banks two, if they let you.</li>
+    <li><strong>Burst</strong> (the blue bar) escapes a combo — unless they bait it by guarding.</li>
+    <li><strong>Sadness</strong>: refuse to engage and the ring starts taking health off you.</li>
+    <li>At turn 70 it is time over, and whoever leads on health takes the round.</li>
+  </ul>
+
+  <h3>The arena while you choose</h3>
+  <p>It is not showing you the last exchange. Point at a move and the arena
+     <strong>rehearses it</strong>: your fighter throws it, against an opponent who just
+     stands there, on a loop, tagged <strong>PREVIEW</strong>. You see the wind-up, the reach
+     and whether it even arrives from where you are standing before you spend a turn finding
+     out. The stand-in is greyed because they are a mannequin, not a prediction — what they
+     are likely to <em>do</em> is the threat board's job.</p>
+  <p>The rehearsal is the same simulation the fight runs, so it cannot flatter you. If it
+     says <em>falls short from here</em>, it falls short.</p>
+
+  <h3>Reading the exchange</h3>
+  <p>Every exchange is kept after it resolves. <strong>Last exchange</strong> puts it back on
+     screen, tagged as the record it is. Drag the frame slider or use <kbd>←</kbd> and
+     <kbd>→</kbd> to walk either view a frame at a time, and hit <strong>Replay</strong> to
+     watch it again at speed. Turn on <strong>Boxes</strong> in the header to see hurtboxes in
+     blue and live hitboxes in red — it is the quickest way to understand why something whiffed.</p>
+
+  <h3>Squad mode</h3>
+  <p>Three fighters a side, one on point and two on the bench. Every turn you order your
+     point fighter <em>and</em> may call one benched teammate, who runs in ahead of you and
+     performs their assist move a few frames later.</p>
+  <p>That delay is the whole feature: land a knockdown, call an assist into the stun, and the
+     two of them combo together — it counts as one string, so proration applies across both.
+     The cost is that your teammate arrives <em>in front</em> of you and is fully exposed, so
+     a call into a fast poke gets them hurt and puts them on a long cooldown.</p>
+  <ul>
+    <li><strong>Call teammate</strong> arms an assist; it folds into whichever move you press next.</li>
+    <li><strong>Tag</strong> swaps your point fighter. Twenty-four naked frames, so do it after a knockdown.</li>
+    <li>Benched fighters slowly recover health. A team loses when all three are down.</li>
+  </ul>
+
+  <h3>Keys</h3>
+  <p><kbd>1</kbd>–<kbd>5</kbd> strikes · <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> defence ·
+     <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> footsies and meter ·
+     <kbd>Z</kbd> <kbd>X</kbd> tag · <kbd>←</kbd> <kbd>→</kbd> step a frame ·
+     <kbd>C</kbd> <kbd>V</kbd> <kbd>B</kbd> assist call ·
+     <kbd>Space</kbd> lock in · <kbd>Enter</kbd> continue · <kbd>?</kbd> this panel</p>
+
+  <div class="close"><button class="primary" id="helpclose" type="button">Got it</button></div>
+</dialog>
+
+<script>
+/*
+ * HUSTLE LITE — engine
+ *
+ * A trimmed-down take on the simultaneous-turn fighting game "Your Only Move Is HUSTLE".
+ * Both fighters commit one move per turn, the turn is simulated frame by frame, and the
+ * result decides who acts first next turn.
+ *
+ * Everything in this file is pure: no DOM, no canvas, no timers. `resolveTurn` is the
+ * single source of truth — the renderer replays its timeline, the threat board scores its
+ * outcomes, the yomi chain walks it, and the AI searches over it. Nothing is modelled
+ * twice, so the numbers on screen are always the numbers that were actually simulated.
+ */
+
+const RULES = {
+  MAX_METER: 5,
+  BURST_FULL: 100,
+  ARENA_MIN: 60,
+  ARENA_MAX: 940,
+  START_GAP: 300,
+  MIN_SEPARATION: 55,
+  CHIP_RATIO: 0.11,
+  COMBO_DECAY: 0.13,
+  COMBO_FLOOR: 0.35,
+  GUTS_THRESHOLD: 0.4,
+  GUTS_SCALE: 0.75,
+  SUPER_COST: 2,
+  METER_PER_LEVEL: 25,
+  STALL_GRACE: 8,        // turns of refusing to engage before the ring starts biting
+  TURN_LIMIT: 70,        // per round; whoever leads on health takes it at time over
+  PARRY_STUN: 24,
+  COUNTER_SCALE: 1.28,    // damage bonus for interrupting an opponent's wind-up
+  COUNTER_STUN: 6,       // extra hitstun on a counter-hit
+  ARMOUR_TAX: 0.72,      // damage you keep after powering through a hit on armour
+  ROUNDS_TO_WIN: 2,      // best of three
+  BENCH_HEAL: 1,         // health a benched teammate recovers per turn
+  BENCH_HEAL_CAP: 0.5,   // ...but only back up to half. Tagging out is a plan, not a reset
+  SQUAD_HP_SCALE: 0.78,  // three lives a side would otherwise never run out inside the clock
+  ASSIST_DELAY: 6,       // frames before a called teammate arrives
+  ASSIST_LEAD: 44,       // how far in front of you they arrive — which is why they are hittable
+  ASSIST_VULN: 1.5,      // damage an exposed assist takes
+  ASSIST_COOLDOWN: 5,    // turns before that teammate can be called again
+  ASSIST_PUNISHED: 9,    // ...or after they got hit on the way in
+  SQUAD_TURN_LIMIT: 110, // squad matches run long; three lives a side
+};
+
+/* ------------------------------------------------------------------ moves */
+
+/*
+ * Frame anatomy of a strike: [0, startup) wind-up, [startup, startup+active) the hitbox
+ * is live, then recovery. `range` is measured centre-to-centre, so a move only connects
+ * if the gap has closed enough by the frame the hitbox is live — which is why `dash`
+ * moves reach further than their raw range suggests. They carry you in.
+ */
+const M = (def) => ({
+  startup: 0, active: 0, recovery: 0, range: 0, level: 'mid', dmg: 0,
+  hitstun: 0, blockstun: 0, pushHit: 0, pushBlock: 0, dash: null,
+  invuln: null, armour: null, guards: null, parry: null, cost: 0, gain: 0,
+  knockdown: false, unblockable: false, parryable: true, tag: '', ...def,
+});
+
+/* Shared by every fighter. Characters may tweak the numbers but never the roles. */
+const UNIVERSAL = {
+  highGuard: M({
+    id: 'highGuard', name: 'High Guard', cat: 'guard', key: 'q',
+    recovery: 18, guards: ['high', 'mid'], gain: 5,
+    blurb: 'Stops highs and mids. Lows go straight under it.',
+    tag: 'blocks high/mid',
+  }),
+  lowGuard: M({
+    id: 'lowGuard', name: 'Low Guard', cat: 'guard', key: 'w',
+    recovery: 18, guards: ['low', 'mid'], gain: 5,
+    blurb: 'Stops lows and mids. Highs come right over the top.',
+    tag: 'blocks low/mid',
+  }),
+  parry: M({
+    id: 'parry', name: 'Parry', cat: 'parry', key: 'e',
+    recovery: 25, parry: { from: 2, to: 10 }, gain: 30,
+    blurb: 'Live on frames 2-9. Eats fast moves whole; slow ones stroll past it.',
+    tag: 'frames 2-9',
+  }),
+  dodge: M({
+    id: 'dodge', name: 'Dodge Roll', cat: 'dodge', key: 'r',
+    recovery: 19, invuln: [3, 12],
+    dash: { from: 0, to: 16, dist: 70, toward: false }, gain: 3,
+    blurb: 'Invulnerable frames 3-11 and it retreats. Chasing moves still catch it.',
+    tag: 'i-frames 3-11',
+  }),
+  closeIn: M({
+    id: 'closeIn', name: 'Close In', cat: 'move', key: 'a',
+    recovery: 14, dash: { from: 0, to: 12, dist: 135, toward: true }, gain: 4,
+    blurb: 'Walk into your own range. Whoever owns the gap owns the round.',
+    tag: 'advance',
+  }),
+  backOff: M({
+    id: 'backOff', name: 'Back Off', cat: 'move', key: 's',
+    recovery: 14, dash: { from: 0, to: 12, dist: 135, toward: false }, gain: 2,
+    blurb: 'Make their whole moveset whiff. Costs you the corner eventually.',
+    tag: 'retreat',
+  }),
+  hustle: M({
+    id: 'hustle', name: 'Hustle', cat: 'hustle', key: 'd',
+    recovery: 30, gain: 0,
+    blurb: 'Pure greed: +2 meter and thirty frames of standing perfectly still.',
+    tag: '+2 meter',
+  }),
+  burst: M({
+    id: 'burst', name: 'Burst', cat: 'burst', key: '1',
+    startup: 8, active: 3, recovery: 19, range: 110, level: 'mid',
+    dmg: 3, hitstun: 16, blockstun: 10, pushHit: 260, pushBlock: 60,
+    invuln: [0, 15],
+    blurb: 'Blows the combo apart. They can bait it by guarding — then it is gone.',
+    tag: 'escape',
+  }),
+  diIn: M({
+    id: 'diIn', name: 'DI Inward', cat: 'di', key: '2',
+    recovery: 1, dash: { from: 0, to: 1, dist: 55, toward: true },
+    blurb: 'Drift toward them while stunned, so you stay in their face.',
+    tag: 'drift',
+  }),
+  diOut: M({
+    id: 'diOut', name: 'DI Outward', cat: 'di', key: '3',
+    recovery: 1, dash: { from: 0, to: 1, dist: 55, toward: false },
+    blurb: 'Drift away while stunned. Their next move may not reach.',
+    tag: 'drift',
+  }),
+  tag1: M({
+    id: 'tag1', name: 'Tag →', cat: 'tag', key: 'z',
+    recovery: 24,
+    blurb: 'Swap your point fighter. Twenty-four naked frames — do it after a knockdown.',
+    tag: 'swap point',
+  }),
+  tag2: M({
+    id: 'tag2', name: 'Tag ⇒', cat: 'tag', key: 'x',
+    recovery: 24,
+    blurb: 'Swap to your third. Same cost, different body.',
+    tag: 'swap point',
+  }),
+  quickRise: M({
+    id: 'quickRise', name: 'Quick Rise', cat: 'wake', key: '1',
+    recovery: 10,
+    blurb: 'Up fast, no protection. Fine if they guessed wrong.',
+    tag: 'fast wake',
+  }),
+  rollAway: M({
+    id: 'rollAway', name: 'Roll Away', cat: 'wake', key: '2',
+    recovery: 22, invuln: [3, 16],
+    dash: { from: 2, to: 18, dist: 150, toward: false },
+    blurb: 'Invulnerable retreat off the floor. Slow to recover.',
+    tag: 'i-frames 3-15',
+  }),
+};
+
+/* ------------------------------------------------------------- characters */
+
+/*
+ * Three archetypes sharing one defensive skeleton. Each brings five strikes and a super;
+ * guards, Parry, Dodge, movement, Hustle, Burst and wake-ups stay universal so the
+ * rock-paper-scissors web is the same game whoever you pick. Identity comes from where
+ * each fighter sits on the speed / reach / damage triangle, not from extra rules.
+ */
+const CHARS = {
+  duelist: {
+    id: 'duelist', name: 'Duelist', accent: '#3fe0cf', hp: 144,
+    tagline: 'Balanced. Every tool is adequate and none of them is an excuse.',
+    strikes: {
+      jab: M({
+        id: 'jab', name: 'Jab', cat: 'strike', key: '1',
+        startup: 4, active: 2, recovery: 6, range: 105, level: 'mid',
+        dmg: 7, hitstun: 12, blockstun: 8, pushHit: 30, pushBlock: 22, gain: 6,
+        blurb: 'Fastest thing you own. Beats anything slower to the punch.', tag: 'fast',
+      }),
+      sweep: M({
+        id: 'sweep', name: 'Sweep', cat: 'strike', key: '2',
+        startup: 7, active: 3, recovery: 12, range: 120, level: 'low',
+        dmg: 12, hitstun: 24, blockstun: 10, pushHit: 40, pushBlock: 30, gain: 8,
+        knockdown: true,
+        blurb: 'Low and quick. Goes under High Guard and puts them on the floor.', tag: 'low',
+      }),
+      overhead: M({
+        id: 'overhead', name: 'Overhead', cat: 'strike', key: '3',
+        startup: 13, active: 3, recovery: 16, range: 125, level: 'high',
+        dmg: 17, hitstun: 26, blockstun: 14, pushHit: 45, pushBlock: 28, gain: 10,
+        blurb: 'High. Crushes Low Guard, and slow enough to walk past a Parry.', tag: 'high',
+      }),
+      lunge: M({
+        id: 'lunge', name: 'Lunge', cat: 'strike', key: '4',
+        startup: 10, active: 4, recovery: 18, range: 120, level: 'mid',
+        dmg: 12, hitstun: 24, blockstun: 12, pushHit: 20, pushBlock: 55, gain: 9,
+        dash: { from: 2, to: 12, dist: 144, toward: true }, armour: [2, 8],
+        blurb: 'Armoured approach: eats one strike on the way in. Guards and Grabs stop it.',
+        tag: 'armour 2-7',
+      }),
+      grab: M({
+        id: 'grab', name: 'Grab', cat: 'grab', key: '5',
+        startup: 6, active: 2, recovery: 19, range: 72, level: 'grab',
+        dmg: 8, hitstun: 30, pushHit: 150, gain: 12,
+        knockdown: true, unblockable: true, parryable: false,
+        blurb: 'Ignores both guards and the Parry. Loses to anything faster than 6f.',
+        tag: 'unblockable',
+      }),
+    },
+    superMove: M({
+      id: 'risingFang', name: 'Rising Fang', cat: 'super', key: 'f',
+      startup: 5, active: 4, recovery: 30, range: 120, level: 'mid',
+      dmg: 29, hitstun: 34, blockstun: 12, pushHit: 70, pushBlock: 40,
+      cost: RULES.SUPER_COST, invuln: [0, 9], knockdown: true,
+      blurb: 'Invulnerable reversal. Guarded, it is a free round for them.',
+      tag: 'i-frames 0-8',
+    }),
+  },
+
+  bruiser: {
+    id: 'bruiser', name: 'Bruiser', accent: '#ff9f43', hp: 172,
+    tagline: 'Slow, armoured, enormous. Nothing you own is fast, so stop trying to be.',
+    tweaks: {
+      closeIn: { dash: { from: 0, to: 12, dist: 118, toward: true } },
+      backOff: { dash: { from: 0, to: 12, dist: 112, toward: false } },
+      dodge: { recovery: 22, dash: { from: 0, to: 16, dist: 58, toward: false } },
+    },
+    strikes: {
+      hook: M({
+        id: 'hook', name: 'Hook', cat: 'strike', key: '1',
+        startup: 5, active: 2, recovery: 8, range: 88, level: 'mid',
+        dmg: 9, hitstun: 14, blockstun: 8, pushHit: 34, pushBlock: 24, gain: 6,
+        blurb: 'Your "fast" button, and it still loses the speed war. It hits like a truck.',
+        tag: 'heavy poke',
+      }),
+      shin: M({
+        id: 'shin', name: 'Shin Kick', cat: 'strike', key: '2',
+        startup: 9, active: 3, recovery: 13, range: 108, level: 'low',
+        dmg: 13, hitstun: 24, blockstun: 10, pushHit: 42, pushBlock: 30, gain: 8,
+        knockdown: true,
+        blurb: 'Low. Slower than most sweeps and it hurts a great deal more.', tag: 'low',
+      }),
+      hammer: M({
+        id: 'hammer', name: 'Hammer', cat: 'strike', key: '3',
+        startup: 15, active: 3, recovery: 17, range: 122, level: 'high',
+        dmg: 20, hitstun: 28, blockstun: 15, pushHit: 55, pushBlock: 30, gain: 12,
+        blurb: 'High, and glacial. If it lands you were not the one guessing.', tag: 'high',
+      }),
+      charge: M({
+        id: 'charge', name: 'Charge', cat: 'strike', key: '4',
+        startup: 11, active: 4, recovery: 19, range: 118, level: 'mid',
+        dmg: 14, hitstun: 24, blockstun: 12, pushHit: 24, pushBlock: 58, gain: 9,
+        dash: { from: 2, to: 13, dist: 155, toward: true }, armour: [2, 10],
+        blurb: 'The best armour in the game and the whole reason you get to play offence.',
+        tag: 'armour 2-9',
+      }),
+      clinch: M({
+        id: 'clinch', name: 'Clinch', cat: 'grab', key: '5',
+        startup: 7, active: 2, recovery: 20, range: 76, level: 'grab',
+        dmg: 10, hitstun: 32, pushHit: 150, gain: 12,
+        knockdown: true, unblockable: true, parryable: false,
+        blurb: 'Longer and meaner than most grabs. One frame slower to start.',
+        tag: 'unblockable',
+      }),
+    },
+    superMove: M({
+      id: 'quake', name: 'Quake', cat: 'super', key: 'f',
+      startup: 8, active: 5, recovery: 30, range: 150, level: 'low',
+      dmg: 30, hitstun: 34, blockstun: 14, pushHit: 80, pushBlock: 44,
+      cost: RULES.SUPER_COST, invuln: [0, 10], knockdown: true,
+      blurb: 'A low, invulnerable reversal with huge reach. High Guard does not save them.',
+      tag: 'low · i-frames 0-9',
+    }),
+  },
+
+  blade: {
+    id: 'blade', name: 'Blade', accent: '#a78bfa', hp: 124,
+    tagline: 'Fastest and longest, made of glass. You win the exchange or you lose the round.',
+    tweaks: {
+      closeIn: { dash: { from: 0, to: 11, dist: 150, toward: true } },
+      backOff: { dash: { from: 0, to: 11, dist: 152, toward: false } },
+      dodge: { recovery: 17, dash: { from: 0, to: 15, dist: 82, toward: false } },
+    },
+    strikes: {
+      flick: M({
+        id: 'flick', name: 'Flick', cat: 'strike', key: '1',
+        startup: 3, active: 2, recovery: 7, range: 108, level: 'mid',
+        dmg: 7, hitstun: 11, blockstun: 7, pushHit: 26, pushBlock: 20, gain: 6,
+        blurb: 'Three frames. Nothing in the game beats it to the punch — it just barely hurts.',
+        tag: 'fastest',
+      }),
+      slice: M({
+        id: 'slice', name: 'Slice', cat: 'strike', key: '2',
+        startup: 7, active: 3, recovery: 12, range: 128, level: 'low',
+        dmg: 13, hitstun: 22, blockstun: 9, pushHit: 36, pushBlock: 28, gain: 8,
+        knockdown: true,
+        blurb: 'Low, long, and quick. Your main way to make High Guard a mistake.', tag: 'low',
+      }),
+      crescent: M({
+        id: 'crescent', name: 'Crescent', cat: 'strike', key: '3',
+        startup: 11, active: 3, recovery: 15, range: 138, level: 'high',
+        dmg: 16, hitstun: 25, blockstun: 13, pushHit: 42, pushBlock: 30, gain: 10,
+        blurb: 'High, and faster than most overheads. Still too slow for a Parry to catch.',
+        tag: 'high',
+      }),
+      thrust: M({
+        id: 'thrust', name: 'Step Thrust', cat: 'strike', key: '4',
+        startup: 9, active: 3, recovery: 18, range: 148, level: 'mid',
+        dmg: 16, hitstun: 22, blockstun: 12, pushHit: 30, pushBlock: 52, gain: 9,
+        dash: { from: 2, to: 11, dist: 96, toward: true }, invuln: [2, 7],
+        blurb: 'Steps through fast pokes on the way in, at absurd reach. Guards and Grabs stop it.',
+        tag: 'i-frames 2-6 · longest reach',
+      }),
+      snare: M({
+        id: 'snare', name: 'Snare', cat: 'grab', key: '5',
+        startup: 5, active: 2, recovery: 19, range: 66, level: 'grab',
+        dmg: 8, hitstun: 28, pushHit: 150, gain: 12,
+        knockdown: true, unblockable: true, parryable: false,
+        blurb: 'The fastest grab there is, and the weakest. You want the knockdown, not the damage.',
+        tag: 'unblockable',
+      }),
+    },
+    superMove: M({
+      id: 'zeroStance', name: 'Zero Stance', cat: 'super', key: 'f',
+      startup: 4, active: 4, recovery: 31, range: 150, level: 'mid',
+      dmg: 29, hitstun: 34, blockstun: 12, pushHit: 70, pushBlock: 40,
+      cost: RULES.SUPER_COST, invuln: [0, 8], knockdown: true,
+      blurb: 'Four frames of invulnerable reversal with absurd reach. Parry still eats it.',
+      tag: 'i-frames 0-7',
+    }),
+  },
+};
+
+const CHAR_IDS = Object.keys(CHARS);
+
+/* Move tables are built once per character and never mutated. */
+const TABLES = {};
+function buildTable(charId) {
+  const c = CHARS[charId];
+  const t = {};
+  for (const [id, m] of Object.entries(UNIVERSAL)) t[id] = c.tweaks?.[id] ? M({ ...m, ...c.tweaks[id] }) : m;
+  for (const m of Object.values(c.strikes)) t[m.id] = m;
+  t[c.superMove.id] = c.superMove;
+  // The wake-up super is the same move, restricted to the floor and keyed differently.
+  t.wakeSuper = M({ ...c.superMove, id: 'wakeSuper', name: `Wakeup ${c.superMove.name}`, cat: 'super', key: '3' });
+  return t;
+}
+function moveTable(charId) {
+  return (TABLES[charId] ||= buildTable(charId));
+}
+const moveOf = (charId, id) => moveTable(charId)[id];
+
+const neutralSet = (charId) => [
+  ...Object.values(CHARS[charId].strikes).map((m) => m.id),
+  'highGuard', 'lowGuard', 'parry', 'dodge', 'closeIn', 'backOff', 'hustle',
+  CHARS[charId].superMove.id,
+];
+const STUN_SET = ['burst', 'diIn', 'diOut'];
+const WAKE_SET = ['quickRise', 'rollAway', 'wakeSuper'];
+
+/* ------------------------------------------------------------------ state */
+
+function newFighter(x, name, charId) {
+  const hp = CHARS[charId].hp;
+  return {
+    name, x, char: charId,
+    hp, maxHp: hp,
+    meter: 0, meterPts: 0,
+    burst: RULES.BURST_FULL,
+    state: 'neutral',      // 'neutral' | 'stunned' | 'down'
+    combo: 0,
+    sad: 0,                // "sadness": turns spent refusing to engage
+  };
+}
+
+function newMatch(charA = 'duelist', charB = 'duelist') {
+  const mid = (RULES.ARENA_MIN + RULES.ARENA_MAX) / 2;
+  return {
+    turn: 1,
+    round: 1,
+    wins: [0, 0],
+    over: null,            // match result, once someone takes ROUNDS_TO_WIN rounds
+    roundOver: null,       // this round's result, cleared by nextRound()
+    stall: 0,
+    fighters: [
+      newFighter(mid - RULES.START_GAP / 2, 'YOU', charA),
+      newFighter(mid + RULES.START_GAP / 2, 'RIVAL', charB),
+    ],
+  };
+}
+
+/** Reset the arena for the next round, carrying the round tally forward. */
+function nextRound(state) {
+  const s = newMatch(state.fighters[0].char, state.fighters[1].char);
+  s.round = state.round + 1;
+  s.wins = [...state.wins];
+  return s;
+}
+
+const gap = (s) => Math.abs(s.fighters[0].x - s.fighters[1].x);
+
+/** Which moves fighter `i` may legally pick right now. */
+function availableMoves(state, i) {
+  const f = state.fighters[i];
+  const ids = f.state === 'down' ? WAKE_SET : f.state === 'stunned' ? STUN_SET : neutralSet(f.char);
+  const table = moveTable(f.char);
+  return ids.map((id) => table[id]).filter((m) => {
+    if (m.cost > f.meter) return false;
+    if (m.cat === 'burst' && f.burst < RULES.BURST_FULL) return false;
+    return true;
+  });
+}
+
+const cloneState = (s) => (Array.isArray(s.teams)
+  ? {
+    turn: s.turn, round: s.round, wins: [...s.wins],
+    over: s.over, roundOver: s.roundOver, stall: s.stall,
+    teams: s.teams.map((t) => t.map((f) => ({ ...f }))),
+    point: [...s.point],
+    cooldown: s.cooldown.map((c) => [...c]),
+  }
+  : {
+    turn: s.turn, round: s.round, wins: [...s.wins],
+    over: s.over, roundOver: s.roundOver, stall: s.stall,
+    fighters: s.fighters.map((f) => ({ ...f })),
+  });
+
+/* -------------------------------------------------------------- simulation */
+
+const within = (f, win) => !!win && f >= win[0] && f < win[1];
+const moveDuration = (m) => m.startup + m.active + m.recovery;
+const clampX = (x) => Math.max(RULES.ARENA_MIN, Math.min(RULES.ARENA_MAX, x));
+
+function dashOffset(m, f) {
+  if (!m.dash) return 0;
+  const { from, to, dist } = m.dash;
+  if (f <= from) return 0;
+  const t = Math.min(1, (f - from) / Math.max(1, to - from));
+  return dist * (1 - Math.pow(1 - t, 2));
+}
+
+/**
+ * Play one turn out, frame by frame.
+ *
+ * Two distinct results are tracked per fighter and they are not the same thing:
+ *   `atk` — what my own move did   ('hit' | 'block' | 'armoured' | 'parried' | 'clash' | 'whiff')
+ *   `def` — what happened to me    ('cut' | 'guarded' | 'parry' | 'armour' | 'clash')
+ * Conflating them is what makes trades resolve wrong, so they stay separate all the way
+ * out to the summary.
+ */
+/*
+ * The frame loop is written against a flat list of *actors*, not two fighters. In a solo
+ * duel that list is exactly the two point fighters and everything below reduces to the
+ * original 1v1 rules. In squad mode it also carries called assists, which is what lets a
+ * team combo exist at all: a second attacker landing inside the stun your first one caused.
+ */
+function makeActor(team, role, f, m, delay = 0, xOffset = 0) {
+  return {
+    team, role, f, m, delay,
+    x0: f.x + xOffset, x: f.x + xOffset, push: 0, dir: 0,
+    atk: null, def: null, armourUsed: false, counter: false,
+    contactAt: null, cutAt: null,
+    dmgDealt: 0, gainPts: 0, spent: m.cost,
+  };
+}
+
+const isPoint = (a) => a.role === 'point';
+/** Local frame for this actor — assists start their move a few frames late. */
+const lf = (a, f) => f - a.delay;
+
+/**
+ * Play one turn out, frame by frame, over an arbitrary set of actors.
+ *
+ * Two distinct results are tracked per actor and they are not the same thing:
+ *   `atk` — what my own move did   ('hit' | 'block' | 'armoured' | 'parried' | 'clash' | 'whiff')
+ *   `def` — what happened to me    ('cut' | 'guarded' | 'parry' | 'armour' | 'clash')
+ * Conflating them is what makes trades resolve wrong, so they stay separate throughout.
+ */
+function simulate(s, actors, startCombo) {
+  const points = [actors.find((a) => a.team === 0 && isPoint(a)), actors.find((a) => a.team === 1 && isPoint(a))];
+  points[0].dir = points[0].x0 <= points[1].x0 ? 1 : -1;
+  points[1].dir = -points[0].dir;
+  for (const a of actors) if (!isPoint(a)) a.dir = points[a.team].dir;
+
+  const total = Math.max(...actors.map((a) => a.delay + moveDuration(a.m)), 1);
+  const timeline = [];
+  const events = [];
+
+  const cutBefore = (a, f) => a.cutAt !== null && a.cutAt < f;
+  const active = (a, f) => lf(a, f) >= 0 && lf(a, f) <= moveDuration(a.m) && !cutBefore(a, f);
+  const iframed = (a, f) => !cutBefore(a, f) && within(lf(a, f), a.m.invuln);
+
+  for (let f = 0; f <= total; f++) {
+    // 1. movement. An actor interrupted at frame k freezes where they were at frame k.
+    for (const a of actors) {
+      const upto = a.cutAt === null ? lf(a, f) : lf(a, a.cutAt);
+      const sign = a.m.dash && a.m.dash.toward === false ? -1 : 1;
+      a.x = clampX(a.x0 + a.dir * sign * dashOffset(a.m, Math.max(0, upto)) + a.push);
+    }
+    separate(points);
+
+    // 2. contact. Every live hitbox is tested against the same frame, so genuine trades
+    //    happen rather than one side silently winning every tie.
+    const pending = [];
+    for (const atk of actors) {
+      if (atk.atk || cutBefore(atk, f)) continue;
+      const k = lf(atk, f);
+      const m = atk.m;
+      if (!m.dmg || k < m.startup || k >= m.startup + m.active) continue;
+      if (!targetFor(actors, atk, f)) continue;
+      pending.push(atk);
+    }
+
+    for (const atk of pending) {
+      if (atk.atk) continue;                       // already settled by a clash this frame
+      const def = targetFor(actors, atk, f);
+      if (!def) continue;
+      const m = atk.m;
+      const dm = def.m;
+      const defLive = !cutBefore(def, f) && active(def, f);
+      const dk = lf(def, f);
+
+      // grab vs grab — nobody wins, both bounce off
+      if (m.cat === 'grab' && dm.cat === 'grab' && defLive && pending.includes(def)) {
+        atk.atk = 'clash'; atk.def = 'clash'; atk.contactAt = f;
+        def.atk = 'clash'; def.def = 'clash'; def.contactAt = f;
+        atk.push += -atk.dir * 70; def.push += -def.dir * 70;
+        events.push({ f, type: 'clash', by: atk.team });
+        continue;
+      }
+
+      if (iframed(def, f)) { events.push({ f, type: 'iframe', by: atk.team, at: def.team }); continue; }
+
+      // parry window. Grabs are unparryable, which keeps Parry an honest gamble.
+      if (defLive && dm.parry && within(dk, [dm.parry.from, dm.parry.to]) && m.parryable) {
+        atk.atk = 'parried'; atk.contactAt = f; atk.cutAt = f;
+        def.def = 'parry'; def.contactAt = f; def.gainPts += dm.gain;
+        events.push({ f, type: 'parry', by: def.team });
+        continue;
+      }
+
+      // guard
+      if (defLive && dm.guards && !m.unblockable && dm.guards.includes(m.level)) {
+        const chip = Math.max(1, Math.round(m.dmg * RULES.CHIP_RATIO));
+        def.f.hp = Math.max(0, def.f.hp - chip);
+        atk.dmgDealt += chip;
+        atk.atk = 'block'; atk.contactAt = f;
+        def.def = 'guarded'; def.contactAt = f;
+        def.gainPts += dm.gain + 6;
+        atk.gainPts += Math.round(m.gain * 0.4);
+        def.push += def.dir * -m.pushBlock * 0.55;
+        events.push({ f, type: 'block', by: atk.team, dmg: chip });
+        continue;
+      }
+
+      // Super-armour: absorbs one strike on the way in, at reduced damage and without
+      // being interrupted. Grabs go straight through it, which keeps the approach game
+      // honest — armour beats pokes, Grab beats armour, Dodge beats Grab.
+      if (defLive && dm.armour && !def.armourUsed && within(dk, dm.armour) && m.cat !== 'grab') {
+        const soak = Math.max(1, Math.round(scaleDamage(m.dmg, def.f, startCombo[atk.team]) * 0.5));
+        def.f.hp = Math.max(0, def.f.hp - soak);
+        def.f.burst = Math.min(RULES.BURST_FULL, def.f.burst + soak);
+        def.armourUsed = true;
+        def.def = 'armour';
+        atk.dmgDealt += soak;
+        atk.atk = 'armoured'; atk.contactAt = f;
+        atk.gainPts += Math.round(m.gain * 0.5);
+        events.push({ f, type: 'armour', by: def.team, dmg: soak });
+        continue;
+      }
+
+      // Counter-hit: catching someone in the wind-up of their own attack pays extra. This
+      // is what makes raw speed worth having — the fastest button in the game is only a
+      // 3-frame poke until it starts interrupting people, and then it is a threat.
+      const counter = dm.dmg > 0 && active(def, f) && dk < dm.startup;
+      // Powering through a hit on armour costs you some of your own follow-through.
+      const armourTax = atk.armourUsed ? RULES.ARMOUR_TAX : 1;
+      // An assist caught in the open is exposed — that is the price of calling one early.
+      const exposed = isPoint(def) ? 1 : RULES.ASSIST_VULN;
+      const dealt = Math.round(
+        scaleDamage(m.dmg, def.f, startCombo[atk.team])
+        * (counter ? RULES.COUNTER_SCALE : 1) * armourTax * exposed,
+      );
+      if (counter) atk.counter = true;
+      def.f.hp = Math.max(0, def.f.hp - dealt);
+      def.f.burst = Math.min(RULES.BURST_FULL, def.f.burst + dealt * 1.6);
+      atk.dmgDealt += dealt;
+      atk.gainPts += m.gain;
+      atk.atk = 'hit'; atk.contactAt = f;
+      def.def = 'cut'; def.cutAt = f;
+      def.push += def.dir * -m.pushHit * 0.55;
+      events.push({
+        f, type: 'hit', by: atk.team, dmg: dealt, level: m.level,
+        kd: m.knockdown, counter, onAssist: !isPoint(def), fromAssist: !isPoint(atk),
+      });
+    }
+
+    timeline.push({
+      f,
+      x: [points[0].x, points[1].x],
+      hp: [points[0].f.hp, points[1].f.hp],
+      phase: points.map((a) => phaseOf(a, lf(a, f))),
+      extras: actors.filter((a) => !isPoint(a) && lf(a, f) <= moveDuration(a.m))
+        .map((a) => ({
+          team: a.team, char: a.f.char, x: a.x, k: Math.max(0, lf(a, f)), move: a.m,
+          phase: lf(a, f) < 0 ? 'move' : phaseOf(a, lf(a, f)),
+        })),
+      events: events.filter((e) => e.f === f),
+    });
+  }
+
+  for (const a of actors) if (!a.atk && a.m.dmg) a.atk = 'whiff';
+  return { points, total, timeline, events };
+}
+
+/** Who does this attack connect with? The nearest enemy inside its reach. */
+function targetFor(actors, atk, f) {
+  let best = null, bestD = Infinity;
+  for (const d of actors) {
+    if (d.team === atk.team) continue;
+    if (lf(d, f) > moveDuration(d.m)) continue;                   // already left the field
+    const dist = Math.abs(atk.x - d.x);
+    if (dist > atk.m.range) continue;
+    // Ties go to the point fighter: an assist standing on top of them is not a shield.
+    if (dist < bestD - 0.001 || (Math.abs(dist - bestD) <= 0.001 && isPoint(d))) {
+      best = d; bestD = dist;
+    }
+  }
+  return best;
+}
+
+/** When can this point fighter act again? */
+function actionableAt(a, enemyPoint, actors) {
+  if (a.def === 'parry') return (a.contactAt ?? 0) + 1;
+  // Whoever actually connected decides the stun, which in squad mode may be an assist.
+  const hitter = actors.find((o) => o.team !== a.team && o.contactAt === (a.contactAt ?? a.cutAt)
+    && (o.atk === 'hit' || o.atk === 'block')) ?? enemyPoint;
+  if (a.def === 'guarded') return (a.contactAt ?? 0) + (hitter.m.blockstun || 8);
+  if (a.def === 'cut') return (a.cutAt ?? 0) + hitter.m.hitstun + (hitter.counter ? RULES.COUNTER_STUN : 0);
+  if (a.atk === 'parried') return (a.cutAt ?? 0) + RULES.PARRY_STUN;
+  if (a.def === 'clash') return (a.contactAt ?? 0) + 12;
+  return a.delay + moveDuration(a.m);
+}
+
+/** Bank meter, spend costs, and apply the uncontested-Hustle bonus. */
+function commitMeter(a) {
+  const f = a.f;
+  f.meterPts += a.gainPts;
+  let levels = Math.floor(f.meterPts / RULES.METER_PER_LEVEL);
+  f.meterPts -= levels * RULES.METER_PER_LEVEL;
+  if (a.m.cat === 'hustle' && a.def === null) levels += 2;
+  if (a.m.cat === 'burst') f.burst = 0;
+  f.meter = Math.max(0, Math.min(RULES.MAX_METER, f.meter - a.spent + levels));
+}
+
+function resolveTurn(state, moveIds) {
+  const s = cloneState(state);
+  s.roundOver = null;
+  const startCombo = [s.fighters[0].combo, s.fighters[1].combo];
+  const actors = [0, 1].map((i) => makeActor(i, 'point', s.fighters[i], moveOf(s.fighters[i].char, moveIds[i])));
+
+  const { points, total, timeline, events } = simulate(s, actors, startCombo);
+  const actionable = points.map((a) => actionableAt(a, points[1 - a.team], actors));
+  const adv = [actionable[1] - actionable[0], actionable[0] - actionable[1]];
+
+  for (const a of actors) { a.f.x = clampX(a.x); commitMeter(a); }
+  separateFighters(s.fighters, points[0].dir === 1 ? 0 : 1);
+
+  // A trade resets both fighters to neutral: neither earned the pressure.
+  const traded = points[0].def === 'cut' && points[1].def === 'cut';
+  for (const a of points) {
+    const other = points[1 - a.team];
+    a.f.state = (a.def === 'cut' && !traded) ? (other.m.knockdown ? 'down' : 'stunned') : 'neutral';
+    a.f.combo = (a.atk === 'hit' && !traded) ? startCombo[a.team] + 1 : 0;
+  }
+
+  const stallDmg = applySadness(s, state, points);
+  s.turn += 1;
+  settleRound(s);
+
+  const summary = points.map((a, i) => ({
+    move: a.m,
+    outcome: a.atk ?? 'idle',
+    defence: a.def,
+    dmgDealt: a.dmgDealt,
+    dmgTaken: points[1 - i].dmgDealt,
+    adv: adv[i],
+    counter: a.counter,
+    contactAt: a.contactAt,
+  }));
+
+  return { state: s, timeline, events, summary, adv, actionable, total, traded, stallDmg };
+}
+
+/*
+ * A stand-in for "the opponent does nothing". Its recovery is stretched to cover whatever
+ * you are rehearsing, because `targetFor` treats an actor whose move has finished as having
+ * left the field — a one-frame idle would make your attack pass through thin air. It is
+ * never longer than that, so the preview runs exactly as long as the move does.
+ */
+const idleMove = (frames) => M({ id: 'idle', name: 'Waiting', cat: 'idle', recovery: Math.max(1, frames) });
+
+/**
+ * What would the move you are holding do, from where you are standing, right now?
+ *
+ * The planning screen and the replay answer different questions and must not share an
+ * answer. The replay is a record: what happened last turn. This is a rehearsal — your
+ * fighter throwing the move you have selected against an opponent who simply stands there,
+ * so you can read its wind-up, its reach and whether it even arrives before you commit.
+ *
+ * The opponent is deliberately inert rather than playing their likeliest reply. A preview
+ * that guessed for them would be a prediction dressed up as a fact, and the threat board is
+ * already the honest way to ask that question.
+ *
+ * Nothing here touches the real state — the clone goes out with the rest of the result.
+ */
+function previewTurn(state, myIdx, choiceId) {
+  const s = cloneState(state);
+  const them = 1 - myIdx;
+  const pts = [0, 1].map((i) => pointOf(s, i));
+  const startCombo = [pts[0].combo, pts[1].combo];
+  const pick = decodeChoice(choiceId);
+  const mine = moveOf(pts[myIdx].char, pick.moveId);
+  if (!mine) return null;
+
+  const me = makeActor(myIdx, 'point', pts[myIdx], mine);
+  const extra = [];
+  let span = moveDuration(mine);
+  if (isSquad(s) && pick.assist != null && s.teams[myIdx][pick.assist]?.hp > 0) {
+    const mate = s.teams[myIdx][pick.assist];
+    mate.x = pts[myIdx].x;
+    const lead = (pts[myIdx].x <= pts[them].x ? 1 : -1) * RULES.ASSIST_LEAD;
+    const am = moveOf(mate.char, mate.assist);
+    extra.push(makeActor(myIdx, 'assist', mate, am, RULES.ASSIST_DELAY, lead));
+    span = Math.max(span, RULES.ASSIST_DELAY + moveDuration(am));
+  }
+  // The stand-in has to still be on the field when the last of your actors arrives.
+  const dummy = makeActor(them, 'point', pts[them], idleMove(span));
+  const actors = myIdx === 0 ? [me, dummy, ...extra] : [dummy, me, ...extra];
+
+  const sim = simulate(s, actors, startCombo);
+  return {
+    preview: true, owner: myIdx,
+    timeline: sim.timeline, events: sim.events, total: sim.total,
+    summary: sim.points.map((a) => ({ move: a.m, outcome: a.atk ?? 'idle', defence: a.def })),
+    move: mine,
+    // What it would do to a target who never moves — the ceiling, not the expectation.
+    outcome: me.atk ?? 'idle',
+    dmg: actors.filter((a) => a && a.team === myIdx).reduce((n, a) => n + a.dmgDealt, 0),
+    contactAt: me.contactAt,
+  };
+}
+
+/*
+ * Sadness, borrowed from the source game: refusing to engage costs you health. It is
+ * tracked per fighter rather than globally, so the one running away is the one who bleeds —
+ * otherwise two passive fighters just tie on health and the round is a draw.
+ */
+function applySadness(s, before, points) {
+  const anyDamage = points.some((a) => a.dmgDealt > 0);
+  s.stall = anyDamage ? 0 : s.stall + 1;
+  const beforeFs = before.fighters ?? before.teams.map((t, i) => t[before.point[i]]);
+  const afterFs = s.fighters ?? s.teams.map((t, i) => t[s.point[i]]);
+  const gapBefore = Math.abs(beforeFs[0].x - beforeFs[1].x);
+  const gapAfter = Math.abs(afterFs[0].x - afterFs[1].x);
+  const closing = gapAfter < gapBefore - 5;
+  const stallDmg = [0, 0];
+  for (const a of points) {
+    const f = a.f;
+    const engaged = anyDamage || (closing && a.m.dash?.toward === true);
+    f.sad = engaged ? Math.max(0, f.sad - 2) : f.sad + 1;
+    if (f.sad > RULES.STALL_GRACE) {
+      stallDmg[a.team] = Math.min(8, (f.sad - RULES.STALL_GRACE) * 2);
+      f.hp = Math.max(0, f.hp - stallDmg[a.team]);
+    }
+  }
+  return stallDmg;
+}
+
+
+/* ------------------------------------------------------------------ squad */
+
+/*
+ * Squad mode: three fighters a side, one on point and two on the bench.
+ *
+ * Every turn you order your point fighter *and* may call one benched teammate, who runs in
+ * ahead of you and performs their chosen assist move a few frames later. That delay is the
+ * whole feature: land a knockdown, call an assist into the stun, and the two of them combo
+ * together. The cost is that the assist arrives in front of you and is fully exposed, so a
+ * call into a fast poke gets your teammate hurt and puts them on a long cooldown.
+ */
+
+function newSquadMatch(teamA, teamB) {
+  const mid = (RULES.ARENA_MIN + RULES.ARENA_MAX) / 2;
+  const build = (team, side) => team.map((slot, n) => {
+    const f = newFighter(mid + (side === 0 ? -1 : 1) * RULES.START_GAP / 2, `P${side + 1}-${n + 1}`, slot.char);
+    f.assist = slot.assist ?? Object.values(CHARS[slot.char].strikes)[0].id;
+    // Three fighters a side share the round, so each carries a smaller pool. Otherwise a
+    // squad match simply never finishes inside the clock.
+    f.maxHp = Math.round(f.maxHp * RULES.SQUAD_HP_SCALE);
+    f.hp = f.maxHp;
+    return f;
+  });
+  return {
+    turn: 1, round: 1, wins: [0, 0], over: null, roundOver: null, stall: 0,
+    teams: [build(teamA, 0), build(teamB, 1)],
+    point: [0, 0],
+    cooldown: [[0, 0, 0], [0, 0, 0]],
+  };
+}
+
+const isSquad = (s) => Array.isArray(s.teams);
+const pointOf = (s, i) => (isSquad(s) ? s.teams[i][s.point[i]] : s.fighters[i]);
+const teamAlive = (s, i) => s.teams[i].filter((f) => f.hp > 0).length;
+
+/** Living teammates who are not currently on point, in slot order. */
+const benchOf = (s, i) => s.teams[i]
+  .map((f, n) => ({ f, n }))
+  .filter(({ f, n }) => n !== s.point[i] && f.hp > 0);
+
+/** A squad choice is "<moveId>" or "<moveId>|<slot>" when a teammate is called with it. */
+const encodeChoice = (moveId, assistSlot) => (assistSlot == null ? moveId : `${moveId}|${assistSlot}`);
+function decodeChoice(id) {
+  const bar = id.indexOf('|');
+  return bar < 0 ? { moveId: id, assist: null } : { moveId: id.slice(0, bar), assist: Number(id.slice(bar + 1)) };
+}
+
+/** Point-fighter moves available in squad mode, including the tag options. */
+function squadMoves(s, i) {
+  const f = pointOf(s, i);
+  const bench = benchOf(s, i);
+  if (f.hp <= 0) return bench.map((b, k) => moveOf(f.char, k === 0 ? 'tag1' : 'tag2'));   // forced swap
+  const ids = f.state === 'down' ? ['quickRise', 'rollAway', 'wakeSuper']
+    : f.state === 'stunned' ? ['burst', 'diIn', 'diOut']
+      : neutralSet(f.char);
+  const table = moveTable(f.char);
+  const list = ids.map((id) => table[id]).filter((m) => {
+    if (m.cost > f.meter) return false;
+    if (m.cat === 'burst' && f.burst < RULES.BURST_FULL) return false;
+    return true;
+  });
+  // Tagging is only legal from neutral — you cannot swap out of hitstun.
+  if (f.state === 'neutral') bench.forEach((b, k) => list.push(table[k === 0 ? 'tag1' : 'tag2']));
+  return list;
+}
+
+/**
+ * Every legal choice for this side: each point move on its own, plus the same move paired
+ * with each teammate who is off cooldown. Solo states return their moves unchanged, so the
+ * threat board, the yomi chain and the AI all work in both modes without knowing which.
+ */
+function optionsFor(state, i) {
+  if (!isSquad(state)) {
+    return availableMoves(state, i).map((m) => ({ id: m.id, move: m, assist: null }));
+  }
+  const out = [];
+  const callable = benchOf(state, i).filter(({ n }) => state.cooldown[i][n] === 0);
+  for (const m of squadMoves(state, i)) {
+    out.push({ id: m.id, move: m, assist: null });
+    if (m.cat === 'tag') continue;                     // you cannot swap and call at once
+    for (const { n, f } of callable) {
+      out.push({ id: encodeChoice(m.id, n), move: m, assist: n, assistFighter: f });
+    }
+  }
+  return out;
+}
+
+/** Resolve a turn in whichever mode this state is. */
+const resolve = (state, ids) => (isSquad(state) ? resolveSquadTurn(state, ids) : resolveTurn(state, ids));
+
+function resolveSquadTurn(state, choiceIds) {
+  const s = cloneState(state);
+  s.roundOver = null;
+  const picks = choiceIds.map(decodeChoice);
+  const points = [0, 1].map((i) => pointOf(s, i));
+  const startCombo = [points[0].combo, points[1].combo];
+
+  const actors = [];
+  const called = [null, null];
+  for (const i of [0, 1]) {
+    const f = points[i];
+    actors.push(makeActor(i, 'point', f, moveOf(f.char, picks[i].moveId)));
+    const slot = picks[i].assist;
+    if (slot != null && s.teams[i][slot]?.hp > 0 && s.cooldown[i][slot] === 0) {
+      const mate = s.teams[i][slot];
+      mate.x = f.x;
+      const lead = (f.x <= points[1 - i].x ? 1 : -1) * RULES.ASSIST_LEAD;
+      actors.push(makeActor(i, 'assist', mate, moveOf(mate.char, mate.assist), RULES.ASSIST_DELAY, lead));
+      called[i] = slot;
+    }
+  }
+
+  const sim = simulate(s, actors, startCombo);
+  const pts = sim.points;
+  const actionable = pts.map((a) => actionableAt(a, pts[1 - a.team], actors));
+  const adv = [actionable[1] - actionable[0], actionable[0] - actionable[1]];
+
+  for (const a of actors) { if (isPoint(a)) a.f.x = clampX(a.x); commitMeter(a); }
+  keepApart(...(pts[0].dir === 1 ? [pts[0].f, pts[1].f] : [pts[1].f, pts[0].f]));
+
+  const traded = pts[0].def === 'cut' && pts[1].def === 'cut';
+  for (const a of pts) {
+    const hitter = actors.find((o) => o.team !== a.team && o.cutAt === null && o.contactAt === a.cutAt && o.atk === 'hit')
+      ?? pts[1 - a.team];
+    a.f.state = (a.def === 'cut' && !traded) ? (hitter.m.knockdown ? 'down' : 'stunned') : 'neutral';
+    a.f.combo = (a.atk === 'hit' && !traded) ? startCombo[a.team] + 1 : 0;
+  }
+  // A team combo is one combo. Two attackers connecting in the same turn is a two-hit
+  // string, so the count climbs by both and proration applies across the pair.
+  for (const i of [0, 1]) {
+    const hits = actors.filter((a) => a.team === i && a.atk === 'hit').length;
+    if (hits && !traded) pts[i].f.combo = startCombo[i] + hits;
+    // An assist that lands leaves the victim stunned even if the point fighter whiffed.
+    const lander = actors.filter((a) => a.team === i && a.atk === 'hit' && !isPoint(a)).pop();
+    const victim = pts[1 - i];
+    if (lander && !traded && victim.f.hp > 0 && victim.def !== 'parry') {
+      victim.f.state = lander.m.knockdown ? 'down' : 'stunned';
+    }
+  }
+
+  const stallDmg = applySadness(s, state, pts);
+
+  // Cooldowns tick down; a called teammate goes on ice, longer if they got caught.
+  for (const i of [0, 1]) {
+    s.cooldown[i] = s.cooldown[i].map((c) => Math.max(0, c - 1));
+    if (called[i] != null) {
+      const assist = actors.find((a) => a.team === i && !isPoint(a));
+      s.cooldown[i][called[i]] = assist?.def === 'cut' ? RULES.ASSIST_PUNISHED : RULES.ASSIST_COOLDOWN;
+    }
+  }
+
+  // Tagging, and the forced swap when your point fighter is down.
+  for (const i of [0, 1]) {
+    const pick = picks[i];
+    const bench = benchOf(state, i);
+    if (pick.moveId === 'tag1' || pick.moveId === 'tag2') {
+      const target = bench[pick.moveId === 'tag1' ? 0 : 1];
+      if (target) swapPoint(s, i, target.n);
+    } else if (pointOf(s, i).hp <= 0) {
+      const next = benchOf(s, i)[0];
+      if (next) swapPoint(s, i, next.n);
+    }
+  }
+
+  // Benched fighters catch their breath — but only back up to half health. Uncapped, two
+  // benched teammates regenerate faster than a fight deals damage, and every match runs
+  // to the clock instead of to a knockout.
+  for (const i of [0, 1]) {
+    s.teams[i].forEach((f, n) => {
+      if (n === s.point[i] || f.hp <= 0) return;
+      const cap = f.maxHp * RULES.BENCH_HEAL_CAP;
+      if (f.hp < cap) f.hp = Math.min(cap, f.hp + RULES.BENCH_HEAL);
+    });
+  }
+
+  s.turn += 1;
+  settleSquad(s);
+
+  const summary = pts.map((a, i) => ({
+    move: a.m,
+    outcome: a.atk ?? 'idle',
+    defence: a.def,
+    dmgDealt: actors.filter((o) => o.team === i).reduce((n, o) => n + o.dmgDealt, 0),
+    dmgTaken: actors.filter((o) => o.team !== i).reduce((n, o) => n + o.dmgDealt, 0),
+    adv: adv[i],
+    counter: a.counter,
+    contactAt: a.contactAt,
+    assist: actors.find((o) => o.team === i && !isPoint(o)) ?? null,
+  }));
+
+  return {
+    state: s, timeline: sim.timeline, events: sim.events, summary, adv, actionable,
+    total: sim.total, traded, stallDmg, called,
+  };
+}
+
+function swapPoint(s, i, slot) {
+  const out = s.teams[i][s.point[i]];
+  const inc = s.teams[i][slot];
+  inc.x = out.x;
+  inc.state = 'neutral';
+  inc.combo = 0;
+  s.point[i] = slot;
+}
+
+/** Squad matches have no rounds — the three lives are the rounds. */
+function settleSquad(s) {
+  const alive = [teamAlive(s, 0), teamAlive(s, 1)];
+  if (alive[0] === 0 || alive[1] === 0) {
+    s.over = { winner: alive[0] === 0 && alive[1] === 0 ? null : (alive[0] === 0 ? 1 : 0), by: 'ko' };
+    return;
+  }
+  if (s.turn > RULES.SQUAD_TURN_LIMIT) {
+    const share = [0, 1].map((i) => s.teams[i].reduce((n, f) => n + f.hp, 0) / s.teams[i].reduce((n, f) => n + f.maxHp, 0));
+    s.over = { winner: share[0] === share[1] ? null : (share[0] > share[1] ? 0 : 1), by: 'time' };
+  }
+}
+
+/** Decide whether this round (and then the match) has ended. */
+function settleRound(s) {
+  // `winner` is an index, so results are always objects — a bare 0 would read as falsy.
+  const down = [s.fighters[0].hp <= 0, s.fighters[1].hp <= 0];
+  let result = null;
+  if (down[0] || down[1]) {
+    result = { winner: down[0] && down[1] ? null : (down[0] ? 1 : 0), by: 'ko' };
+  } else if (s.turn > RULES.TURN_LIMIT) {
+    // Time over. Health share decides it, so refusing to engage is a losing plan by itself.
+    const [a, b] = s.fighters.map((f) => f.hp / f.maxHp);
+    result = { winner: a === b ? null : (a > b ? 0 : 1), by: 'time' };
+  }
+  if (!result) return;
+
+  s.roundOver = result;
+  if (result.winner !== null) s.wins[result.winner] += 1;
+  if (s.wins[0] >= RULES.ROUNDS_TO_WIN || s.wins[1] >= RULES.ROUNDS_TO_WIN) {
+    s.over = { winner: s.wins[0] >= RULES.ROUNDS_TO_WIN ? 0 : 1, by: result.by };
+  }
+}
+
+function phaseOf(sd, f) {
+  if (sd.m.cat === 'idle') return sd.cutAt !== null && f >= sd.cutAt ? 'stun' : 'idle';
+  if (sd.m.cat === 'tag') return 'move';
+  if (sd.cutAt !== null && f >= sd.cutAt) return sd.atk === 'parried' ? 'parried' : 'stun';
+  const m = sd.m;
+  if (m.cat === 'guard') return sd.def === 'guarded' && f >= (sd.contactAt ?? 1e9) ? 'blockstun' : 'guard';
+  if (m.cat === 'parry') return within(f, [m.parry.from, m.parry.to]) ? 'parryWindow' : 'parryRecover';
+  if (m.cat === 'dodge' || m.cat === 'wake' || m.cat === 'di') return within(f, m.invuln) ? 'invuln' : 'move';
+  if (m.cat === 'move') return 'move';
+  if (m.cat === 'hustle') return 'hustle';
+  if (within(f, m.armour) && f < m.startup) return 'armour';
+  if (f < m.startup) return 'startup';
+  if (f < m.startup + m.active) return 'active';
+  return 'recovery';
+}
+
+function scaleDamage(raw, defender, comboCount) {
+  let d = raw * Math.max(RULES.COMBO_FLOOR, 1 - RULES.COMBO_DECAY * comboCount);
+  if (defender.hp / defender.maxHp < RULES.GUTS_THRESHOLD) d *= RULES.GUTS_SCALE;
+  return Math.max(1, Math.round(d));
+}
+
+/*
+ * Keep the fighters apart *and* in their original left/right order. Using the current
+ * sign of the gap instead lets an overshooting dash teleport straight past the opponent
+ * and swap the sides mid-round, which reads as a bug even when the maths is fine.
+ */
+function keepApart(left, right) {
+  const overlap = RULES.MIN_SEPARATION - (right.x - left.x);
+  if (overlap <= 0) return;
+  left.x = clampX(left.x - overlap / 2);
+  right.x = clampX(right.x + overlap / 2);
+}
+
+const separate = (sides) => keepApart(...(sides[0].dir === 1 ? sides : [sides[1], sides[0]]));
+
+function separateFighters(fs, leftIdx) {
+  keepApart(fs[leftIdx], fs[1 - leftIdx]);
+}
+
+/* ----------------------------------------------------------- threat board */
+
+/** How good was this exchange for fighter `i`? Higher is better. */
+function scoreFor(result, i) {
+  const me = result.summary[i];
+  const them = result.summary[1 - i];
+  const myF = pointOf(result.state, i);
+  const theirF = pointOf(result.state, 1 - i);
+
+  let v = 0;
+  // Damage is weighed against each fighter's own health pool, so a Bruiser and a Blade
+  // value the same 15 points correctly differently.
+  v += (me.dmgDealt / theirF.maxHp) * 150;
+  v -= (them.dmgDealt / myF.maxHp) * 172;
+  v += Math.max(-40, Math.min(40, me.adv)) * 0.32;
+  v += (myF.meter - theirF.meter) * 1.2;
+  if (theirF.state === 'down') v += 7;
+  if (myF.state === 'down') v -= 7;
+  if (theirF.state === 'stunned') v += 5;
+  if (myF.state === 'stunned') v -= 5;
+  const ended = result.state.over ?? result.state.roundOver;
+  if (ended?.winner === i) v += 500;
+  if (ended?.winner === 1 - i) v -= 500;
+
+  // Squad mode: the point fighter's health is not the whole picture. Chipping a teammate
+  // off the board is worth real value, and losing your own assist to a poke is not free.
+  if (isSquad(result.state)) {
+    const share = (n) => result.state.teams[n].reduce((a, f) => a + f.hp, 0)
+      / result.state.teams[n].reduce((a, f) => a + f.maxHp, 0);
+    // Weighted lightly on purpose. Valuing team health too highly makes both sides turtle,
+    // and every squad match ends on the clock at three-quarters health instead of with a
+    // knockout. The point-fighter damage terms above already carry the exchange.
+    v += (share(i) - share(1 - i)) * 12;
+    v += (teamAlive(result.state, 1 - i) < teamAlive(result.state, i) ? 12 : 0);
+  }
+
+  // Being cornered is a genuine loss of options, so hold the middle.
+  const wall = Math.min(myF.x - RULES.ARENA_MIN, RULES.ARENA_MAX - myF.x);
+  v += Math.min(wall, 180) * 0.012;
+
+  // A one-turn lookahead cannot see that closing the gap is what makes damage possible
+  // later, so spacing needs an explicit pull toward the range where strikes reach. The
+  // target is per character: a Blade wants to sit where a Bruiser cannot touch it.
+  //
+  // This weight matters more than it looks. Too low and both sides drift to a 270-unit
+  // stand-off where nothing reaches, only 4% of turns land, and every match is decided by
+  // the clock. At 9 the AI holds a real fighting range and roughly a fifth of turns connect.
+  const g = Math.abs(myF.x - theirF.x);
+  v += Math.max(0, 1 - Math.abs(g - preferredGap(myF.char)) / 200) * 9.0;
+
+  // A whiffed attack is a wasted commitment. Without this the AI is happy to throw pokes
+  // into thin air forever, because at max range a whiff costs it nothing at all.
+  if (me.outcome === 'whiff') v -= 1.6;
+  return v;
+}
+
+/** Where this fighter's own strikes actually land — the gap they should be fighting at. */
+const GAPS = {};
+function preferredGap(charId) {
+  return (GAPS[charId] ??= 0.85 * Math.max(
+    ...neutralSet(charId).map((id) => moveOf(charId, id).dmg ? moveOf(charId, id).range : 0),
+  ));
+}
+
+/** Classify an exchange from fighter `i`'s point of view, for display. */
+function verdictFor(result, i) {
+  const me = result.summary[i];
+  const them = result.summary[1 - i];
+  if (result.traded) return { key: 'trade', label: `TRADE · ${them.dmgDealt}` };
+  if (me.defence === 'parry') return { key: 'parry', label: 'YOU PARRY' };
+  if (me.outcome === 'parried') return { key: 'parried', label: 'PARRIED' };
+  if (me.defence === 'clash') return { key: 'clash', label: 'CLASH' };
+  if (me.defence === 'armour' && me.outcome === 'hit') return { key: 'win', label: `TANK & HIT · ${me.dmgDealt}` };
+  if (me.outcome === 'armoured') return { key: 'blocked', label: 'THEY TANK IT' };
+  if (me.defence === 'armour') return { key: 'guard', label: 'YOU TANK IT' };
+  if (me.outcome === 'hit') return { key: 'win', label: `${me.counter ? 'COUNTER' : 'HIT'} · ${me.dmgDealt}` };
+  if (me.defence === 'cut') return { key: 'lose', label: `EAT · ${them.dmgDealt}` };
+  if (me.outcome === 'block') return { key: 'blocked', label: 'THEY GUARD' };
+  if (me.defence === 'guarded') return { key: 'guard', label: 'YOU GUARD' };
+  const adv = me.adv;
+  if (me.outcome === 'whiff' && adv <= -8) return { key: 'minus', label: `WHIFF · ${adv}` };
+  if (adv >= 8) return { key: 'plus', label: `+${adv} FREE TURN` };
+  if (adv <= -8) return { key: 'minus', label: `${adv} PUNISHABLE` };
+  return { key: 'neutral', label: adv === 0 ? 'EVEN' : (adv > 0 ? `+${adv}` : `${adv}`) };
+}
+
+/** Resolve a specific pairing without caring which index is which. */
+function pair(state, aIdx, aMove, bMove) {
+  const ids = [];
+  ids[aIdx] = aMove;
+  ids[1 - aIdx] = bMove;
+  return resolve(state, ids);
+}
+
+/** Display name for a choice — squad choices carry the teammate they call. */
+function choiceLabel(state, i, id) {
+  const { moveId, assist } = decodeChoice(id);
+  const f = pointOf(state, i);
+  const name = moveOf(f.char, moveId)?.name ?? moveId;
+  if (assist == null || !isSquad(state)) return name;
+  return `${name} + ${CHARS[state.teams[i][assist].char].name}`;
+}
+
+/**
+ * The headline feature. For a move *you* are considering, run every legal reply the
+ * opponent has and rank them by how well they do against it. This is the real simulation
+ * — not a lookup table — so if the engine changes, the board changes with it.
+ */
+function threatBoard(state, myIdx, myMoveId) {
+  const themIdx = 1 - myIdx;
+  const rows = optionsFor(state, themIdx).map((opt) => {
+    const m = opt.move;
+    const result = pair(state, myIdx, myMoveId, opt.id);
+    return {
+      move: m,
+      option: opt,
+      label: choiceLabel(state, themIdx, opt.id),
+      score: scoreFor(result, themIdx),
+      mine: scoreFor(result, myIdx),
+      verdict: verdictFor(result, myIdx),
+      dmgTaken: result.summary[myIdx].dmgTaken,
+      dmgDealt: result.summary[myIdx].dmgDealt,
+      adv: result.summary[myIdx].adv,
+      result,
+    };
+  });
+  rows.sort((a, b) => b.score - a.score);
+  const lo = Math.min(...rows.map((r) => r.score));
+  const hi = Math.max(...rows.map((r) => r.score));
+  for (const r of rows) r.heat = hi === lo ? 0.5 : (r.score - lo) / (hi - lo);
+
+  // "Risky" means they get something out of it: damage, or a free turn from close enough
+  // to actually spend it. Being minus at full screen costs you nothing and is not counted.
+  const bad = rows.filter((r) => {
+    if (r.dmgTaken > 0) return true;
+    const gapAfter = Math.abs(pointOf(r.result.state, 0).x - pointOf(r.result.state, 1).x);
+    return r.adv <= -8 && gapAfter <= 220;
+  }).length;
+  return { rows, best: rows[0], risk: rows.length ? bad / rows.length : 0 };
+}
+
+/** The single best reply `responder` has to a move the other side has committed to. */
+function bestAnswer(state, responder, committedMove) {
+  let best = null;
+  for (const opt of optionsFor(state, responder)) {
+    const result = pair(state, 1 - responder, committedMove, opt.id);
+    const score = scoreFor(result, responder);
+    if (!best || score > best.score) {
+      best = {
+        move: opt.move, id: opt.id, option: opt, score, result,
+        label: choiceLabel(state, responder, opt.id),
+        verdict: verdictFor(result, responder),
+      };
+    }
+  }
+  return best;
+}
+
+/**
+ * The yomi ladder, made visible.
+ *
+ * Layer 1 is what beats your move. Layer 2 is what beats *that* — the move to play if you
+ * expect them to have read you. Layer 3 is their answer to the read, and so on. Every
+ * layer is evaluated in the same current situation, because that is how the guess actually
+ * works: nobody is planning turns ahead, they are planning how deep to think right now.
+ *
+ * Chains in this game close quickly, so the walk stops as soon as a side repeats itself —
+ * that repeat is the point where the read loops and you are back to a coin flip.
+ */
+function yomiChain(state, myIdx, myMoveId, depth = 4) {
+  const chain = [{
+    side: myIdx,
+    move: moveOf(pointOf(state, myIdx).char, decodeChoice(myMoveId).moveId),
+    name: choiceLabel(state, myIdx, myMoveId),
+    label: 'You commit',
+  }];
+  const seen = [new Set([myMoveId]), new Set()];
+  let side = myIdx;
+  let committed = myMoveId;
+
+  for (let d = 0; d < depth; d++) {
+    const responder = 1 - side;
+    const answer = bestAnswer(state, responder, committed);
+    if (!answer) break;
+    const loops = seen[responder].has(answer.id);
+    chain.push({
+      side: responder,
+      move: answer.move,
+      name: answer.label,
+      verdict: answer.verdict,
+      label: responder === myIdx ? 'So you' : 'They answer',
+      loops,
+    });
+    if (loops) break;
+    seen[responder].add(answer.id);
+    side = responder;
+    committed = answer.id;
+  }
+  return chain;
+}
+
+/**
+ * After the fact: given what they actually played, what should you have played?
+ * The threat board teaches you before the guess; this teaches you after it.
+ */
+function postMortem(preState, myIdx, myMoveId, theirMoveId) {
+  const rows = optionsFor(preState, myIdx).map((opt) => {
+    const m = opt.move;
+    const result = pair(preState, myIdx, opt.id, theirMoveId);
+    return {
+      move: m,
+      id: opt.id,
+      label: choiceLabel(preState, myIdx, opt.id),
+      score: scoreFor(result, myIdx),
+      verdict: verdictFor(result, myIdx),
+      dmgDealt: result.summary[myIdx].dmgDealt,
+      dmgTaken: result.summary[myIdx].dmgTaken,
+      adv: result.summary[myIdx].adv,
+    };
+  });
+  rows.sort((a, b) => b.score - a.score);
+  const played = rows.find((r) => r.id === myMoveId) ?? null;
+  const best = rows[0];
+  return {
+    best,
+    played,
+    wasBest: !!played && !!best && played.id === best.id,
+    rank: played ? rows.indexOf(played) + 1 : null,
+    total: rows.length,
+  };
+}
+
+/**
+ * Risk rating for the moves you could pick — drives the bars on the buttons.
+ *
+ * In squad mode the assist call is a separate toggle in the UI rather than 38 separate
+ * buttons, so pass the currently selected teammate and only those options get scored. That
+ * keeps the per-turn cost near the solo game's instead of tripling it.
+ */
+function riskProfile(state, myIdx, assistSlot = undefined) {
+  const out = {};
+  for (const opt of optionsFor(state, myIdx)) {
+    if (assistSlot !== undefined && opt.assist !== assistSlot && opt.move.cat !== 'tag') continue;
+    const b = threatBoard(state, myIdx, opt.id);
+    out[opt.id] = { risk: b.risk, best: b.best, rows: b.rows, option: opt };
+  }
+  return out;
+}
+
+/* -------------------------------------------------------------------- AI */
+
+function payoffMatrix(state, aiIdx) {
+  const humanIdx = 1 - aiIdx;
+  const mine = optionsFor(state, aiIdx);
+  const theirs = optionsFor(state, humanIdx);
+  const M2 = mine.map((am) => theirs.map((hm) => scoreFor(pair(state, aiIdx, am.id, hm.id), aiIdx)));
+  return { mine, theirs, M: M2 };
+}
+
+/**
+ * Fictitious play: each side repeatedly best-responds to the running average of the
+ * other's history. It converges toward a mixed equilibrium — exactly the right shape of
+ * opponent for a game whose whole premise is that no single answer is ever safe.
+ */
+const EPS = 1e-9;
+function fictitiousPlay(M, iters = 250) {
+  const R = M.length, C = M[0].length;
+  const rowCount = new Array(R).fill(0);
+  const colCount = new Array(C).fill(0);
+  rowCount[0] = 1; colCount[0] = 1;
+  for (let t = 0; t < iters; t++) {
+    let bi = 0, bv = -Infinity;
+    for (let r = 0; r < R; r++) {
+      let v = 0;
+      for (let c = 0; c < C; c++) v += M[r][c] * colCount[c];
+      // On a tie, favour whichever option has been chosen least. Strict `>` would pile
+      // every tie onto the first option in the list and quietly kill its equals.
+      if (v > bv + EPS || (Math.abs(v - bv) <= EPS && rowCount[r] < rowCount[bi])) { bv = v; bi = r; }
+    }
+    rowCount[bi]++;
+    let ci = 0, cv = Infinity;
+    for (let c = 0; c < C; c++) {
+      let v = 0;
+      for (let r = 0; r < R; r++) v += M[r][c] * rowCount[r];
+      if (v < cv - EPS || (Math.abs(v - cv) <= EPS && colCount[c] < colCount[ci])) { cv = v; ci = c; }
+    }
+    colCount[ci]++;
+  }
+  const tot = rowCount.reduce((a, b) => a + b, 0);
+  return rowCount.map((n) => n / tot);
+}
+
+const DIFFICULTY = {
+  rookie: { noise: 0.62, readWeight: 0.0, label: 'Rookie', note: 'Mostly random. Learn the buttons.' },
+  fighter: { noise: 0.32, readWeight: 0.25, label: 'Fighter', note: 'Plays the odds, forgives habits.' },
+  yomi: { noise: 0.1, readWeight: 0.55, label: 'Yomi', note: 'Mixes well and starts reading you.' },
+  oracle: { noise: 0.02, readWeight: 0.85, label: 'Oracle', note: 'Punishes any pattern you show.' },
+};
+
+// Small deterministic PRNG so replays and tests are reproducible.
+function rng(seed) {
+  let s = seed >>> 0 || 1;
+  return () => {
+    s ^= s << 13; s >>>= 0;
+    s ^= s >> 17;
+    s ^= s << 5; s >>>= 0;
+    return s / 4294967296;
+  };
+}
+
+/**
+ * Pick the AI's move. It solves the same matrix the threat board shows you, then mixes:
+ * partly the equilibrium strategy, partly a direct read of what you have been leaning on.
+ * Higher difficulty means less noise and a sharper read.
+ */
+function chooseAiMove(state, aiIdx, difficulty, history, rand) {
+  const cfg = DIFFICULTY[difficulty] ?? DIFFICULTY.fighter;
+  const { mine, theirs, M } = payoffMatrix(state, aiIdx);
+  if (!mine.length) return null;
+  if (!theirs.length) return mine[0].id;
+
+  const mix = fictitiousPlay(M);
+
+  // Read layer: assume you will keep doing what you have been doing.
+  const read = new Array(mine.length).fill(0);
+  const counts = {};
+  let seen = 0;
+  for (const h of history.slice(-8)) { counts[h] = (counts[h] || 0) + 1; seen++; }
+  let hasRead = false;
+  if (seen && cfg.readWeight > 0) {
+    const w = theirs.map((t) => (counts[t.id] || 0) / seen);
+    if (w.some((v) => v > 0)) {
+      const ev = M.map((row) => row.reduce((a, v, c) => a + v * w[c], 0));
+      read[ev.indexOf(Math.max(...ev))] = 1;
+      hasRead = true;
+    }
+  }
+  const rw = hasRead ? cfg.readWeight : 0;
+
+  const probs = mine.map((_, r) => {
+    const base = (1 - rw) * mix[r] + rw * read[r];
+    return base * (1 - cfg.noise) + (cfg.noise / mine.length);
+  });
+  const tot = probs.reduce((a, b) => a + b, 0);
+  let roll = rand() * tot;
+  for (let r = 0; r < probs.length; r++) {
+    roll -= probs[r];
+    if (roll <= 0) return mine[r].id;
+  }
+  return mine[mine.length - 1].id;
+}
+
+/*
+ * HUSTLE LITE — renderer.
+ *
+ * Draws the arena and replays a `resolveTurn` timeline. It reads the engine's output and
+ * never decides anything itself: every position, phase and impact on screen came out of
+ * the simulation, so what you watch is exactly what was scored.
+ */
+
+const W = 1000, H = 340;
+const GROUND = 282;
+const S = 1.28;          // fighter scale — YOMIH reads big and bold, not dainty
+const COL = { ink: '#ffffff', dim: '#555555', floor: '#000000' };
+const PX = 2;            // the scene is drawn this many times smaller, then blitted up
+const FONT = '"Press Start 2P", ui-monospace, monospace';
+
+// Player one always reads cool, player two always reads warm, whichever characters are
+// picked — you should never have to work out which fighter is yours.
+const SIDE_TINT = ['#3fe0cf', '#ff5f78'];
+const sideColour = (state, i) => (state ? mixHex(CHARS[pointOf(state, i).char].accent, SIDE_TINT[i], 0.72) : SIDE_TINT[i]);
+
+function mixHex(a, b, t) {
+  const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [ar, ag, ab] = p(a), [br, bg, bb] = p(b);
+  const c = (x, y) => Math.round(x + (y - x) * t).toString(16).padStart(2, '0');
+  return `#${c(ar, br)}${c(ag, bg)}${c(ab, bb)}`;
+}
+
+/* ------------------------------------------------------------------ poses */
+
+/*
+ * A pose is four numbers: how far the fighter leans, how low they crouch, the angle of
+ * the weapon arm, and how far it extends. Everything on screen is derived from the phase
+ * the engine reported for that frame, so the animation cannot drift out of sync with it.
+ */
+const lerp = (a, b, u) => a + (b - a) * u;
+const easeOut = (u) => 1 - (1 - u) * (1 - u);
+const easeIn = (u) => u * u;
+const clamp01 = (u) => (u < 0 ? 0 : u > 1 ? 1 : u);
+const blend = (a, b, u) => ({
+  lean: lerp(a.lean, b.lean, u), crouch: lerp(a.crouch, b.crouch, u),
+  arm: lerp(a.arm, b.arm, u), reach: lerp(a.reach, b.reach, u),
+});
+
+const REST = { lean: 0, crouch: 0.08, arm: -0.7, reach: 0.34 };
+
+/*
+ * A pose is a continuous function of the frame, not a lookup by phase.
+ *
+ * Keying it to the phase name alone meant a 13-frame wind-up held one identical pose for
+ * all thirteen frames and then snapped — three still images per move, which reads as a
+ * slideshow rather than a swing. Every phase now interpolates between a start and an end
+ * pose, so a move anticipates, commits and settles the way a strike should.
+ */
+function poseFor(phase, m, k = 0) {
+  const A = m.startup || 0, B = m.active || 0, C = m.recovery || 0;
+  switch (phase) {
+    case 'startup': {
+      // Anticipation: coil away from the target, easing into the held wind-up.
+      const u = easeOut(clamp01(A ? k / A : 1));
+      return blend({ ...REST, reach: 0.2 }, { lean: -0.30, crouch: 0.15, arm: -2.4, reach: 0.32 }, u);
+    }
+    case 'active': {
+      // The commit, snapping through so the fastest part of the motion is the hit.
+      const u = easeIn(clamp01(B ? (k - A) / B : 1));
+      return blend({ lean: -0.16, crouch: 0.12, arm: armAngle(m) - 1.5, reach: 0.45 },
+        { lean: 0.52, crouch: 0.04, arm: armAngle(m), reach: 1.05 }, u);
+    }
+    case 'recovery': {
+      // Follow-through, decaying back toward rest.
+      const u = easeOut(clamp01(C ? (k - A - B) / C : 1));
+      return blend({ lean: 0.52, crouch: 0.05, arm: armAngle(m), reach: 1.0 },
+        { ...REST, crouch: 0.16, arm: armAngle(m) + 0.7, reach: 0.4 }, u);
+    }
+    case 'armour': {
+      const u = clamp01(A ? k / A : 0);
+      return blend({ lean: 0.12, crouch: 0.16, arm: -2.0, reach: 0.26 },
+        { lean: 0.4, crouch: 0.08, arm: -1.7, reach: 0.36 }, u);
+    }
+    case 'guard': {
+      const low = m.id === 'lowGuard';
+      const u = easeOut(clamp01(k / 4));            // snap into the guard, then hold
+      return blend(REST, { lean: -0.12, crouch: low ? 0.52 : 0.2, arm: low ? 1.1 : -0.55, reach: 0.44 }, u);
+    }
+    case 'blockstun': {
+      const low = m.id === 'lowGuard';
+      const u = clamp01((k - 3) / 6);                // shoved back, then recovering
+      return blend({ lean: -0.4, crouch: low ? 0.55 : 0.28, arm: low ? 1.2 : -0.62, reach: 0.42 },
+        { lean: -0.14, crouch: low ? 0.5 : 0.2, arm: low ? 1.1 : -0.55, reach: 0.44 }, u);
+    }
+    case 'parryWindow': {
+      const u = clamp01(k / 2);
+      return blend({ ...REST, reach: 0.3 }, { lean: 0.08, crouch: 0.08, arm: -1.2, reach: 0.62 }, u);
+    }
+    case 'parryRecover': {
+      const u = clamp01((k - 8) / 10);
+      return blend({ lean: 0.06, crouch: 0.12, arm: -1.0, reach: 0.5 },
+        { ...REST, crouch: 0.22, arm: -0.25 }, u);
+    }
+    case 'invuln': {
+      // A roll: drop low through the middle of it, rise out the far side.
+      const win = m.invuln ? m.invuln[1] - m.invuln[0] : 8;
+      const u = clamp01((k - (m.invuln ? m.invuln[0] : 0)) / Math.max(1, win));
+      const depth = Math.sin(u * Math.PI);
+      return { lean: 0.1 + depth * 0.2, crouch: 0.12 + depth * 0.6, arm: 0.4 + depth * 0.8, reach: 0.3 - depth * 0.12 };
+    }
+    case 'move': {
+      // A walk cycle, so movement reads as travel rather than a slide.
+      const step = Math.sin(k * 0.55);
+      return { lean: 0.2 + step * 0.1, crouch: 0.12 + Math.abs(step) * 0.06, arm: -0.75 + step * 0.25, reach: 0.34 };
+    }
+    case 'idle': {
+      // The stand-in opponent in a move preview: breathing, doing nothing.
+      const b = Math.sin(k * 0.16);
+      return { ...REST, crouch: 0.08 + b * 0.03, arm: -0.7 + b * 0.06 };
+    }
+    case 'hustle': {
+      const flourish = Math.sin(k * 0.42);
+      return { lean: -0.12 + flourish * 0.06, crouch: 0.05, arm: -2.7 + flourish * 0.55, reach: 0.5 };
+    }
+    case 'stun': {
+      // Recoil hard, then sag: the shape of taking a hit.
+      const u = clamp01(k / 7);
+      return blend({ lean: -0.85, crouch: 0.2, arm: 1.7, reach: 0.34 },
+        { lean: -0.5, crouch: 0.4, arm: 1.35, reach: 0.28 }, easeOut(u));
+    }
+    case 'parried': {
+      const u = clamp01(k / 6);
+      return blend({ lean: -0.95, crouch: 0.28, arm: 2.0, reach: 0.3 },
+        { lean: -0.6, crouch: 0.44, arm: 1.7, reach: 0.26 }, easeOut(u));
+    }
+    default: return { ...REST };
+  }
+}
+const armAngle = (m) => (m.level === 'low' ? 0.95 : m.level === 'high' ? -1.35 : -0.12);
+
+/* --------------------------------------------------------------- fighter */
+
+/*
+ * A fighter is a solid silhouette, not a stick figure: a blocky head, a torso that flares
+ * at the hips, two legs, and an arm that carries the weapon. Coordinates snap to a coarse
+ * grid so the shapes stay square once the scene is blitted up.
+ */
+const snap = (v) => Math.round(v / 4) * 4;
+
+function drawFighter(g, x, facing, pose, colour, opts = {}) {
+  const { ghost = 0, flash = 0, down = false } = opts;
+  const lean = pose.lean * facing;
+  const crouch = pose.crouch;
+
+  g.save();
+  g.globalAlpha = 1 - ghost;
+  g.fillStyle = flash ? '#ffffff' : colour;
+
+  if (down) {
+    g.fillRect(snap(x - 40 * facing), snap(GROUND - 22), snap(70), snap(22));
+    g.fillRect(snap(x + 28 * facing), snap(GROUND - 34), snap(24), snap(24));
+    g.restore();
+    return;
+  }
+
+  const hipY = snap(GROUND - 38 + crouch * 16);
+  const shoulderY = snap(hipY - 44);
+  const headY = snap(shoulderY - 32);      // leaves a gap: the head is its own shape
+  const cx = snap(x + lean * 10);
+
+  // legs, set wide enough apart to read as two
+  g.fillRect(snap(cx - 20 - lean * 5), hipY, snap(14), snap(GROUND - hipY));
+  g.fillRect(snap(cx + 6 + lean * 10), hipY, snap(14), snap(GROUND - hipY));
+
+  // torso — narrow at the shoulders, flaring to the hips
+  const shW = 30, hipW = 40;
+  g.beginPath();
+  g.moveTo(snap(cx - shW / 2), shoulderY);
+  g.lineTo(snap(cx + shW / 2), shoulderY);
+  g.lineTo(snap(cx + hipW / 2), hipY + 5);
+  g.lineTo(snap(cx - hipW / 2), hipY + 5);
+  g.closePath();
+  g.fill();
+
+  // head
+  g.fillRect(snap(cx - 11 + lean * 6), headY, snap(22), snap(24));
+
+  // The arm and weapon only come out when the pose actually extends. An idle fighter in
+  // the source game is a plain silhouette; a raised arm at rest just reads as noise.
+  if (pose.reach > 0.42) {
+    const a = pose.arm * facing;
+    const len = 20 + pose.reach * 34;
+    const ax = cx + lean * 5;
+    const ay = shoulderY + 8;
+    for (let i = 1; i <= 4; i++) {
+      const d = (len * i) / 4;
+      g.fillRect(snap(ax + Math.cos(a) * d * facing - 5), snap(ay + Math.sin(a) * d - 5), snap(10), snap(10));
+    }
+    g.fillStyle = flash ? '#ffffff' : '#c2ccd6';
+    const bx = ax + Math.cos(a) * len * facing;
+    const by = ay + Math.sin(a) * len;
+    for (let i = 1; i <= 5; i++) {
+      const d = (34 * i) / 5;
+      g.fillRect(snap(bx + Math.cos(a) * d * facing - 4), snap(by + Math.sin(a) * d - 4), snap(8), snap(8));
+    }
+  }
+
+  g.restore();
+}
+
+/* ---------------------------------------------------------------- arena */
+
+function drawArena(g, shake, top, bot, left, right) {
+  g.save();
+  g.translate(shake.x, shake.y);
+  const L = left - 80, R = right + 80;
+
+  // Black. Not near-black, not a gradient — the source game is pure black and everything
+  // else in the palette is calibrated against it.
+  g.fillStyle = '#000';
+  g.fillRect(L, top - 120, R - L, bot - top + 240);
+
+  // The floor: one white rule with tall ticks hanging off it. This single element does
+  // more to place the game than anything else on screen — it is the spacing readout.
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = 3;
+  g.beginPath(); g.moveTo(L, GROUND); g.lineTo(R, GROUND); g.stroke();
+  g.lineWidth = 5;
+  for (let x = Math.ceil(L / 100) * 100; x < R; x += 100) {
+    g.beginPath(); g.moveTo(x, GROUND + 2); g.lineTo(x, GROUND + 24); g.stroke();
+  }
+
+  // The walls, marked rather than shaded.
+  g.strokeStyle = '#2e2e2e'; g.lineWidth = 4;
+  g.beginPath();
+  g.moveTo(RULES.ARENA_MIN, GROUND - 130); g.lineTo(RULES.ARENA_MIN, GROUND);
+  g.moveTo(RULES.ARENA_MAX, GROUND - 130); g.lineTo(RULES.ARENA_MAX, GROUND);
+  g.stroke();
+  g.restore();
+}
+
+/** A translucent wedge showing exactly how far a move reaches. */
+let activeStage = null;   // the live Stage, so world-space helpers can read the zoom
+function drawRange(g, x, facing, range, colour, dashed, label) {
+  if (!range) return;
+  g.save();
+  g.globalAlpha = dashed ? 0.5 : 0.65;
+  g.strokeStyle = colour;
+  g.lineWidth = 1.5;
+  if (dashed) g.setLineDash([5, 5]);
+  const tip = x + range * facing;
+  g.beginPath();
+  g.moveTo(x, GROUND - 4);
+  g.lineTo(tip, GROUND - 4);
+  g.stroke();
+  g.beginPath();
+  g.moveTo(tip, GROUND - 16); g.lineTo(tip, GROUND + 6);
+  g.stroke();
+  g.setLineDash([]);
+  if (label) {
+    activeStage?.label(label, tip - 8 * facing, GROUND + (dashed ? 96 : 60), colour, 8,
+      facing > 0 ? 'right' : 'left');
+  }
+  g.restore();
+}
+
+/* -------------------------------------------------------------- playback */
+
+class Stage {
+  constructor(canvas) {
+    this.c = canvas;
+    this.g = canvas.getContext('2d');
+    this.vw = W; this.vh = H;         // world units currently visible
+    this.resize();
+    new ResizeObserver(() => { this.resize(); this.draw(); }).observe(canvas);
+    this.shake = { x: 0, y: 0, mag: 0 };
+    this.sparks = [];
+    this.trails = [];
+    this.result = null;
+    this.frame = 0;
+    this.acc = 0;
+    this.hitstop = 0;
+    this.playing = false;
+    this.fps = 26;
+    this.onFrame = null;
+    this.onEnd = null;
+    this.preview = null;      // { x:[..], phases, ranges } for the idle/planning view
+    this.floats = [];
+    this.state = null;        // whose colours to draw with
+    this.mode = 'preview';    // 'preview' | 'playback'
+    activeStage = this;
+    this.boxes = false;       // hitbox / hurtbox overlay
+    this.adv = null;          // frame advantage to print once the exchange settles
+  }
+
+  /**
+   * Match the backing bitmap to the element and work out the world-to-screen transform.
+   *
+   * The arena is always as wide as the world (so spacing reads the same at any size) and
+   * the ground is pinned near the bottom, with whatever vertical room is left becoming sky.
+   * Drawing at a fixed aspect instead leaves dead bands above and below on tall screens.
+   */
+  resize() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(320, this.c.clientWidth || W);
+    const h = Math.max(180, this.c.clientHeight || H);
+    this.c.width = Math.round(w * dpr);
+    this.c.height = Math.round(h * dpr);
+    this.dpr = dpr;
+    this.cssW = w;
+    this.cssH = h;
+    this.groundPx = h * 0.84;
+
+    // Everything is drawn into a canvas a third of the size and blitted up with smoothing
+    // off. That single step is what makes the whole scene — figures, sparks, text — read as
+    // chunky pixel art instead of smooth vectors, without redrawing any of it by hand.
+    if (!this.off) { this.off = document.createElement('canvas'); this.og = this.off.getContext('2d'); }
+    this.off.width = Math.max(120, Math.round(w / PX));
+    this.off.height = Math.max(80, Math.round(h / PX));
+  }
+
+  /**
+   * A camera, the way a fighting game has one: centred between the fighters and zoomed to
+   * the distance between them. Drawing the whole 1000-unit arena at a fixed scale instead
+   * leaves the fighters tiny at the bottom of an empty screen on any tall display.
+   */
+  aimCamera(x0, x1, snap = false) {
+    const gap = Math.abs(x0 - x1);
+    // How much of the arena to show. The floor matters as much as the ceiling: hold it at
+    // most of the stage and a close exchange is two small figures in a lot of black, which
+    // is the single thing that makes the fight feel far away.
+    const visW = Math.min(W + 40, Math.max(520, gap + 460));
+    const target = {
+      scale: Math.min(this.cssW / visW, this.cssH / 210),
+      x: Math.max(RULES.ARENA_MIN - 30, Math.min(RULES.ARENA_MAX + 30, (x0 + x1) / 2)),
+    };
+    if (!this.cam || snap) this.cam = { ...target };
+    else {
+      this.cam.scale += (target.scale - this.cam.scale) * 0.18;
+      this.cam.x += (target.x - this.cam.x) * 0.18;
+    }
+    const s = this.cam.scale;
+    this.scale = s;
+    this.topWorld = GROUND - this.groundPx / s;
+    this.botWorld = this.topWorld + this.cssH / s;
+    this.leftWorld = this.cam.x - this.cssW / (2 * s);
+    this.rightWorld = this.leftWorld + this.cssW / s;
+  }
+
+  /** World point to offscreen pixel, for text that must not scale with the camera. */
+  toScreen(wx, wy) {
+    return [
+      (this.cssW / 2 - this.cam.x * this.scale + wx * this.scale) / PX,
+      (this.groundPx + (wy - GROUND) * this.scale) / PX,
+    ];
+  }
+
+  /**
+   * Draw labels at a fixed pixel size regardless of zoom. Text drawn in world units grows
+   * and shrinks with the camera, which at close range turns a caption into a billboard.
+   */
+  label(text, wx, wy, colour, size = 8, align = 'center') {
+    const g = this.og;
+    const [x, y] = this.toScreen(wx, wy);
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = colour;
+    g.font = `${size}px ${FONT}`;
+    g.textAlign = align;
+    g.fillText(text, Math.round(x), Math.round(y));
+    g.restore();
+  }
+
+  /** Put the offscreen canvas into world coordinates for the rest of the drawing code. */
+  applyTransform() {
+    const k = this.scale / PX;
+    this.og.setTransform(k, 0, 0, k, (this.cssW / 2 - this.cam.x * this.scale) / PX,
+      (this.groundPx - GROUND * this.scale) / PX);
+  }
+
+  /** Show a static neutral pose — used between turns while you are choosing. */
+  setPreview(state, myMove, theirBestMove, showThreat) {
+    this.playing = false;
+    this.loop = false;
+    this.hold = 0;
+    this.rehearsal = null;
+    this.mode = 'preview';
+    this.state = state;
+    this.preview = { state, myMove, theirBestMove, showThreat };
+    this.draw();
+  }
+
+  /**
+   * Run a resolved timeline.
+   *
+   * `opts.rehearsal` marks it as a preview of a move you have not committed to rather than
+   * a record of one you did: the stand-in opponent is ghosted, the caption says so, and it
+   * loops, because a rehearsal you can only watch once is no better than a still.
+   */
+  play(result, state, adv = null, opts = {}) {
+    if (state) this.state = state;
+    this.snapCam = true;
+    this.result = result;
+    this.adv = adv;
+    this.mode = 'playback';
+    this.rehearsal = opts.rehearsal
+      ? { owner: opts.owner ?? 0, caption: opts.caption ?? '', name: opts.name ?? '' } : null;
+    this.loop = !!opts.loop;
+    this.hold = 0;
+    this.frame = 0;
+    this.acc = 0;
+    this.hitstop = 0;
+    this.sparks.length = 0;
+    this.trails.length = 0;
+    this.floats.length = 0;
+    this.playing = true;
+  }
+
+  /** Scrubbing works whenever an exchange has been resolved, playing or not. */
+  seek(f) {
+    if (!this.result) return;
+    this.playing = false;
+    this.hold = 0;                 // dragging the bar takes the loop off autopilot
+    this.mode = 'playback';
+    this.frame = Math.max(0, Math.min(this.result.total, f));
+    this.trails.length = 0;
+    this.draw();
+  }
+  get scrubbable() { return !!this.result; }
+
+  update(dt) {
+    // decay shake and particles even while paused, so a scrubbed frame settles cleanly
+    this.shake.mag *= Math.pow(0.001, dt);
+    const ang = Math.random() * Math.PI * 2;
+    this.shake.x = Math.cos(ang) * this.shake.mag;
+    this.shake.y = Math.sin(ang) * this.shake.mag * 0.6;
+    for (const s of this.sparks) { s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 900 * dt; }
+    this.sparks = this.sparks.filter((s) => s.life > 0);
+    for (const t of this.trails) t.life -= dt;
+    this.trails = this.trails.filter((t) => t.life > 0);
+    for (const f of this.floats) { f.life -= dt; f.y -= dt * 34; }
+    this.floats = this.floats.filter((f) => f.life > 0);
+
+    if (this.playing && this.result) {
+      if (this.hitstop > 0) this.hitstop -= dt;
+      else {
+        this.acc += dt * this.fps;
+        while (this.acc >= 1) {
+          this.acc -= 1;
+          if (this.frame >= this.result.total) {
+            // A looping rehearsal holds on the last frame long enough to read it, then
+            // runs again. A real exchange stops dead, because it only happened once.
+            if (this.loop) { this.playing = false; this.hold = 0.75; break; }
+            this.playing = false; this.onEnd?.(); break;
+          }
+          this.frame++;
+          this.enterFrame(this.frame);
+        }
+      }
+    } else if (this.hold > 0) {
+      this.hold -= dt;
+      if (this.hold <= 0) {
+        this.frame = 0; this.acc = 0; this.trails.length = 0; this.floats.length = 0;
+        this.playing = true;
+        this.onFrame?.(0);
+      }
+    }
+    this.draw();
+  }
+
+  enterFrame(f) {
+    const tl = this.result.timeline[f];
+    if (!tl) return;
+    this.onFrame?.(f);
+    for (let i = 0; i < 2; i++) {
+      if (tl.phase[i] === 'active' || tl.phase[i] === 'startup') {
+        const m = this.result.summary[i].move;
+        this.trails.push({
+          x: tl.x[i], colour: sideColour(this.state, i), life: 0.3,
+          facing: (tl.x[0] <= tl.x[1] ? 1 : -1) * (i === 0 ? 1 : -1),
+          pose: poseFor(tl.phase[i], m, f),
+        });
+      }
+    }
+    // A rehearsal keeps the readable part of impact — the flash, the damage number — and
+    // drops the theatre. Shaking the screen every time a looping preview comes round is
+    // both distracting and a lie: nothing has actually been hit.
+    const punch = this.rehearsal ? 0 : 1;
+    for (const e of tl.events) {
+      const victim = tl.x[1 - e.by];
+      if (e.type === 'hit') {
+        this.shake.mag = Math.min(16, 5 + e.dmg * 0.4) * punch;
+        this.hitstop = (0.09 + Math.min(0.11, e.dmg * 0.005)) * punch;
+        if (!this.rehearsal) this.confetti(victim, GROUND - 110, e.counter ? 30 : 22);
+        this.float(victim, GROUND - 96, `${e.counter ? 'COUNTER ' : ''}${e.dmg}`, e.counter ? '#ffe066' : '#ffffff');
+      } else if (e.type === 'block') {
+        this.shake.mag = 3 * punch; this.hitstop = 0.05 * punch;
+        this.burst(victim, GROUND - 60, 8, '#9fb3c8');
+        this.float(victim, GROUND - 92, 'GUARD', '#9fb3c8');
+      } else if (e.type === 'armour') {
+        this.shake.mag = 4 * punch; this.hitstop = 0.06 * punch;
+        this.burst(victim, GROUND - 60, 10, '#ffab5e');
+        this.float(victim, GROUND - 92, 'ARMOUR', '#ffab5e');
+      } else if (e.type === 'parry') {
+        this.shake.mag = 7 * punch; this.hitstop = 0.19 * punch;
+        this.burst(tl.x[e.by], GROUND - 60, 22, '#7cc4ff');
+        this.float(tl.x[e.by], GROUND - 100, 'PARRY', '#7cc4ff');
+      } else if (e.type === 'clash') {
+        this.shake.mag = 6 * punch; this.hitstop = 0.1 * punch;
+        this.burst((tl.x[0] + tl.x[1]) / 2, GROUND - 55, 14, '#ffd166');
+      }
+    }
+  }
+
+  /** A damage number that drifts up and fades — the fastest way to read an exchange. */
+  float(x, y, text, colour) {
+    this.floats.push({ x, y, text, colour, life: 0.95 });
+  }
+
+  /** Multicoloured impact confetti, the way the source game punctuates a clean hit. */
+  confetti(x, y, n) {
+    const palette = ['#ffe14d', '#ff5f78', '#7dffb0', '#6fd8ff', '#c39bff', '#ffffff', '#ff9f43'];
+    for (let i = 0; i < n; i++) this.burst(x, y, 1, palette[i % palette.length]);
+  }
+
+  burst(x, y, n, colour) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 90 + Math.random() * 360;
+      this.sparks.push({
+        x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 90,
+        life: 0.22 + Math.random() * 0.4, colour, size: 7 + Math.round(Math.random() * 3) * 5,
+      });
+    }
+  }
+
+  draw() {
+    if (!this.off) this.resize();
+    const g = this.og;
+    const pos = this.mode === 'playback' && this.result
+      ? (this.result.timeline[this.frame]?.x ?? [400, 600])
+      : (this.preview ? [pointOf(this.preview.state, 0).x, pointOf(this.preview.state, 1).x] : [400, 600]);
+    this.aimCamera(pos[0], pos[1], this.snapCam);
+    this.snapCam = false;
+
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, this.off.width, this.off.height);
+    this.applyTransform();
+    drawArena(g, this.shake, this.topWorld, this.botWorld, this.leftWorld, this.rightWorld);
+    g.save();
+    g.translate(this.shake.x, this.shake.y);
+
+    if (this.mode === 'playback' && this.result) this.drawFrame(g);
+    else if (this.preview) this.drawPreview(g);
+
+    // After-images. Ghosts of the frames just gone, which is how you read a swing.
+    for (const tr of this.trails) {
+      const a = Math.max(0, tr.life / 0.3);
+      drawFighter(g, tr.x, tr.facing, tr.pose, tr.colour, { ghost: 1 - a * 0.3 });
+    }
+    g.globalAlpha = 1;
+
+    for (const s of this.sparks) {
+      g.globalAlpha = Math.max(0, Math.min(1, s.life * 3));
+      g.fillStyle = s.colour;
+      const sz = s.size ?? 8;
+      g.fillRect(Math.round(s.x / 6) * 6, Math.round(s.y / 6) * 6, sz, sz);
+    }
+    g.globalAlpha = 1;
+
+    g.globalAlpha = 1;
+    g.restore();
+
+    for (const f of this.floats) {
+      this.og.globalAlpha = Math.max(0, Math.min(1, f.life * 1.6));
+      this.label(f.text, f.x, f.y, f.colour, 8);
+      this.og.globalAlpha = 1;
+    }
+
+    // Blit the low-res scene up with smoothing off — this is the pixel look.
+    const v = this.g;
+    v.setTransform(1, 0, 0, 1, 0, 0);
+    v.imageSmoothingEnabled = false;
+    v.clearRect(0, 0, this.c.width, this.c.height);
+    v.drawImage(this.off, 0, 0, this.off.width, this.off.height, 0, 0, this.c.width, this.c.height);
+  }
+
+  drawPreview(g) {
+    const { state, myMove, theirBestMove, showThreat } = this.preview;
+    const [a, b] = [pointOf(state, 0), pointOf(state, 1)];
+    const facing = a.x <= b.x ? 1 : -1;
+
+    if (myMove?.range) {
+      drawRange(g, a.x, facing, myMove.range, sideColour(state, 0), false, `${myMove.name} ${myMove.range}`);
+    }
+    if (showThreat && theirBestMove?.range) {
+      drawRange(g, b.x, -facing, theirBestMove.range, sideColour(state, 1), true, `${theirBestMove.name} ${theirBestMove.range}`);
+    }
+
+    // A slow idle sway so the planning screen is not a freeze-frame.
+    const stub = { id: '', level: 'mid' };
+    const sway = Math.sin(performance.now() / 620) * 0.5 + 0.5;
+    const idle = (f) => (f.state === 'neutral'
+      ? { ...REST, crouch: 0.06 + sway * 0.05, arm: -0.7 + sway * 0.09 }
+      : poseFor(idlePhase(f), stub, 4));
+    drawFighter(g, a.x, facing, idle(a), sideColour(state, 0), { down: a.state === 'down' });
+    drawFighter(g, b.x, -facing, idle(b), sideColour(state, 1), { down: b.state === 'down' });
+
+    // "You" over your own fighter, exactly as the source game labels the sides.
+    this.label('You', a.x, GROUND - 122, '#ffffff', 8);
+    this.label(`${Math.round(Math.abs(a.x - b.x))} apart`, (a.x + b.x) / 2, GROUND - 168, '#5a5a5a', 8);
+  }
+
+  drawFrame(g) {
+    const r = this.result;
+    const tl = r.timeline[this.frame];
+    if (!tl) return;
+    const facing = tl.x[0] <= tl.x[1] ? 1 : -1;
+
+    if (this.boxes) this.drawBoxes(g, tl, facing);
+
+    for (let i = 0; i < 2; i++) {
+      const m = r.summary[i].move;
+      const ph = tl.phase[i];
+      const colour = sideColour(this.state, i);
+      const face = i === 0 ? facing : -facing;
+      const flash = ph === 'active' || ph === 'parryWindow';
+      if (ph === 'active') drawRange(g, tl.x[i], face, m.range, colour, false, null);
+      // Sub-frame blending: the engine ticks in whole frames, but drawing between them
+      // is what turns a sequence of positions into movement.
+      const sub = this.playing ? Math.min(1, Math.max(0, this.acc)) : 0;
+      const nx = r.timeline[Math.min(r.total, this.frame + 1)]?.x[i] ?? tl.x[i];
+      const px = lerp(tl.x[i], nx, sub);
+      // In a rehearsal the other fighter is a mannequin, not a prediction. Ghosting them
+      // is what stops the preview reading as "this is what they are going to do".
+      const dummy = this.rehearsal && i !== this.rehearsal.owner;
+      drawFighter(g, px, face, poseFor(ph, m, this.frame + sub), colour, {
+        flash: flash ? 1 : 0,
+        ghost: dummy ? 0.55 : ph === 'invuln' ? 0.45 : 0,
+        down: false,
+      });
+      if (ph === 'parryWindow') {
+        g.strokeStyle = '#7cc4ff'; g.lineWidth = 2; g.globalAlpha = 0.8;
+        g.beginPath(); g.arc(tl.x[i], GROUND - 62, 30, 0, Math.PI * 2); g.stroke();
+        g.globalAlpha = 1;
+      }
+      if (ph === 'armour') {
+        g.strokeStyle = '#ffab5e'; g.lineWidth = 2; g.globalAlpha = 0.7;
+        g.beginPath(); g.arc(tl.x[i], GROUND - 62, 26, 0, Math.PI * 2); g.stroke();
+        g.globalAlpha = 1;
+      }
+    }
+
+    // Called assists. Drawn a touch smaller and tinted to their own character, so it is
+    // obvious at a glance that a second body just arrived and whose it is.
+    for (const ex of tl.extras ?? []) {
+      const face = ex.team === 0 ? facing : -facing;
+      const colour = mixHex(CHARS[ex.char].accent, SIDE_TINT[ex.team], 0.3);
+      g.save();
+      g.translate(ex.x, GROUND);
+      g.scale(0.86, 0.86);
+      g.translate(-ex.x, -GROUND);
+      drawFighter(g, ex.x, face, poseFor(ex.phase, ex.move ?? { id: '', level: 'mid' }, ex.k ?? 0), colour, {
+        ghost: 0.14, flash: ex.phase === 'active' ? 1 : 0,
+      });
+      g.restore();
+      g.fillStyle = colour;
+      g.globalAlpha = 0.85;
+      g.font = '700 9px ui-monospace, monospace';
+      g.textAlign = 'center';
+      g.fillText(CHARS[ex.char].name.toUpperCase(), ex.x, GROUND - 116);
+      g.globalAlpha = 1;
+    }
+
+    // The frame counter drops a line when a rehearsal header is sitting above it.
+    this.label(`frame ${this.frame} / ${r.total}`, this.leftWorld + 34,
+      this.topWorld + (this.rehearsal ? 76 : 46), '#5e5e5e', 8, 'left');
+    this.label('You', tl.x[0], GROUND - 122, '#ffffff', 8);
+
+    if (this.rehearsal) {
+      this.label(`PREVIEW  ${this.rehearsal.name}`, this.leftWorld + 34, this.topWorld + 34, '#ffe000', 8, 'left');
+      // Sits a line above "You" so the two never land on top of each other at close range.
+      // The readout of what the rehearsal showed lives in the scrub row rather than up here:
+      // a third line of arena text lands on the fighters' own labels on a short window.
+      this.label('standing still', tl.x[1], GROUND - 152, '#5e5e5e', 8);
+    }
+
+    // Frame advantage, printed once the exchange has settled. YOMIH puts this number
+    // right next to the fighters because it is the single thing that decides the next turn.
+    if (this.adv != null && this.frame >= r.total) {
+      const n = this.adv > 0 ? `+${this.adv}` : `${this.adv}`;
+      const col = this.adv === 0 ? '#cfd6dd' : this.adv > 0 ? '#7dffb0' : '#ff6b7f';
+      this.label(`advantage: ${n}`, (tl.x[0] + tl.x[1]) / 2, GROUND + 96, col, 10);
+    }
+  }
+
+  /**
+   * Hitbox / hurtbox overlay, the way the source game shows it: a blue box for what can be
+   * hit and a red one for what is hitting. Turning this on is the fastest way to understand
+   * why a move whiffed — the reach is drawn, not described.
+   */
+  drawBoxes(g, tl, facing) {
+    const r = this.result;
+    const bodyW = 46, bodyH = 112;
+    for (let i = 0; i < 2; i++) {
+      const x = tl.x[i];
+      g.strokeStyle = '#4aa8ff'; g.lineWidth = 1.5; g.globalAlpha = 0.55;
+      g.strokeRect(x - bodyW / 2, GROUND - bodyH, bodyW, bodyH);
+      g.fillStyle = '#4aa8ff14';
+      g.fillRect(x - bodyW / 2, GROUND - bodyH, bodyW, bodyH);
+
+      const m = r.summary[i].move;
+      if (tl.phase[i] === 'active' && m.range) {
+        const face = i === 0 ? facing : -facing;
+        const top = m.level === 'high' ? GROUND - bodyH - 6
+          : m.level === 'low' ? GROUND - 40 : GROUND - 86;
+        const h = m.level === 'low' ? 40 : 46;
+        const w = m.range;
+        g.globalAlpha = 0.9;
+        g.strokeStyle = '#ff4d63'; g.lineWidth = 2;
+        g.strokeRect(face > 0 ? x : x - w, top, w, h);
+        g.fillStyle = '#ff4d6322';
+        g.fillRect(face > 0 ? x : x - w, top, w, h);
+      }
+      if (tl.phase[i] === 'invuln' || tl.phase[i] === 'parryWindow') {
+        g.globalAlpha = 0.8;
+        g.strokeStyle = tl.phase[i] === 'invuln' ? '#9aa7b6' : '#7cc4ff';
+        g.setLineDash([4, 4]); g.lineWidth = 2;
+        g.strokeRect(x - bodyW / 2 - 3, GROUND - bodyH - 3, bodyW + 6, bodyH + 6);
+        g.setLineDash([]);
+      }
+    }
+    g.globalAlpha = 1;
+  }
+}
+
+const idlePhase = (f) => (f.state === 'down' ? 'stun' : f.state === 'stunned' ? 'stun' : 'idle');
+
+/* ----------------------------------------------------------------- sound */
+
+/** Tiny synthesised blips. No assets, no network, and easy to mute. */
+class Sfx {
+  constructor() { this.ctx = null; this.on = true; }
+  ensure() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+    }
+    if (this.ctx?.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  }
+  blip(freq, dur, type = 'square', vol = 0.05) {
+    if (!this.on) return;
+    const c = this.ensure();
+    if (!c) return;
+    const o = c.createOscillator(), gn = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, c.currentTime);
+    o.frequency.exponentialRampToValueAtTime(Math.max(40, freq * 0.5), c.currentTime + dur);
+    gn.gain.setValueAtTime(vol, c.currentTime);
+    gn.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+    o.connect(gn).connect(c.destination);
+    o.start(); o.stop(c.currentTime + dur);
+  }
+  event(type) {
+    if (type === 'hit') this.blip(180, 0.16, 'square', 0.07);
+    else if (type === 'block') this.blip(320, 0.07, 'triangle', 0.04);
+    else if (type === 'armour') this.blip(140, 0.1, 'sawtooth', 0.045);
+    else if (type === 'parry') this.blip(880, 0.2, 'triangle', 0.06);
+    else if (type === 'clash') this.blip(520, 0.12, 'sawtooth', 0.05);
+  }
+  click() { this.blip(660, 0.03, 'triangle', 0.025); }
+}
+
+/*
+ * HUSTLE LITE — interface.
+ *
+ * Owns the DOM, the turn loop and the input. All fight logic lives in engine.js; this
+ * file only asks it questions. The threat board and the yomi chain in particular are not
+ * tables of hand-written matchups — they are the real simulation, run once per option.
+ */
+
+
+const $ = (sel) => document.querySelector(sel);
+const el = (tag, cls, txt) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (txt != null) n.textContent = txt;
+  return n;
+};
+
+const ME = 0, THEM = 1;
+
+const game = {
+  state: null,
+  phase: 'select',             // 'select' | 'choosing' | 'playing' | 'roundover' | 'over'
+  hovered: null,
+  picked: null,
+  profile: null,               // riskProfile for the current state
+  history: [],                 // what the player has been doing, for the AI's read
+  difficulty: 'fighter',
+  oracle: 'full',              // 'full' | 'chain' | 'risk' | 'off'
+  chars: ['duelist', 'blade'],
+  mode: 'solo',                // 'solo' | 'squad'
+  squad: [                     // your lineup; slot 0 starts on point
+    { char: 'duelist', assist: 'sweep' },
+    { char: 'blade', assist: 'slice' },
+    { char: 'bruiser', assist: 'hammer' },
+  ],
+  assistPick: null,            // teammate slot currently armed, or null
+  rand: rng((Date.now() ^ 0x9e3779b9) >>> 0),
+  log: [],
+  lastResult: null,
+  preTurn: null,               // state before the exchange, for the post-mortem
+  lastFocus: null,             // the move the arena is rehearsing; sticky across hover-out
+  preview: null,               // that rehearsal's timeline
+  looking: 'idle',             // what the arena is showing: 'idle' | 'preview' | 'past'
+};
+
+let stage, sfx;
+
+/* --------------------------------------------------------------- helpers */
+
+const fmtAdv = (n) => (n > 0 ? `+${n}` : `${n}`);
+const pct = (n) => `${Math.round(n * 100)}%`;
+const myChar = () => pointOf(game.state, ME).char;
+const theirChar = () => pointOf(game.state, THEM).char;
+const squadMode = () => isSquad(game.state);
+/** The choice id for a move, folding in the teammate currently armed. */
+const choiceId = (moveId) => {
+  if (!squadMode() || game.assistPick == null) return moveId;
+  const m = moveOf(myChar(), moveId);
+  if (m?.cat === 'tag') return moveId;              // cannot swap and call at once
+  return encodeChoice(moveId, game.assistPick);
+};
+
+function riskColour(r) {
+  if (r < 0.25) return 'var(--good)';
+  if (r < 0.55) return 'var(--warn)';
+  return 'var(--bad)';
+}
+/** Distinct point-fighter moves available now — assists are a separate toggle. */
+function myMoves() {
+  if (!squadMode()) return availableMoves(game.state, ME);
+  const seen = new Set();
+  return optionsFor(game.state, ME)
+    .filter((o) => o.assist === null && !seen.has(o.move.id) && seen.add(o.move.id))
+    .map((o) => o.move);
+}
+
+/** Move groups are derived from the character's own set, so every roster stays in sync. */
+function groupsFor(charId, fighterState) {
+  if (fighterState === 'stunned') return [{ title: 'Escape', ids: ['burst', 'diIn', 'diOut'] }];
+  if (fighterState === 'down') return [{ title: 'Wake-up', ids: ['quickRise', 'rollAway', 'wakeSuper'] }];
+  const strikes = Object.values(CHARS[charId].strikes).map((m) => m.id);
+  const groups = [
+    { title: 'Strikes', ids: strikes },
+    { title: 'Defence', ids: ['highGuard', 'lowGuard', 'parry', 'dodge'] },
+    { title: 'Footsies & Meter', ids: ['closeIn', 'backOff', 'hustle', CHARS[charId].superMove.id] },
+  ];
+  if (squadMode()) groups.push({ title: 'Tag', ids: ['tag1', 'tag2'] });
+  return groups;
+}
+
+/* ------------------------------------------------------------------ HUD */
+
+function renderHud() {
+  for (const i of [ME, THEM]) {
+    const f = pointOf(game.state, i);
+    const root = $(i === ME ? '#p0' : '#p1');
+    renderSquadBars(root, i);
+    root.querySelector('.hp i').style.width = `${(f.hp / f.maxHp) * 100}%`;
+    root.querySelector('.hpv').textContent = Math.max(0, Math.round(f.hp));
+    root.querySelector('.nm').textContent = CHARS[f.char].name;
+    root.querySelector('.nm').style.color = CHARS[f.char].accent;
+    drawPortrait($(i === ME ? '#por0' : '#por1'), f.char, i === ME ? 1 : -1);
+    root.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('on', i < f.meter));
+    const b = root.querySelector('.burst');
+    b.querySelector('i').style.width = `${(f.burst / RULES.BURST_FULL) * 100}%`;
+    b.classList.toggle('ready', f.burst >= RULES.BURST_FULL);
+    root.querySelector('.st').textContent = f.state === 'down' ? 'DOWN'
+      : f.state === 'stunned' ? 'STUNNED'
+        : f.sad > RULES.STALL_GRACE ? 'SADNESS' : '';
+    const rounds = root.querySelector('.rounds');
+    rounds.textContent = '';
+    if (!squadMode()) {
+      for (let n = 0; n < RULES.ROUNDS_TO_WIN; n++) {
+        rounds.append(el('span', `rd${n < game.state.wins[i] ? ' won' : ''}`));
+      }
+    }
+  }
+  const limit = squadMode() ? RULES.SQUAD_TURN_LIMIT : RULES.TURN_LIMIT;
+  const left = Math.max(0, limit - game.state.turn + 1);
+  $('#clock .t').textContent = left;
+  $('#clock .l').textContent = squadMode()
+    ? `${teamAlive(game.state, ME)} v ${teamAlive(game.state, THEM)} · turns left`
+    : `round ${game.state.round} · turns left`;
+  $('#clock').classList.toggle('low', left <= 10);
+}
+
+/**
+ * A tiny pixel bust in the far corner, one per side — the reference game puts a portrait
+ * out at each edge of the health bars and it is a surprising amount of what makes the
+ * top of the screen read as a fighting game rather than a status bar.
+ */
+function drawPortrait(cv, charId, facing) {
+  if (!cv) return;
+  const g = cv.getContext('2d');
+  const c = CHARS[charId].accent;
+  g.clearRect(0, 0, cv.width, cv.height);
+  g.fillStyle = c;
+  g.fillRect(6, 1, 10, 9);                     // head
+  g.fillRect(4, 11, 14, 8);                    // shoulders
+  g.fillRect(2, 19, 18, 4);                    // chest
+  g.fillStyle = '#000';
+  g.fillRect(facing > 0 ? 12 : 7, 5, 2, 2);    // eye, looking across the screen
+  g.fillStyle = '#c2ccd6';
+  g.fillRect(facing > 0 ? 17 : 2, 12, 2, 9);   // a sliver of blade
+}
+
+/** Three slim bars a side in squad mode: who is on point, who is hurt, who is out. */
+function renderSquadBars(root, i) {
+  const host = root.querySelector('.squadbars');
+  host.hidden = !squadMode();
+  host.textContent = '';
+  if (!squadMode()) return;
+  game.state.teams[i].forEach((f, n) => {
+    const row = el('div', `sq${n === game.state.point[i] ? ' point' : ''}${f.hp <= 0 ? ' out' : ''}`);
+    const name = el('span', 'sqn', CHARS[f.char].name);
+    name.style.color = CHARS[f.char].accent;
+    const bar = el('span', 'sqb');
+    const fill = el('i');
+    fill.style.width = `${Math.max(0, (f.hp / f.maxHp) * 100)}%`;
+    fill.style.background = CHARS[f.char].accent;
+    bar.append(fill);
+    const cd = game.state.cooldown[i][n];
+    const badge = el('span', 'sqc', f.hp <= 0 ? 'OUT'
+      : n === game.state.point[i] ? 'PT' : (cd ? `${cd}` : '●'));
+    // The right-hand side mirrors, so build it in reverse rather than flipping text
+    // direction — `direction: rtl` reorders the glyphs and the labels collide.
+    row.append(...(i === ME ? [name, bar, badge] : [badge, bar, name]));
+    host.append(row);
+  });
+}
+
+/* ------------------------------------------------------------- move grid */
+
+function renderMoves() {
+  const host = $('#moves');
+  host.textContent = '';
+  const avail = new Map(myMoves().map((m) => [m.id, m]));
+
+  renderAssistBar();
+  for (const grp of groupsFor(myChar(), pointOf(game.state, ME).state)) {
+    const box = el('div', 'movegroup');
+    const grid = el('div', 'grid');
+    for (const id of grp.ids) {
+      const m = moveOf(myChar(), id);
+      if (!m) continue;
+      const b = el('button', 'mv');
+      b.type = 'button';
+      b.disabled = !avail.has(id) || game.phase !== 'choosing';
+      b.setAttribute('aria-pressed', String(game.picked === choiceId(id)));
+      b.dataset.id = id;
+
+      const n = el('div', 'n');
+      n.append(el('span', null, m.name));
+      n.append(el('span', 'k', m.key.toUpperCase()));
+      b.append(n);
+      b.append(el('div', 'd', frameLine(m)));
+
+      const risk = el('div', 'risk');
+      const fill = el('i');
+      const p = game.profile?.[choiceId(id)];
+      if (p && game.oracle !== 'off') {
+        fill.style.width = pct(p.risk);
+        fill.style.background = riskColour(p.risk);
+        b.title = `${m.blurb}\nRisk ${pct(p.risk)} — best answer: ${p.best.label ?? p.best.move.name}`;
+      } else {
+        fill.style.width = '0%';
+        b.title = m.blurb;
+      }
+      risk.append(fill);
+      b.append(risk);
+
+      b.addEventListener('mouseenter', () => setHover(choiceId(id)));
+      b.addEventListener('focus', () => setHover(choiceId(id)));
+      b.addEventListener('mouseleave', () => setHover(null));
+      b.addEventListener('click', () => select(choiceId(id)));
+      grid.append(b);
+    }
+    box.append(grid);
+    box.append(el('h3', null, grp.title));   // the label sits under its row
+    host.append(box);
+  }
+}
+
+/**
+ * The assist toggle. Arming a teammate here folds them into whichever move you press next,
+ * which keeps the grid at thirteen buttons instead of thirty-eight while still letting you
+ * order two of your three fighters in the same turn.
+ */
+function renderAssistBar() {
+  const bar = $('#assistbar');
+  bar.hidden = !squadMode();
+  if (!squadMode()) return;
+  bar.textContent = '';
+  bar.append(el('span', 'lbl', 'Call teammate'));
+
+  const mk = (slot, label, sub, disabled) => {
+    const b = el('button', `as${game.assistPick === slot ? ' on' : ''}`);
+    b.type = 'button';
+    b.disabled = disabled || game.phase !== 'choosing';
+    b.append(el('span', 'an', label));
+    if (sub) b.append(el('span', 'ad', sub));
+    b.addEventListener('click', () => {
+      game.assistPick = slot;
+      if (game.picked) game.picked = choiceId(decodeChoice(game.picked).moveId);
+      refreshProfile();
+      renderMoves(); renderBoard(); paintStage(); renderLockIn();
+    });
+    return b;
+  };
+  bar.append(mk(null, 'Solo', 'no call', false));
+  for (const { f, n } of benchOf(game.state, ME)) {
+    const cd = game.state.cooldown[ME][n];
+    bar.append(mk(n, CHARS[f.char].name, cd ? `${cd} turn${cd > 1 ? 's' : ''}` : moveOf(f.char, f.assist).name, cd > 0));
+  }
+}
+
+function frameLine(m) {
+  const bits = [];
+  bits.push(m.dmg ? `${m.startup}f · ${m.dmg} dmg · ${m.range}r` : `${moveDuration(m)}f`);
+  if (m.cost) bits.push(`${m.cost} meter`);
+  if (m.tag) bits.push(m.tag);
+  return bits.join(' · ');
+}
+
+/* ---------------------------------------------------------- threat board */
+
+/**
+ * The move the whole right-hand side and the arena are currently about.
+ *
+ * Sticky: sliding the cursor off a button does not throw away the rehearsal and the ranking
+ * you were reading. It stays on the last move you looked at until you look at another one,
+ * or until the turn resolves.
+ */
+const focusChoice = () => game.hovered || game.picked || game.lastFocus;
+
+function renderBoard() {
+  const rowsHost = $('#rows');
+  const sub = $('#boardsub');
+  const focusId = focusChoice();
+  rowsHost.textContent = '';
+  $('#riskwrap').hidden = true;
+
+  if (game.oracle === 'off') {
+    sub.textContent = 'Oracle is off — you are reading them blind.';
+    rowsHost.append(el('div', 'empty', 'Turn the Oracle back on from the header to see their answers.'));
+    return;
+  }
+  if (game.phase !== 'choosing') {
+    sub.textContent = 'Resolving…';
+    rowsHost.append(el('div', 'empty', 'Watching the exchange play out.'));
+    return;
+  }
+  if (!focusId) {
+    sub.textContent = 'Hover a move to see how they can answer it.';
+    rowsHost.append(el('div', 'empty', 'Every option they hold, ranked by how well it does against yours.'));
+    return;
+  }
+
+  const p = game.profile[focusId];
+  if (!p) { rowsHost.append(el('div', 'empty', 'Pick a move to see their answers.')); return; }
+  sub.innerHTML = `If you throw <b>${choiceLabel(game.state, ME, focusId)}</b>, their options rank like this:`;
+
+  $('#riskwrap').hidden = false;
+  $('#riskval').textContent = `${pct(p.risk)} of their answers beat it`;
+  const bar = $('#riskfill');
+  bar.style.width = pct(Math.max(0.03, p.risk));
+  bar.style.background = riskColour(p.risk);
+
+  if (game.oracle === 'risk') {
+    rowsHost.append(el('div', 'empty', 'Risk-only mode: you get the temperature, not the list.'));
+    return;
+  }
+  if (game.oracle === 'chain') {
+    renderChain(rowsHost, focusId);
+    return;
+  }
+
+  p.rows.forEach((row, i) => {
+    const r = el('div', `row${i === 0 ? ' best' : ''}`);
+    const nm = el('div', 'nm');
+    nm.append(el('span', null, row.label ?? row.move.name));
+    if (i === 0) nm.append(el('span', 'crown', 'BEST ANSWER'));
+    r.append(nm);
+    r.append(el('span', `vd ${row.verdict.key}`, row.verdict.label));
+
+    const parts = [];
+    if (row.dmgTaken) parts.push(`you take ${row.dmgTaken}`);
+    if (row.dmgDealt) parts.push(`you deal ${row.dmgDealt}`);
+    parts.push(`you end ${fmtAdv(row.adv)}f`);
+    r.append(el('div', 'meta', parts.join('  ·  ')));
+
+    // No stage handler here. This used to repaint the arena with a static pose showing that
+    // answer's reach, which now silently kills the rehearsal running in it — and the row
+    // already says what the answer does. Whatever the arena is showing, it stays showing it.
+    rowsHost.append(r);
+  });
+}
+
+/**
+ * The yomi ladder. Layer 1 is what beats your move; layer 2 is what to play if you expect
+ * them to have read you; layer 3 is their answer to that. The loop closing is the point —
+ * it is where thinking one level deeper stops helping and it becomes a guess again.
+ */
+function renderChain(host, focusId) {
+  const chain = yomiChain(game.state, ME, focusId);
+  const wrap = el('div', 'chain');
+  chain.forEach((link, i) => {
+    const node = el('div', `link ${link.side === ME ? 'mine' : 'theirs'}${link.loops ? ' loops' : ''}`);
+    node.append(el('div', 'depth', i === 0 ? 'YOU COMMIT' : `LAYER ${i}`));
+    const nm = el('div', 'nm');
+    nm.append(el('span', null, link.name ?? link.move.name));
+    nm.style.color = CHARS[link.side === ME ? myChar() : theirChar()].accent;
+    node.append(nm);
+    node.append(el('div', 'who', link.side === ME ? 'your read' : 'their read'));
+    if (link.verdict) node.append(el('span', `vd ${link.verdict.key}`, link.verdict.label));
+    if (link.loops) node.append(el('div', 'meta', 'the read loops here — from now on it is a coin flip'));
+    wrap.append(node);
+    if (i < chain.length - 1) wrap.append(el('div', 'arrow', '↓'));
+  });
+  host.append(wrap);
+}
+
+/* ------------------------------------------------------------ turn loop */
+
+function setHover(id) {
+  if (game.phase !== 'choosing') return;
+  // A selection outranks a hover: once you have picked, the board stays on your pick so
+  // you can study it without the mouse wandering over another button and changing it.
+  game.hovered = game.picked ? null : id;
+  if (id) game.lastFocus = id;
+  renderBoard();
+  paintStage();
+}
+
+/**
+ * What the arena shows while you are choosing.
+ *
+ * Not the last exchange. That already happened, and leaving it on screen turns the one
+ * moment you are actually thinking into a rerun of a decision you have already made. The
+ * planning arena rehearses the move you are holding *now* — its wind-up, its reach, and
+ * whether it arrives from where you are standing — and loops it until you pick another.
+ * The last exchange is still there on a button, one press away, clearly labelled as past.
+ */
+function paintStage() {
+  if (game.phase !== 'choosing') return;
+  const focusId = focusChoice();
+  const showThreat = game.oracle === 'full' || game.oracle === 'chain';
+
+  if (!focusId) {
+    // Nothing considered yet this turn: hold the exchange that just settled, since the
+    // advantage number printed under it is what decides what you pick next.
+    if (game.looking !== 'past' || !game.lastResult) {
+      game.looking = 'idle';
+      stage.setPreview(game.state, null, null, showThreat);
+    }
+    renderScrub();
+    return;
+  }
+  const mine = moveOf(myChar(), decodeChoice(focusId).moveId);
+  const best = showThreat ? game.profile[focusId]?.best.move ?? null : null;
+  const prev = previewTurn(game.state, ME, focusId);
+  if (!prev) { stage.setPreview(game.state, mine, best, showThreat); renderScrub(); return; }
+
+  game.looking = 'preview';
+  game.preview = prev;
+  stage.onFrame = (f) => { $('#scrub').value = String(f); $('#scrubval').textContent = `${f}f`; };
+  stage.onEnd = () => {};
+  stage.play(prev, game.state, null, {
+    rehearsal: true, owner: ME, loop: true,
+    name: choiceLabel(game.state, ME, focusId).toUpperCase(),
+    caption: previewCaption(prev),
+  });
+  renderScrub();
+}
+
+/** One short line for what the rehearsal showed. Long enough to read at a glance, no longer. */
+function previewCaption(prev) {
+  const m = prev.move;
+  if (prev.outcome === 'hit') return `reaches on f${prev.contactAt} · ${prev.dmg} dmg`;
+  if (prev.outcome === 'whiff') return `falls short from here`;
+  if (m.dash) return `${m.dash.toward ? 'closes' : 'opens'} ${m.dash.dist} · ${moveDuration(m)}f`;
+  return `${moveDuration(m)} frames`;
+}
+
+/**
+ * The scrub row follows whatever the arena is showing, and says which it is. The two are
+ * never the same thing, so labelling it is not decoration.
+ */
+function renderScrub() {
+  const wrap = $('#scrubwrap');
+  document.body.dataset.showing = game.looking;      // hook for the browser tests
+  const showing = game.looking === 'past' ? game.lastResult
+    : game.looking === 'preview' ? game.preview : null;
+  wrap.hidden = !showing;
+  $('#lastex').hidden = !game.lastResult || game.looking === 'past';
+  wrap.classList.toggle('past', game.looking === 'past');
+  $('#scrubtag').textContent = game.looking === 'past' ? 'LAST EXCHANGE' : 'PREVIEW';
+  $('#scrubcap').textContent = game.looking === 'preview' && game.preview
+    ? previewCaption(game.preview) : '';
+  if (!showing) return;
+  $('#scrub').max = String(showing.total);
+  $('#replay').textContent = game.looking === 'past' ? '▶ Replay' : '▶ Again';
+}
+
+/** Re-watch what actually happened, as a thing you asked for rather than the default view. */
+function showLastExchange() {
+  if (!game.lastResult) return;
+  game.looking = 'past';
+  stage.onFrame = (f) => { $('#scrub').value = String(f); $('#scrubval').textContent = `${f}f`; };
+  stage.onEnd = () => {};
+  stage.play(game.lastResult, game.preTurn ?? game.state, game.lastAdv);
+  renderScrub();
+}
+
+function refreshProfile() {
+  game.profile = squadMode()
+    ? riskProfile(game.state, ME, game.assistPick)
+    : riskProfile(game.state, ME);
+}
+
+function refreshTurn() {
+  game.picked = null;
+  game.hovered = null;
+  game.lastFocus = null;
+  // An armed teammate who is now on cooldown (or on point) cannot be called any more.
+  if (squadMode() && game.assistPick != null
+    && !benchOf(game.state, ME).some(({ n }) => n === game.assistPick && game.state.cooldown[ME][n] === 0)) {
+    game.assistPick = null;
+  }
+  refreshProfile();
+  renderHud();
+  renderMoves();
+  renderBoard();
+  paintStage();
+  renderLockIn();
+}
+
+/**
+ * Choosing is two steps, as in the source game: pick a move, then lock it in.
+ *
+ * One-step commit meant you could never study the threat board for the move you had
+ * actually settled on — hovering showed a preview and clicking fired immediately, so the
+ * board you were reading was never the board for your real choice.
+ */
+function select(id) {
+  if (game.phase !== 'choosing') return;
+  if (!optionsFor(game.state, ME).some((o) => o.id === id)) return;
+  if (game.picked === id) { lockIn(); return; }      // clicking your pick again commits it
+  sfx.click();
+  game.picked = id;
+  game.hovered = null;
+  game.lastFocus = id;
+  renderMoves();
+  renderBoard();
+  paintStage();
+  renderLockIn();
+}
+
+function renderLockIn() {
+  const b = $('#lockin');
+  const ready = game.phase === 'choosing' && game.picked;
+  b.disabled = !ready;
+  b.textContent = ready ? `LOCK IN ▸ ${choiceLabel(game.state, ME, game.picked)}` : 'SELECT A MOVE';
+  b.classList.toggle('ready', !!ready);
+}
+
+function lockIn() {
+  if (game.phase !== 'choosing' || !game.picked) return;
+  const id = game.picked;
+  game.phase = 'playing';
+  game.preTurn = game.state;
+
+  // The rival decides from what you did on *previous* turns. Recording this turn's pick
+  // before asking would put your actual choice into the history its read layer scores
+  // against — which is not a read, it is looking at your hand.
+  const theirId = chooseAiMove(game.state, THEM, game.difficulty, game.history, game.rand)
+    ?? optionsFor(game.state, THEM)[0].id;
+  game.history.push(id);
+
+  const result = resolve(game.state, [id, theirId]);
+  game.lastResult = result;
+
+  renderMoves();
+  renderBoard();
+  renderLockIn();
+  game.looking = 'past';                 // from here on the arena is a record, not a rehearsal
+  game.lastAdv = result.summary[ME].adv;
+  renderScrub();
+  stage.onFrame = (f) => {
+    $('#scrub').value = String(f);
+    $('#scrubval').textContent = `${f}f`;
+    for (const e of result.timeline[f].events) sfx.event(e.type);
+  };
+  stage.onEnd = () => finishTurn(result, id, theirId);
+  stage.play(result, game.state, result.summary[ME].adv);
+
+  showBanner(`${choiceLabel(game.state, ME, id)}  vs  ${choiceLabel(game.state, THEM, theirId)}`);
+}
+
+function finishTurn(result, myId, theirId) {
+  const v = verdictFor(result, ME);
+  showBanner(`${v.label}   ·   ${fmtAdv(result.summary[ME].adv)}f`, v.key);
+  renderCoach(myId, theirId);
+
+  const bits = [`T${game.state.turn}`, choiceLabel(game.state, ME, myId), 'vs',
+    choiceLabel(game.state, THEM, theirId), '→', v.label];
+  if (result.stallDmg?.some((d) => d > 0)) bits.push(`(sadness ${result.stallDmg.join('/')})`);
+  game.log.unshift(bits.join(' '));
+  game.log.length = Math.min(game.log.length, 30);
+  $('#log').textContent = '';
+  for (const line of game.log.slice(0, 5)) $('#log').append(el('div', null, line));
+
+  game.state = result.state;
+  renderHud();
+
+  if (game.state.over) { game.phase = 'over'; endMatch(); return; }
+  if (game.state.roundOver) { game.phase = 'roundover'; endRound(); return; }
+  game.phase = 'choosing';
+  refreshTurn();
+}
+
+/**
+ * The threat board teaches you before the guess. This teaches you after it: given what
+ * they actually did, what was the right button?
+ */
+function renderCoach(myId, theirId) {
+  if (game.oracle === 'off' || !game.preTurn) { $('#coach').hidden = true; return; }
+  const pm = postMortem(game.preTurn, ME, myId, theirId);
+  const box = $('#coach');
+  box.hidden = false;
+  box.textContent = '';
+  const them = choiceLabel(game.preTurn, THEM, theirId);
+
+  if (pm.wasBest) {
+    box.className = 'coach good';
+    box.append(el('b', null, 'Best answer available. '));
+    box.append(document.createTextNode(`They played ${them} and nothing beat it harder than ${pm.played.label}.`));
+    return;
+  }
+  box.className = 'coach';
+  box.append(el('b', null, `They played ${them}. `));
+  box.append(document.createTextNode(
+    `${pm.best.label} was the answer — ${pm.best.verdict.label.toLowerCase()}, `
+    + `you end ${fmtAdv(pm.best.adv)}f. Yours ranked ${pm.rank} of ${pm.total}.`,
+  ));
+}
+
+/** Run whatever the arena is currently showing again, from the top. */
+function replay() {
+  if (game.looking === 'preview') { paintStage(); return; }
+  showLastExchange();
+}
+
+function showBanner(text, key) {
+  const b = $('#banner');
+  b.firstElementChild.textContent = text;
+  b.firstElementChild.className = key ? `vd ${key}` : '';
+  b.classList.add('show');
+  clearTimeout(showBanner.t);
+  showBanner.t = setTimeout(() => b.classList.remove('show'), 1700);
+}
+
+/* ---------------------------------------------------------- round / match */
+
+function endRound() {
+  const r = game.state.roundOver;
+  const ov = $('#overlay');
+  ov.hidden = false;
+  ov.querySelector('h2').textContent = r.winner === null ? 'DRAWN ROUND'
+    : r.winner === ME ? 'ROUND WON' : 'ROUND LOST';
+  ov.querySelector('h2').style.color = r.winner === null ? 'var(--warn)'
+    : r.winner === ME ? 'var(--you)' : 'var(--them)';
+  ov.querySelector('p').textContent =
+    `${r.by === 'time' ? 'Time over' : 'Knockout'}. Rounds ${game.state.wins[0]}–${game.state.wins[1]}.`;
+  $('#playagain').textContent = 'Next round';
+  renderMoves();
+}
+
+function endMatch() {
+  const o = game.state.over;
+  const ov = $('#overlay');
+  ov.hidden = false;
+  const won = o.winner === ME;
+  ov.querySelector('h2').textContent = o.winner === null ? 'DRAW' : won ? 'YOU WIN' : 'YOU LOSE';
+  ov.querySelector('h2').style.color = o.winner === null ? 'var(--warn)' : won ? 'var(--you)' : 'var(--them)';
+  ov.querySelector('p').textContent = squadMode()
+    ? `Squad match over, ${teamAlive(game.state, ME)} fighter(s) left to ${teamAlive(game.state, THEM)}. `
+      + (o.by === 'time' ? 'Decided on team health.' : 'A whole team went down.')
+    : `Match over, ${game.state.wins[0]}–${game.state.wins[1]}. `
+      + (o.by === 'time' ? 'Took the last round on time.' : 'Closed it with a knockout.');
+  $('#playagain').textContent = 'Fight again';
+  renderMoves();
+}
+
+function advance() {
+  $('#overlay').hidden = true;
+  if (game.phase === 'over') { openSelect(); return; }
+  game.state = nextRound(game.state);
+  game.phase = 'choosing';
+  game.log = [];
+  game.lastResult = null;
+  game.looking = 'idle';
+  $('#log').textContent = '';
+  $('#coach').hidden = true;
+  $('#scrubwrap').hidden = true;
+  refreshTurn();
+}
+
+/* ------------------------------------------------------- character select */
+
+function openSelect() {
+  game.phase = 'select';
+  const dlg = $('#select');
+  renderRoster();
+  renderLineup();
+  $('#modewrap').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mode === game.mode));
+  $('#squadwrap').hidden = game.mode !== 'squad';
+  $('#rivalwrap').hidden = game.mode === 'squad';
+  if (!dlg.open) dlg.showModal();
+}
+
+function renderRoster() {
+  const host = $('#roster');
+  host.textContent = '';
+  for (const id of CHAR_IDS) {
+    const c = CHARS[id];
+    const chosen = game.mode === 'squad' ? game.squad.some((s) => s.char === id) : game.chars[ME] === id;
+    const card = el('button', `card${chosen ? ' picked' : ''}`);
+    card.type = 'button';
+    card.dataset.id = id;
+    const h = el('h3', null, c.name);
+    h.style.color = c.accent;
+    card.append(h);
+    card.append(el('p', null, c.tagline));
+    const stats = el('div', 'stats');
+    const fastest = Math.min(...neutralSet(id).map((m) => (moveOf(id, m).dmg ? moveOf(id, m).startup : 99)));
+    const reach = Math.max(...neutralSet(id).map((m) => moveOf(id, m).range));
+    const hit = Math.max(...neutralSet(id).map((m) => moveOf(id, m).dmg));
+    for (const [k, val, max] of [['health', c.hp, 170], ['fastest', 16 - fastest, 14], ['reach', reach, 160], ['biggest hit', hit, 30]]) {
+      const row = el('div', 'stat');
+      row.append(el('span', 'k', k));
+      const b = el('span', 'b');
+      const f = el('i');
+      f.style.width = `${Math.min(100, (val / max) * 100)}%`;
+      f.style.background = c.accent;
+      b.append(f);
+      row.append(b);
+      row.append(el('span', 'v', k === 'fastest' ? `${fastest}f` : String(val)));
+      stats.append(row);
+    }
+    card.append(stats);
+    card.addEventListener('click', () => {
+      if (game.mode === 'squad') {
+        // Clicking a card sets your point fighter; the rest of the lineup shuffles down.
+        game.squad = [
+          { char: id, assist: defaultAssist(id) },
+          ...game.squad.filter((s) => s.char !== id),
+        ].slice(0, 3);
+        renderLineup();
+      } else {
+        game.chars[ME] = id;
+      }
+      renderRoster();
+    });
+    host.append(card);
+  }
+}
+
+const defaultAssist = (charId) => Object.values(CHARS[charId].strikes)[1]?.id
+  ?? Object.values(CHARS[charId].strikes)[0].id;
+
+/**
+ * The lineup editor. Slot 1 starts on point; the other two are your assists, and the move
+ * you pick here is the one they run in and perform when you call them.
+ */
+function renderLineup() {
+  const host = $('#lineup');
+  host.textContent = '';
+  game.squad.forEach((slot, n) => {
+    const row = el('div', 'lrow');
+    row.append(el('span', 'ln', String(n + 1)));
+    const pick = el('select', 'lchar');
+    for (const id of CHAR_IDS) {
+      const o = el('option', null, CHARS[id].name);
+      o.value = id;
+      if (id === slot.char) o.selected = true;
+      pick.append(o);
+    }
+    pick.addEventListener('change', () => {
+      game.squad[n] = { char: pick.value, assist: defaultAssist(pick.value) };
+      renderLineup(); renderRoster();
+    });
+    row.append(pick);
+    row.append(el('span', 'lrole', n === 0 ? 'point' : 'assist'));
+
+    const amove = el('select', 'lmove');
+    for (const m of Object.values(CHARS[slot.char].strikes)) {
+      const o = el('option', null, `${m.name} · ${m.startup}f · ${m.dmg}`);
+      o.value = m.id;
+      if (m.id === slot.assist) o.selected = true;
+      amove.append(o);
+    }
+    amove.disabled = n === 0;
+    amove.addEventListener('change', () => { game.squad[n].assist = amove.value; });
+    row.append(amove);
+    host.append(row);
+  });
+  const dupes = new Set(game.squad.map((s) => s.char)).size !== game.squad.length;
+  $('#lineupnote').textContent = dupes
+    ? 'Duplicates are allowed — two of the same fighter is a legitimate plan.'
+    : 'Slot 1 starts on point. The other two are assists; their move is what they run in and do.';
+}
+
+function startMatch() {
+  $('#select').close();
+  const roll = () => CHAR_IDS[Math.floor(game.rand() * CHAR_IDS.length)];
+  if (game.mode === 'squad') {
+    const rival = [0, 1, 2].map(() => {
+      const c = roll();
+      return { char: c, assist: defaultAssist(c) };
+    });
+    game.state = newSquadMatch(game.squad.map((s) => ({ ...s })), rival);
+  } else {
+    const rivalPick = $('#rival').value;
+    game.chars[THEM] = rivalPick === 'random' ? roll() : rivalPick;
+    game.state = newMatch(game.chars[ME], game.chars[THEM]);
+  }
+  game.assistPick = null;
+  game.phase = 'choosing';
+  game.history = [];
+  game.log = [];
+  game.lastResult = null;
+  game.preTurn = null;
+  game.looking = 'idle';
+  $('#overlay').hidden = true;
+  $('#scrubwrap').hidden = true;
+  $('#coach').hidden = true;
+  $('#log').textContent = '';
+  refreshTurn();
+}
+
+/* ------------------------------------------------------------------ boot */
+
+function boot() {
+  stage = new Stage($('#arena'));
+  sfx = new Sfx();
+
+  $('#difficulty').addEventListener('change', (e) => {
+    game.difficulty = e.target.value;
+    $('#diffnote').textContent = DIFFICULTY[game.difficulty].note;
+  });
+  $('#oracle').addEventListener('change', (e) => {
+    game.oracle = e.target.value;
+    renderMoves(); renderBoard(); paintStage();
+  });
+  $('#sound').addEventListener('click', (e) => {
+    sfx.on = !sfx.on;
+    e.target.textContent = sfx.on ? 'Sound on' : 'Sound off';
+  });
+  $('#restart').addEventListener('click', openSelect);
+  $('#playagain').addEventListener('click', advance);
+  $('#helpbtn').addEventListener('click', () => $('#help').showModal());
+  $('#helpclose').addEventListener('click', () => $('#help').close());
+  $('#startfight').addEventListener('click', startMatch);
+  $('#modewrap').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-mode]');
+    if (!b) return;
+    game.mode = b.dataset.mode;
+    openSelect();
+  });
+  $('#replay').addEventListener('click', replay);
+  $('#lastex').addEventListener('click', showLastExchange);
+  $('#scrub').addEventListener('input', (e) => {
+    stage.seek(Number(e.target.value));
+    $('#scrubval').textContent = `${e.target.value}f`;
+  });
+  $('#lockin').addEventListener('click', lockIn);
+  $('#speed').addEventListener('change', (e) => { stage.fps = 26 * Number(e.target.value); });
+  $('#boxes').addEventListener('click', (e) => {
+    stage.boxes = !stage.boxes;
+    e.target.classList.toggle('on', stage.boxes);
+    stage.draw();
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'SELECT' || $('#help').open) return;
+    if (e.key === '?') { $('#help').showModal(); return; }
+    if ($('#select').open) { if (e.key === 'Enter') startMatch(); return; }
+    if (e.key === 'Enter' && (game.phase === 'over' || game.phase === 'roundover')) { advance(); return; }
+    if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); lockIn(); return; }
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && stage.scrubbable) {
+      e.preventDefault();
+      const f = stage.frame + (e.key === 'ArrowRight' ? 1 : -1);
+      stage.seek(f);
+      $('#scrub').value = String(stage.frame);
+      $('#scrubval').textContent = `${stage.frame}f`;
+      return;
+    }
+    if (game.phase !== 'choosing') return;
+    const k = e.key.toLowerCase();
+    if (squadMode() && (k === 'c' || k === 'v' || k === 'b')) {
+      e.preventDefault();
+      const bench = benchOf(game.state, ME);
+      const want = k === 'c' ? null : bench[k === 'v' ? 0 : 1]?.n ?? null;
+      if (want === null || game.state.cooldown[ME][want] === 0) {
+        game.assistPick = want;
+        if (game.picked) game.picked = choiceId(decodeChoice(game.picked).moveId);
+        refreshProfile(); renderMoves(); renderBoard(); paintStage(); renderLockIn();
+      }
+      return;
+    }
+    const hit = myMoves().find((m) => m.key === k);
+    if (hit) { e.preventDefault(); select(choiceId(hit.id)); }
+  });
+
+  $('#diffnote').textContent = DIFFICULTY[game.difficulty].note;
+
+  let last = performance.now();
+  const loop = (now) => {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    stage.update(dt);
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+
+  openSelect();
+}
+
+boot();
+</script>
+
+</body>
+</html>
