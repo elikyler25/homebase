@@ -268,7 +268,7 @@ underneath, so a rematch with different armies is one tap.
   blitted, which is what keeps 300-unit battles smooth — drawing them as paths every frame cost
   ~66 ms/frame, the cache brings it to ~19 ms.
 - **Static layers are painted once.** Field, grass, flowers and the vignette live on an offscreen
-  canvas; blood decals accumulate on a second one. Neither is repainted per frame.
+  canvas that is not repainted per frame.
 - **A spatial hash** backs targeting, splash and unit separation, so army size doesn't blow up the
   simulation (300 units simulate in ~1.3 ms/frame).
 - **The CPU recruits exactly the way you do.** It selects a card and its crystal streams that troop
@@ -385,13 +385,13 @@ underneath, so a rematch with different armies is one tap.
   density is a screen property, not a world one: the whole world is always on screen, so it is capped
   at 1,200. Background repaint on the largest map went **4,452 ms → 1.6 ms**.
 - **Resolution is a dial the governor can turn.** Rendering cost is per pixel — three full-screen
-  blits a frame for ground, decals and the troop layer, plus the batch's own rasterisation — and none
+  blits a frame for the ground and the troop layer, plus the batch's own rasterisation — and none
   of that cares how many troops there are. On a fill-bound machine, shedding troops does nothing at
   all, which is exactly the shape of a lag report that survives round after round of CPU optimisation.
   So the governor now turns the backing store down before it starts removing troops: the canvas keeps
   its CSS size and the browser scales it back up. At 64% the pixel count drops 2.4×, and at
   two-pixel bodies it is barely visible. Losing sharpness costs a player far less than losing half
-  their army. The empty decal layer is no longer blitted at all.
+  their army.
 
 - **The most expensive thing in the frame was not in the frame budget at all.** After several rounds
   of optimising JavaScript that measured fast, the game was still reported as laggy — which meant the

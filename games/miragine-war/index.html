@@ -505,9 +505,9 @@ const TICK_T      = 10;
 const BASE_INCOME = 300;
 
 const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed:1,
-            units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false,
+            units:[], shots:[], fx:[], W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false,
             shrine:{ owner:-1, prog:0 }, sudden:false, zones:[], poorT:0,
-            ft:8, fps:60, govMs:0, budget:1e9, rscale:1, rsT:0, bloodT:0, jolt:0, inc:[0,0], cnt:[0,0] };
+            ft:8, fps:60, govMs:0, budget:1e9, rscale:1, rsT:0, jolt:0, inc:[0,0], cnt:[0,0] };
 let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
@@ -587,14 +587,12 @@ let WORLD_W = 2600;         // everything is authored in these units
 let VIEW = 1;               // world -> css pixels
 // static layers, painted once instead of every frame
 const bgCv = document.createElement("canvas"), bgCtx = bgCv.getContext("2d");
-const decCv = document.createElement("canvas"), decCtx = decCv.getContext("2d");
-const DEC_SCALE = 0.5;
 
 let fitKey = "";
 function resize() {
   // The backing store is deliberately allowed to be smaller than the element. A
-  // frame costs three full-screen blits - ground, decals, the troop layer - plus
-  // the batch's own rasterisation, and all of that scales with pixels rather than
+  // frame costs two full-screen blits - the ground and the troop layer - plus the
+  // batch's own rasterisation, and all of that scales with pixels rather than
   // with troops. On a fill-bound machine no amount of shedding troops helps, which
   // is why the governor can turn this down instead. The canvas keeps its CSS size
   // and the browser scales it back up; at two-pixel bodies it is barely visible.
@@ -617,13 +615,7 @@ function resize() {
   ctx.setTransform(q, 0, 0, q, 0, 0);
   ctx.imageSmoothingEnabled = false;      // sprites blit 1:1; filtering is pure cost
   bgCv.width = cv.width; bgCv.height = cv.height;
-  // The decal layer is deliberately half resolution. Blood is soft blobs, so
-  // nothing is lost, and it quarters the texture the GPU has to take back every
-  // time the layer changes - see bleed().
-  decCv.width = Math.max(1, Math.round(cv.width*DEC_SCALE));
-  decCv.height = Math.max(1, Math.round(cv.height*DEC_SCALE));
   bgCtx.setTransform(q,0,0,q,0,0);
-  decCtx.setTransform(q*DEC_SCALE,0,0,q*DEC_SCALE,0,0);
   buildTerrain();
   buildZones();
   paintBackground();
@@ -1012,7 +1004,6 @@ function hurt(target, amt, src, ranged) {
     }
     if (src) src.vet = (src.vet||0) + 1;
     puff(target.x, target.y, target.team, target.u.size);
-    bleed(target.x, target.y, target.u.size);
     sfxDie();
     // A big unit falling is worth a jolt - a few frames of hitstop and a shake.
     // This used to fire on `u.size >= 30`, but size is the battle-size-*scaled*
@@ -1432,8 +1423,6 @@ function step(dt) {
   }
   G.fx = G.fx.filter(f => f.life > 0);
   G.jolt -= dt;
-  G.bloodT -= dt;
-  if (G.bloodT <= 0) { G.bloodT = 0.17; flushBlood(); }   // ~6 texture changes a second
   G.units = G.units.filter(u => !u.dead || (u.fade = (u.fade ?? .5) - dt) > 0);
 }
 
@@ -1454,40 +1443,6 @@ function puff(x, y, team, size) {
   for (let i=0;i<(G.crowd?3:9);i++)
     G.fx.push({ t:"p", x, y, vx:(Math.random()-.5)*140, vy:-Math.random()*130,
                 life:.5, max:.5, c, r:1.5+Math.random()*size*.3 });
-}
-/* Blood persists, so it lives on its own canvas - but that canvas is both written
-   to and used as a drawImage source, and a canvas that changed this frame has to
-   be handed back to the GPU as a texture before it can be drawn. Painting a spot
-   per death meant that happened on every frame of every fight, beginning the
-   instant the two armies touched, which is exactly when the game fell over.
-
-   Spots are queued and flushed a few times a second instead, so the layer changes
-   about six times a second rather than sixty, and at half resolution each change
-   is a quarter of the pixels. Deaths in a crowd are thinned as well: past a few
-   thousand troops nobody is counting individual stains. */
-const BLOOD = ["rgba(96,18,14,.22)","rgba(96,18,14,.27)","rgba(88,16,12,.32)"];
-const blood = [];
-const BLOOD_QUEUE = 400, DECAL_MAX = 9000;
-let bleedN = 0;
-function bleed(x, y, size) {
-  if (G.decals > DECAL_MAX || blood.length > BLOOD_QUEUE) return;
-  if (G.crowd && (++bleedN & 3)) return;      // one death in four once it is a melee
-  blood.push(x, y, size);
-}
-function flushBlood() {
-  if (!blood.length) return;
-  for (let i = 0; i < blood.length; i += 3) {
-    const x = blood[i], y = blood[i+1], size = blood[i+2];
-    for (let k = 0; k < 2; k++) {
-      const dx = x+(Math.random()-.5)*size, dy = y+size*.7+(Math.random()-.5)*size*.5;
-      decCtx.fillStyle = BLOOD[(Math.random()*3)|0];
-      decCtx.beginPath();
-      decCtx.ellipse(dx, dy, size*(.3+Math.random()*.4), size*(.14+Math.random()*.18), 0, 0, 6.29);
-      decCtx.fill();
-    }
-    G.decals++;
-  }
-  blood.length = 0;
 }
 function boom(x, y, r) {
   if (G.fx.length > FX_CAP) return;
@@ -1554,7 +1509,6 @@ function draw() {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(bgCv, 0, 0);
-  if (G.decals) ctx.drawImage(decCv, 0, 0, cv.width, cv.height);  // empty: skip it
   ctx.restore();
 
   drawShrine();
@@ -2773,8 +2727,7 @@ function newGame() {
   [0,1].forEach(t => { P[t].faction = FACTIONS[pick[t]]; P[t].roster = FACTIONS[pick[t]].units; });
   buildShops();
   CPU = modeId === "2p" ? null : { team:1, level:modeId, t:0 };
-  G.units=[]; G.shots=[]; G.fx=[]; G.decals=0; blood.length=0;
-  decCtx.clearRect(0,0,G.W,G.H);
+  G.units=[]; G.shots=[]; G.fx=[];
   G.round=1; G.tick=TICK_T; G.shake=0; G.speed=1;
   G.shrine={ owner:-1, prog:0 }; G.sudden=false; G.hi=null; G.help=false;
   cards.forEach(row => row.forEach(el => el.classList.remove("sel")));
