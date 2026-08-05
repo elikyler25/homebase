@@ -507,7 +507,7 @@ const BASE_INCOME = 300;
 const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed:1,
             units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false,
             shrine:{ owner:-1, prog:0 }, sudden:false, zones:[], poorT:0,
-            ft:8, govMs:0, budget:1e9, inc:[0,0], cnt:[0,0] };
+            ft:8, fps:60, govMs:0, budget:1e9, inc:[0,0], cnt:[0,0] };
 let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
@@ -2574,10 +2574,10 @@ function updateAdvice(dt) {
     roster.forEach((u,i) => {
       const bar = cards[team][i].querySelector(".adv");
       if (!bar) return;
-      if (vals[i] === null || hi <= 0) { bar.style.width = "0%"; return; }
+      if (vals[i] === null || hi <= 0) { setStyle(bar, "width", "0%"); return; }
       const f = Math.max(0.04, Math.min(1, vals[i]/hi));
-      bar.style.width = (f*100) + "%";
-      bar.style.background = f > .72 ? "#6de06d" : f > .4 ? "#ffd75e" : "#e06a5a";
+      setStyle(bar, "width", Math.round(f*1000)/10 + "%");
+      setStyle(bar, "background", f > .72 ? "#6de06d" : f > .4 ? "#ffd75e" : "#e06a5a");
     });
   }
 }
@@ -2585,24 +2585,49 @@ function updateAdvice(dt) {
 /* ============================================================
    HUD
    ============================================================ */
+/* ---------- DOM writes ----------
+   updateHUD runs every frame and used to do thirty getElementById lookups and
+   twenty textContent/style writes, whether or not anything had changed. The cost
+   of that is invisible to the frame governor: the JavaScript measures at a tenth
+   of a millisecond, but every touched node dirties style, layout and paint, and
+   the browser does that work *after* our frame function returns - outside the
+   window performance.now() can see. On a phone, re-laying out a HUD with eighteen
+   shop cards sixty times a second is far more expensive than anything the
+   simulation does, and the governor never knew to shed for it.
+
+   Nearly all of these values are unchanged frame to frame - the faction name
+   never changes, the round every ten seconds. So: look each node up once, and
+   only write when the value is actually different. */
+const $ = (() => { const c = {}; return id => c[id] || (c[id] = document.getElementById(id)); })();
+const _txt = new WeakMap(), _sty = new WeakMap();
+function setText(el, v) {
+  if (!el || _txt.get(el) === v) return;
+  _txt.set(el, v); el.textContent = v;
+}
+function setStyle(el, prop, v) {
+  if (!el) return;
+  let m = _sty.get(el);
+  if (!m) { m = {}; _sty.set(el, m); }
+  if (m[prop] === v) return;
+  m[prop] = v; el.style[prop] = v;
+}
+
 function updateHUD() {
   G.poorT -= 1/60;
   const inc = G.inc, cnt = G.cnt;   // tallied in rebuildGrid, not walked again here
   for (const t of [0,1]) {
     const p=P[t], n=t+1;
-    document.getElementById("hp"+n).style.width = Math.max(0,p.hp/CRYSTAL_HP*100)+"%";
-    document.getElementById("hpt"+n).textContent = Math.ceil(p.hp)+" / "+CRYSTAL_HP;
-    document.getElementById("g"+n).textContent = Math.floor(p.gold);
-    document.getElementById("i"+n).textContent = Math.round((BASE_INCOME + 170*G.round + inc[t]) * goldMul);
-    document.getElementById("a"+n).textContent = cnt[t];
-    const tag = document.getElementById("f"+n);
-    tag.textContent = (CPU && CPU.team===t ? "CPU " : "") + p.faction.name;
-    tag.style.color = p.faction.tint;
-    document.getElementById("l"+n).textContent = LANES[p.lane] + " · " + STANCES[p.stance];
-    const rec = document.getElementById("rc"+n);
-    rec.textContent = (CPU && CPU.team===t) ? ""
-      : p.sel === null ? "" : "▶ " + p.roster[p.sel].name;
-    rec.style.color = p.sel === null ? "#9e8b63" : "#ffd75e";
+    setStyle($("hp"+n), "width", Math.max(0, Math.round(p.hp/CRYSTAL_HP*1000)/10) + "%");
+    setText($("hpt"+n), Math.ceil(p.hp)+" / "+CRYSTAL_HP);
+    setText($("g"+n), Math.floor(p.gold));
+    setText($("i"+n), Math.round((BASE_INCOME + 170*G.round + inc[t]) * goldMul));
+    setText($("a"+n), cnt[t]);
+    setText($("f"+n), (CPU && CPU.team===t ? "CPU " : "") + p.faction.name);
+    setStyle($("f"+n), "color", p.faction.tint);
+    setText($("l"+n), LANES[p.lane] + " · " + STANCES[p.stance]);
+    setText($("rc"+n), (CPU && CPU.team===t) ? ""
+      : p.sel === null ? "" : "▶ " + p.roster[p.sel].name);
+    setStyle($("rc"+n), "color", p.sel === null ? "#9e8b63" : "#ffd75e");
     if (G.poorT <= 0) {
       // Hysteresis: while you are auto-recruiting, gold oscillates around the price
       // of the thing you are buying, so a bare `gold < price` test dims and undims
@@ -2617,27 +2642,24 @@ function updateHUD() {
         if (now !== was) el.classList.toggle("poor", now);
       });
     }
-  }
-  for (const t of [0,1]) {
-    const p = P[t], el = document.getElementById("rp"+(t+1));
-    el.textContent = p.hp < CRYSTAL_HP && p.gold >= REPAIR_COST && !(CPU && CPU.team===t)
-      ? "["+(t===0?"5":"6")+"] mend ◆"+REPAIR_COST : "";
+    setText($("rp"+n), p.hp < CRYSTAL_HP && p.gold >= REPAIR_COST && !(CPU && CPU.team===t)
+      ? "["+(t===0?"5":"6")+"] mend ◆"+REPAIR_COST : "");
   }
   const sh = G.shrine;
-  document.getElementById("shrine").textContent =
+  setText($("shrine"),
     sh.owner === 0 ? "SHRINE: BLUE +◆" + SHRINE_GOLD*goldMul
     : sh.owner === 1 ? "SHRINE: RED +◆" + SHRINE_GOLD*goldMul
-    : "SHRINE: neutral";
-  document.getElementById("shrine").style.color =
-    sh.owner === 0 ? "#bfe6ff" : sh.owner === 1 ? "#ffd0b0" : "#cfc6ae";
+    : "SHRINE: neutral");
+  setStyle($("shrine"), "color",
+    sh.owner === 0 ? "#bfe6ff" : sh.owner === 1 ? "#ffd0b0" : "#cfc6ae");
   if (G.poorT <= 0) G.poorT = 0.25;
-  document.getElementById("round").textContent = "ROUND " + G.round;
-  document.getElementById("tick").textContent =
-    G.paused ? "PAUSED" : "payday in " + Math.ceil(G.tick) + "s";
-  // If the governor has had to shrink the field, say so rather than leaving the
-  // player wondering why the ceiling moved.
-  document.getElementById("gov").textContent =
-    G.budget < UNIT_CAP*0.95 ? "auto-scaled to " + capNow() + " troops" : "";
+  setText($("round"), "ROUND " + G.round);
+  setText($("tick"), G.paused ? "PAUSED" : "payday in " + Math.ceil(G.tick) + "s");
+  // When the governor is limiting, say so - and show the frame rate with it, so
+  // there is a number to report rather than a feeling.
+  setText($("gov"), G.budget < UNIT_CAP*0.95
+    ? "auto-scaled to " + capNow() + " troops · " + Math.round(G.fps) + "fps"
+    : (G.fps && G.fps < 45 ? Math.round(G.fps) + "fps" : ""));
 }
 
 /* ============================================================
@@ -2852,15 +2874,27 @@ function probeStep(ms) {
   return true;
 }
 
-function govern(ms) {
-  // Measure our own work, not the gap between frames: a display capped at 30Hz,
-  // or a browser throttling a background tab, would otherwise look exactly like a
-  // machine that cannot keep up, and the field would shrink for no reason.
+function govern(ms, wall) {
   if (!(ms >= 0)) return;
+  if (wall > 0 && wall < 2000) G.fps += (1000/wall - G.fps) * 0.05;
+  // Our own work is the primary signal, because the gap between frames cannot be
+  // trusted on its own: a display capped at 30Hz, or a throttled background tab,
+  // looks exactly like a machine that cannot keep up, and the field would shrink
+  // for no reason.
+  //
+  // But our work is blind to everything the browser does *after* this function
+  // returns - style recalculation, layout, paint, compositing - and that turned
+  // out to be the expensive part on a phone, with the HUD dirtying a shopful of
+  // DOM nodes sixty times a second. So when the wall clock says a frame took far
+  // longer than our own work explains, believe the wall clock. Only above 45ms:
+  // no display caps below about 30Hz, so a genuine 33ms vsync is never mistaken
+  // for trouble.
+  let eff = ms;
+  if (wall > 45 && wall > ms * 1.6) eff = wall;
   // Clamp the sample, never discard it. This used to ignore anything over 200ms
   // as "a hitch" - which meant the worse a device was struggling, the more
   // certain the governor was to do nothing at all.
-  const s = ms > 600 ? 600 : ms;
+  const s = eff > 600 ? 600 : eff;
   // Rise fast, fall slow: react to trouble within a few frames, give the load
   // back only once the headroom has clearly lasted.
   G.ft += (s - G.ft) * (s > G.ft ? 0.3 : 0.05);
@@ -2884,7 +2918,8 @@ function govern(ms) {
 }
 
 function frame(now) {
-  let dt = (now-last)/1000; last = now;
+  const wall = now - last;             // real elapsed time, before any clamping
+  let dt = wall/1000; last = now;
   if (dt > .05) dt = .05;
   const t0 = performance.now();
   if (G.hitstop > 0) G.hitstop -= dt;
@@ -2894,7 +2929,7 @@ function frame(now) {
   draw();
   if (P.length) { updateHUD(); updateAdvice(dt); }
   const cost = performance.now() - t0;
-  if (!probeStep(cost)) govern(cost);
+  if (!probeStep(cost)) govern(cost, wall);
   requestAnimationFrame(frame);
 }
 

@@ -352,6 +352,27 @@ underneath, so a rematch with different armies is one tap.
   line is legible. The single biggest thing for readability was not detail but the dark rim around each
   body — at this density what makes a troop visible is the edge between it and the one behind it.
 
+- **The most expensive thing in the frame was not in the frame budget at all.** After several rounds
+  of optimising JavaScript that measured fast, the game was still reported as laggy — which meant the
+  cost was somewhere the governor could not see. It was: `updateHUD` ran every frame doing thirty
+  `getElementById` lookups and twenty `textContent`/`style` writes, unconditionally. The JavaScript
+  for that measures at a tenth of a millisecond, but every touched node dirties style, layout and
+  paint, and **the browser does that work after our frame function returns** — outside the window
+  `performance.now()` can bracket. On a phone, re-laying out a HUD with eighteen shop cards sixty
+  times a second costs far more than the simulation does, and the governor had no way to know.
+
+  Nodes are looked up once and cached, and every write is dirty-checked. Measured with a
+  `MutationObserver` over a live battle: **20 DOM writes a frame became 0.1 actual mutations a frame**
+  — in a saturated battle the field sits at its ceiling and those values genuinely do not change
+  between frames, so the old code was repainting the HUD for nothing sixty times a second.
+- **The governor now has a second signal it cannot be blind to.** Our own work is still the primary
+  measurement, because the gap between frames on its own is untrustworthy — a display capped at 30 Hz
+  looks identical to a machine that cannot keep up. But when the wall clock says a frame took far
+  longer than our work explains, that gap *is* the browser doing something expensive on our behalf, so
+  the governor believes the wall clock instead. Only above 45 ms: no display caps below about 30 Hz,
+  so a genuine 33 ms vsync is never mistaken for trouble. The HUD also shows the frame rate whenever
+  it drops below 45, so there is a number to report rather than a feeling.
+
 - **The hot fields live in typed arrays.** Separation and target-finding were spending most of their
   time chasing pointers — `gUnits[gItems[i]]`, then `.x`, then `.y`, then `.u.size`, three
   dereferences before any arithmetic. Benchmarked on the real separation loop over 26,000 troops, the
