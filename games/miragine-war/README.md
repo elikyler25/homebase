@@ -352,6 +352,18 @@ underneath, so a rematch with different armies is one tap.
   line is legible. The single biggest thing for readability was not detail but the dark rim around each
   body — at this density what makes a troop visible is the edge between it and the one behind it.
 
+- **The radar became the second most expensive thing in the frame.** It painted one `fillRect` per
+  troop into a strip 490 by 26 pixels — 26,000 draw calls, ~3.5 ms a frame amortised, which is the
+  same draw-call wall the army itself hit, hiding in the smallest widget on screen. Blips are written
+  straight into an `ImageData` now: one `putImageData` and a flat array store per troop, **3.5 ms →
+  0.4 ms**. The HUD was separately walking all 26,000 units again for a per-side count and income;
+  that tally now happens in the grid rebuild, which already touches every live unit — **1.2 ms →
+  0.1 ms**.
+- **Separation skips troops that are not crowded.** Checking the occupancy of a unit's own cell is one
+  array read and skips the nine-cell scan entirely. It fires for about a quarter of the army in a full
+  battle. A pair can be missed only if *both* are alone in their cells, since either one scanning
+  pushes both apart.
+
 - **Two things stop a crowd going quadratic.** A spatial hash is only a win while the crowd is spread
   across cells, and there is a real case where it is not: when one army takes the field, the survivors
   pile onto the enemy crystal and thousands of troops end up inside a couple of cells, each testing

@@ -507,7 +507,7 @@ const BASE_INCOME = 300;
 const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed:1,
             units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false,
             shrine:{ owner:-1, prog:0 }, sudden:false, zones:[], poorT:0,
-            ft:8, govMs:0, budget:1e9 };
+            ft:8, govMs:0, budget:1e9, inc:[0,0], cnt:[0,0] };
 let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
@@ -872,7 +872,16 @@ function rebuildGrid() {
   gStart.fill(0, 0, nCell+1);
   const us = G.units;
   gN = 0;
-  for (let i = 0; i < us.length; i++) if (!us[i].dead) { gUnits[gN++] = us[i]; }
+  // The HUD needs a per-side count and income every frame, and this loop already
+  // touches every live unit - so tally them here instead of walking 26,000
+  // objects a second time.
+  G.inc[0] = G.inc[1] = G.cnt[0] = G.cnt[1] = 0;
+  for (let i = 0; i < us.length; i++) {
+    const a = us[i];
+    if (a.dead) continue;
+    gUnits[gN++] = a;
+    G.inc[a.team] += a.u.income; G.cnt[a.team]++;
+  }
   if (gItems.length < gN) gItems = new Int32Array(Math.max(64, gN*2));
   for (let i = 0; i < gN; i++) gStart[cellOf(gUnits[i].x, gUnits[i].y) + 1]++;
   for (let c = 0; c < nCell; c++) gStart[c+1] += gStart[c];
@@ -1307,6 +1316,12 @@ function step(dt) {
     if (a.dead) continue;
     if (nSep > 1 && (a.uid + fr) % nSep) continue;
     const ax = a.x, ay = a.y, asz = a.u.size, r = asz*2;
+    // Most of the army is not crowded - it is walking across open ground with
+    // nobody within a body's width. Checking the occupancy of its own cell is one
+    // array read and skips the nine-cell scan entirely for those, which is most
+    // troops for most of a match.
+    const own = cellOf(ax, ay);
+    if (gStart[own+1] - gStart[own] < 2) continue;
     let c0=((ax-r)*INV_CELL+1)|0, c1=((ax+r)*INV_CELL+1)|0;
     let r0=((ay-r)*INV_CELL+1)|0, r1=((ay+r)*INV_CELL+1)|0;
     if (c0 < 0) c0 = 0; if (c1 >= GW) c1 = GW-1;
@@ -2351,32 +2366,56 @@ function drawRadar() {
   ctx.drawImage(rdCv, Math.round((x-px(4))*q), Math.round((y-px(4))*q));
   ctx.restore();
 }
+/* Little-endian is near-universal, but packing a colour the wrong way round would
+   silently swap red and blue rather than fail loudly, so it is worth four lines. */
+const LE = (() => { const b = new ArrayBuffer(4); new Uint32Array(b)[0] = 1;
+                    return new Uint8Array(b)[0] === 1; })();
+const rgb = (r,g,b) => (LE ? (255<<24 | b<<16 | g<<8 | r) : (r<<24 | g<<16 | b<<8 | 255)) >>> 0;
+const BLIP = [rgb(127,196,255), rgb(255,138,106)];
+const RADAR_BG = rgb(30,47,24);
+let rdImg = null, rdPix = null;
+
 function radarBody(x, y, w, h, px) {
-  const b2 = px(2), b4 = px(4);
+  const b2 = px(2), b4 = px(4), q = VIEW*DPR;
   ctx.fillStyle = "rgba(10,8,6,.8)";
   ctx.fillRect(x-b2, y-b2, w+b4, h+b4);
   ctx.strokeStyle = "#4a3c22"; ctx.lineWidth = b2;
   ctx.strokeRect(x-b2, y-b2, w+b4, h+b4);
-  ctx.fillStyle = "rgba(40,60,30,.6)";
-  ctx.fillRect(x, y, w, h);
-  const sx = w/G.W, sy = h/Math.max(1, BOT()-TOP());
-  const big = px(4), small = px(2.6);
-  for (const team of [0,1]) {                 // one fillStyle per side, not per blip
-    ctx.fillStyle = team===0 ? "#7fc4ff" : "#ff8a6a";
-    for (const a of G.units) {
-      if (a.dead || a.team !== team) continue;
-      // baseSize, not size: every unit is scaled up on the bigger maps, so the
-      // live size would mark almost the whole army as a heavy.
-      const r = a.u.baseSize >= 30 ? big : small;
-      ctx.fillRect(x + a.x*sx - r/2, y + (a.y-TOP())*sy - r/2, r, r);
+
+  /* Blips go in as pixels, not rectangles. One fillRect per troop is 26,000 draw
+     calls into a strip 490 by 26 - the same draw-call wall the army itself hit,
+     and worth ~3.5ms a frame amortised. Writing into an ImageData makes it one
+     putImageData plus a flat array store per troop. */
+  const iw = Math.max(1, Math.round(w*q)), ih = Math.max(1, Math.round(h*q));
+  if (!rdImg || rdImg.width !== iw || rdImg.height !== ih) {
+    rdImg = ctx.createImageData(iw, ih);
+    rdPix = new Uint32Array(rdImg.data.buffer);
+  }
+  rdPix.fill(RADAR_BG);
+  const bx = iw/G.W, by = ih/Math.max(1, BOT()-TOP()), top = TOP(), us = G.units;
+  for (let i = 0; i < us.length; i++) {
+    const a = us[i];
+    if (a.dead) continue;
+    const cx = (a.x*bx) | 0, cy = ((a.y-top)*by) | 0;
+    if (cx < 0 || cx >= iw || cy < 0 || cy >= ih) continue;
+    const c = BLIP[a.team];
+    rdPix[cy*iw + cx] = c;
+    if (a.u.baseSize >= 30) {                    // heavies read as a 2x2 block
+      if (cx+1 < iw) rdPix[cy*iw + cx+1] = c;
+      if (cy+1 < ih) { rdPix[(cy+1)*iw + cx] = c;
+                       if (cx+1 < iw) rdPix[(cy+1)*iw + cx+1] = c; }
     }
   }
+  // rdCtx is translated so that (x-px(4), y-px(4)) is its origin; putImageData
+  // ignores the transform, so the offset is computed in device pixels here.
+  ctx.putImageData(rdImg, Math.round(px(4)*q), Math.round(px(4)*q));
+
   for (const t of [0,1]) {
     ctx.fillStyle = t===0 ? "#bfe6ff" : "#ffd0b0";
-    ctx.fillRect(x + crystalX(t)*sx - b2, y + h/2 - b4, b4, px(8));
+    ctx.fillRect(x + crystalX(t)*(w/G.W) - b2, y + h/2 - b4, b4, px(8));
   }
   ctx.fillStyle = G.shrine.owner === 0 ? "#7fc4ff" : G.shrine.owner === 1 ? "#ff8a6a" : "#e8dcb0";
-  ctx.fillRect(x + shrineX()*sx - px(1.5), y + h/2 - px(3), px(3), px(6));
+  ctx.fillRect(x + shrineX()*(w/G.W) - px(1.5), y + h/2 - px(3), px(3), px(6));
   if (G.speed !== 1) {
     ctx.fillStyle = "#ffd75e";
     ctx.font = "bold " + px(16).toFixed(1) + "px 'Trebuchet MS', sans-serif";
@@ -2510,8 +2549,7 @@ function updateAdvice(dt) {
    ============================================================ */
 function updateHUD() {
   G.poorT -= 1/60;
-  const inc=[0,0], cnt=[0,0];
-  for (const a of G.units) if (!a.dead) { inc[a.team]+=a.u.income; cnt[a.team]++; }
+  const inc = G.inc, cnt = G.cnt;   // tallied in rebuildGrid, not walked again here
   for (const t of [0,1]) {
     const p=P[t], n=t+1;
     document.getElementById("hp"+n).style.width = Math.max(0,p.hp/CRYSTAL_HP*100)+"%";
