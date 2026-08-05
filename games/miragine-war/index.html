@@ -800,7 +800,7 @@ function spawn(idx, team) {
     x: crystalX(team) + (team===0?70:-70) + (Math.random()*18-9),
     y: laneY(team),
     hp:u.hp, maxhp:u.hp, cool:Math.random()*u.ws, tgt:null, retarget:Math.random()*.3,
-    swing:0, hurt:0, step:Math.random()*6.28, dust:0, vet:0, zn:null, znT:0, dead:false };
+    swing:0, hurt:0, step:Math.random()*6.28, dust:0, vet:0, zn:null, znT:0, dead:false, gi:-1 };
 }
 
 function select(team, idx) {
@@ -844,6 +844,21 @@ let CELL = 130, INV_CELL = 1/130, GW = 1, GH = 1;
 let gStart = new Int32Array(2);      // per-cell start offset, GW*GH+1 entries
 let gItems = new Int32Array(0);      // unit slots, bucketed by cell
 let gUnits = [];                     // slot -> unit
+/* ---------- hot-field mirror ----------
+   The two most expensive loops in the simulation - separation and target-finding
+   - spend most of their time chasing pointers: gUnits[gItems[i]], then .x, then
+   .y, then .u.size, three dereferences before any arithmetic happens. Benchmarked
+   on the real separation loop over 26,000 troops, the identical work over flat
+   typed arrays ran in half the time (2.1ms against 4.1-5.6ms) and, more usefully,
+   with a quarter of the variance - and variance is what a player feels as stutter.
+
+   So the handful of fields those loops touch are mirrored into parallel typed
+   arrays indexed by grid slot. The unit objects stay the source of truth for
+   everything else. The mirror is filled during the grid rebuild, which already
+   walks every live unit, and written back after separation - the only hot loop
+   that moves anything. */
+let PX = new Float32Array(0), PY = new Float32Array(0), PSZ = new Float32Array(0);
+let PTEAM = new Uint8Array(0), PDEAD = new Uint8Array(0);
 let gCur = new Int32Array(0);        // scratch write cursors
 let gN = 0;
 
@@ -872,13 +887,20 @@ function rebuildGrid() {
   gStart.fill(0, 0, nCell+1);
   const us = G.units;
   gN = 0;
-  // The HUD needs a per-side count and income every frame, and this loop already
-  // touches every live unit - so tally them here instead of walking 26,000
-  // objects a second time.
+  if (PX.length < us.length) {
+    const cap = Math.max(64, us.length*2);
+    PX = new Float32Array(cap); PY = new Float32Array(cap); PSZ = new Float32Array(cap);
+    PTEAM = new Uint8Array(cap); PDEAD = new Uint8Array(cap);
+  }
+  // This loop already touches every live unit, so it does three jobs at once:
+  // builds the slot list, fills the mirror, and tallies the per-side count and
+  // income the HUD needs - rather than walking 26,000 objects three times.
   G.inc[0] = G.inc[1] = G.cnt[0] = G.cnt[1] = 0;
   for (let i = 0; i < us.length; i++) {
     const a = us[i];
     if (a.dead) continue;
+    a.gi = gN;
+    PX[gN] = a.x; PY[gN] = a.y; PSZ[gN] = a.u.size; PTEAM[gN] = a.team; PDEAD[gN] = 0;
     gUnits[gN++] = a;
     G.inc[a.team] += a.u.income; G.cnt[a.team]++;
   }
@@ -913,9 +935,9 @@ function findTarget(a) {
   const team = a.team, ax = a.x, ay = a.y;
   const cx = (ax*INV_CELL + 1) | 0, cy = (ay*INV_CELL + 1) | 0;
   const maxRing = Math.ceil(SIGHT*INV_CELL);
-  let best = null, bd = SIGHT*SIGHT;
+  let best = -1, bd = SIGHT*SIGHT;
   for (let ring = 0; ring <= maxRing; ring++) {
-    if (best) {                       // nothing further out can beat what we have
+    if (best >= 0) {                  // nothing further out can beat what we have
       const safe = (ring-1)*CELL;
       if (safe > 0 && bd <= safe*safe) break;
     }
@@ -928,15 +950,15 @@ function findTarget(a) {
         if (gx < 0 || gx >= GW) continue;
         const e = gStart[row+gx+1];
         for (let i = gStart[row+gx]; i < e; i++) {
-          const b = gUnits[gItems[i]];
-          if (b.team === team || b.dead) continue;
-          const dx = b.x-ax, dy = b.y-ay, d = dx*dx + dy*dy;
-          if (d < bd) { bd = d; best = b; }
+          const j = gItems[i];
+          if (PTEAM[j] === team || PDEAD[j]) continue;
+          const dx = PX[j]-ax, dy = PY[j]-ay, d = dx*dx + dy*dy;
+          if (d < bd) { bd = d; best = j; }
         }
       }
     }
   }
-  return best;
+  return best < 0 ? null : gUnits[best];
 }
 
 function vetBonus(a) { return 1 + Math.min(3, Math.floor((a.vet||0)/3)) * 0.12; }
@@ -955,6 +977,7 @@ function hurt(target, amt, src, ranged) {
   }
   if (target.hp <= 0 && !target.dead) {
     target.dead = true;
+    if (target.gi >= 0) PDEAD[target.gi] = 1;   // keep the mirror honest mid-step
     P[1-target.team].kills++;
     if (target.u.hero) {           // a champion falling is an event
       P[target.team].heroes = Math.max(0, P[target.team].heroes - 1);
@@ -1299,59 +1322,66 @@ function step(dt) {
   }
   G.shots = G.shots.filter(s => !s.done);
 
-  // Inlined over the flat grid rather than through nearby(): this runs for half
-  // the army every frame, and a closure per unit was showing up as real time.
-  // Past ten thousand troops it drops to a third of them per frame - at three
-  // pixels a body nobody can see the difference, and it is the cheapest place to
-  // buy the headroom back.
-  // Separation is two thirds of the simulation once the field is this deep - 5.6ms
-  // of step's 8.3ms at thirty thousand troops. It only stops bodies overlapping,
-  // and at two and a half pixels a body there is nothing to see, so past
-  // twenty-four thousand it runs for a fifth of the army each frame.
-  const n = G.units.length;
-  const nSep = n > 24000 ? 5 : n > 10000 ? 3 : n > 1200 ? 2 : 1;
+  /* Separation, run over the mirror rather than the objects. It is the single
+     most expensive thing the simulation does - two thirds of step at this scale -
+     and it is almost pure pointer chasing, which is exactly what the typed arrays
+     fix. Positions moved during the main loop above, so the mirror is refreshed
+     first: one pass of straight-line writes costs far less than the dereferencing
+     it saves inside the scan.
+
+     Past twenty-four thousand troops it runs for a fifth of the army each frame.
+     It only stops bodies overlapping, and at two and a half pixels a body there
+     is nothing to see. */
+  const nSep = G.units.length > 24000 ? 5 : G.units.length > 10000 ? 3 : G.units.length > 1200 ? 2 : 1;
   const top = TOP(), bot = BOT(), fr = G.frame;
-  for (let ui = 0; ui < G.units.length; ui++) {
-    const a = G.units[ui];
-    if (a.dead) continue;
-    if (nSep > 1 && (a.uid + fr) % nSep) continue;
-    const ax = a.x, ay = a.y, asz = a.u.size, r = asz*2;
+  for (let i = 0; i < gN; i++) { const a = gUnits[i]; PX[i] = a.x; PY[i] = a.y; }
+  for (let ui = 0; ui < gN; ui++) {
+    if (PDEAD[ui]) continue;
+    if (nSep > 1 && (ui + fr) % nSep) continue;
+    const ax = PX[ui], ay = PY[ui], asz = PSZ[ui], r = asz*2;
     // Most of the army is not crowded - it is walking across open ground with
-    // nobody within a body's width. Checking the occupancy of its own cell is one
-    // array read and skips the nine-cell scan entirely for those, which is most
-    // troops for most of a match.
+    // nobody within a body's width. Reading its own cell's occupancy is one array
+    // read and skips the nine-cell scan entirely, which fires for about a quarter
+    // of the army. A pair is only missed if both are alone in their own cells,
+    // since either one scanning pushes both apart.
     const own = cellOf(ax, ay);
     if (gStart[own+1] - gStart[own] < 2) continue;
     let c0=((ax-r)*INV_CELL+1)|0, c1=((ax+r)*INV_CELL+1)|0;
     let r0=((ay-r)*INV_CELL+1)|0, r1=((ay+r)*INV_CELL+1)|0;
     if (c0 < 0) c0 = 0; if (c1 >= GW) c1 = GW-1;
     if (r0 < 0) r0 = 0; if (r1 >= GH) r1 = GH-1;
-    // A grid stops helping when everything is in one cell, and that happens for
-    // real: when one army takes the field the survivors pile onto the enemy
-    // crystal, and thousands of troops end up inside a couple of cells. Each one
-    // would then test itself against every other, which is quadratic and was
-    // measured turning a 24,000-troop field into 80ms a frame. Cap the tests per
-    // troop: pushing apart the nearest couple of dozen neighbours resolves the
-    // overlap just as well, and the cost stays linear whatever the crowd does.
-    let seen = 0;
+    // A grid stops helping when everything lands in one cell, and that happens
+    // for real: when one army takes the field the survivors pile onto the enemy
+    // crystal and thousands end up inside a couple of cells, each testing against
+    // every other. Measured turning a 24,000-troop field into 80ms a frame.
+    // Capping the tests per troop keeps it linear whatever the crowd does, and
+    // pushing apart the nearest two dozen resolves the overlap just as well.
+    let seen = 0, x = ax, y = ay;
     outer:
     for (let cy=r0; cy<=r1; cy++) {
       const row = cy*GW;
       for (let cx=c0; cx<=c1; cx++) {
         const e = gStart[row+cx+1];
-        for (let i = gStart[row+cx]; i < e; i++) {
+        for (let k = gStart[row+cx]; k < e; k++) {
           if (++seen > 24) break outer;
-          const b = gUnits[gItems[i]];
-          if (b === a || b.dead) continue;
-          const dx=b.x-a.x, dy=b.y-a.y, md=(asz+b.u.size)*.82, d2=dx*dx+dy*dy;
+          const j = gItems[k];
+          if (j === ui || PDEAD[j]) continue;
+          const dx=PX[j]-x, dy=PY[j]-y, md=(asz+PSZ[j])*.82, d2=dx*dx+dy*dy;
           if (d2 < md*md && d2 > .01) {
             const d=Math.sqrt(d2), push=(md-d)*.28, nx=dx/d*push, ny=dy/d*push;
-            a.x-=nx; a.y-=ny; b.x+=nx; b.y+=ny;
+            x-=nx; y-=ny; PX[j]+=nx; PY[j]+=ny;
           }
         }
       }
     }
-    a.y = a.y < top ? top : a.y > bot ? bot : a.y;
+    PX[ui] = x;
+    PY[ui] = y < top ? top : y > bot ? bot : y;
+  }
+  for (let i = 0; i < gN; i++) {
+    const a = gUnits[i];
+    if (a.dead) continue;
+    a.x = PX[i];
+    a.y = PY[i] < top ? top : PY[i] > bot ? bot : PY[i];
   }
 
   for (const f of G.fx) {
@@ -2292,45 +2322,53 @@ function gpuUnits(list, q) {
   }
   // Resolve sprites first: this is what bakes any new ones, so the atlas check
   // below sees a complete cache.
-  const cs = gpu.cs; let n = 0;
-  if (SIMPLE) {                       // one array read a troop, no animation maths
-    for (const a of list) { if (!a.dead) cs[n++] = simpleSprite(a.u, a.team); }
-  } else {
-    for (const a of list) {
-      if (a.dead) continue;
-      cs[n++] = sprite(a.u, a.team, ((a.step/(Math.PI/2))|0)&3, a.swing > .45 ? 1 : 0, psiOf(a));
-    }
-  }
-  if (!gpuAtlas()) return false;
-  if (gpu.cap < n) {
-    gpu.cap = Math.max(64, n * 2);
+  // Resolving sprites and writing vertices used to be two separate walks over
+  // 26,000 units, because a sprite baked mid-pass would invalidate the atlas the
+  // vertices are indexed against. In a steady battle nothing new is ever baked,
+  // so do it in one pass and simply repeat if the cache grew - the retry costs a
+  // frame's fill once, and the saved pass costs 1.6ms every frame.
+  const stamp0 = spriteCache.size;
+  if (gpu.cap < gN + 64) {
+    gpu.cap = Math.max(64, (gN + 64) * 2);
     gpu.arr = new Float32Array(gpu.cap * 30);       // 6 verts x 5 floats
     gl.bindBuffer(gl.ARRAY_BUFFER, gpu.buf);
     gl.bufferData(gl.ARRAY_BUFFER, gpu.arr.byteLength, gl.DYNAMIC_DRAW);
   }
-  const A = gpu.arr, iw = 1/gpu.aw, ih = 1/gpu.ah;
-  let k = 0, i = 0;
-  for (const a of list) {
-    if (a.dead) continue;
-    const c = cs[i++], w = c.width, h = c.height;
-    const x0 = ((a.x*q - w/2)|0), y0 = ((a.y*q - h*c._a)|0), x1 = x0 + w, y1 = y0 + h;
-    const p = gpu.uv.get(c);
-    const u0 = p[0]*iw, v0 = p[1]*ih, u1 = (p[0]+w)*iw, v1 = (p[1]+h)*ih;
-    const f = a.hurt > 0 ? 1 : 0;
-    A[k]=x0;A[k+1]=y0;A[k+2]=u0;A[k+3]=v0;A[k+4]=f;
-    A[k+5]=x1;A[k+6]=y0;A[k+7]=u1;A[k+8]=v0;A[k+9]=f;
-    A[k+10]=x1;A[k+11]=y1;A[k+12]=u1;A[k+13]=v1;A[k+14]=f;
-    A[k+15]=x0;A[k+16]=y0;A[k+17]=u0;A[k+18]=v0;A[k+19]=f;
-    A[k+20]=x1;A[k+21]=y1;A[k+22]=u1;A[k+23]=v1;A[k+24]=f;
-    A[k+25]=x0;A[k+26]=y1;A[k+27]=u0;A[k+28]=v1;A[k+29]=f;
-    k += 30;
+  let n = 0, k = 0;
+  const fill = () => {
+    const A = gpu.arr, iw = 1/gpu.aw, ih = 1/gpu.ah, uv = gpu.uv;
+    n = 0; k = 0;
+    for (const a of list) {
+      if (a.dead) continue;
+      const c = SIMPLE ? simpleSprite(a.u, a.team)
+                       : sprite(a.u, a.team, ((a.step/(Math.PI/2))|0)&3, a.swing > .45 ? 1 : 0, psiOf(a));
+      const p = uv.get(c);
+      if (p === undefined) return false;            // freshly baked: atlas is stale
+      const w = c.width, h = c.height;
+      const x0 = ((a.x*q - w/2)|0), y0 = ((a.y*q - h*c._a)|0), x1 = x0 + w, y1 = y0 + h;
+      const u0 = p[0]*iw, v0 = p[1]*ih, u1 = (p[0]+w)*iw, v1 = (p[1]+h)*ih;
+      const f = a.hurt > 0 ? 1 : 0;
+      A[k]=x0;A[k+1]=y0;A[k+2]=u0;A[k+3]=v0;A[k+4]=f;
+      A[k+5]=x1;A[k+6]=y0;A[k+7]=u1;A[k+8]=v0;A[k+9]=f;
+      A[k+10]=x1;A[k+11]=y1;A[k+12]=u1;A[k+13]=v1;A[k+14]=f;
+      A[k+15]=x0;A[k+16]=y0;A[k+17]=u0;A[k+18]=v0;A[k+19]=f;
+      A[k+20]=x1;A[k+21]=y1;A[k+22]=u1;A[k+23]=v1;A[k+24]=f;
+      A[k+25]=x0;A[k+26]=y1;A[k+27]=u0;A[k+28]=v1;A[k+29]=f;
+      k += 30; n++;
+      if (k + 30 > gpu.arr.length) break;           // never run off the buffer
+    }
+    return true;
+  };
+  if (!fill() || spriteCache.size !== stamp0) {     // something new was baked
+    if (!gpuAtlas()) return false;
+    if (!fill()) return false;
   }
   gl.viewport(0, 0, gpu.cv.width, gpu.cv.height);
   gl.clear(gl.COLOR_BUFFER_BIT);
   if (n) {
     gl.uniform2f(gpu.uRes, gpu.cv.width, gpu.cv.height);
     gl.bindBuffer(gl.ARRAY_BUFFER, gpu.buf);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, A.subarray(0, k));
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, gpu.arr.subarray(0, k));
     gl.bindTexture(gl.TEXTURE_2D, gpu.tex);
     gl.drawArrays(gl.TRIANGLES, 0, n*6);            // the whole army, one call
   }

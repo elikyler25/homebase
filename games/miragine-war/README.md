@@ -352,6 +352,27 @@ underneath, so a rematch with different armies is one tap.
   line is legible. The single biggest thing for readability was not detail but the dark rim around each
   body — at this density what makes a troop visible is the edge between it and the one behind it.
 
+- **The hot fields live in typed arrays.** Separation and target-finding were spending most of their
+  time chasing pointers — `gUnits[gItems[i]]`, then `.x`, then `.y`, then `.u.size`, three
+  dereferences before any arithmetic. Benchmarked on the real separation loop over 26,000 troops, the
+  *identical* work over flat `Float32Array`s ran in half the time (2.1 ms against 4.1–5.6 ms) and, more
+  usefully, with a quarter of the variance — and variance is what a player feels as stutter.
+
+  So the handful of fields those two loops touch (x, y, size, team, dead) are mirrored into parallel
+  typed arrays indexed by grid slot. The unit objects stay the source of truth for everything else.
+  The mirror is filled during the grid rebuild, which already walks every live unit; refreshed once
+  before separation, since the main loop moves things; and written back after, separation being the
+  only hot loop that moves anything. A death mid-step writes through to the mirror, or targeting would
+  chase corpses.
+
+  Honest accounting: the whole-`step` gain was **~1 ms of ~9 ms**, not the 2× the microbenchmark
+  implied — separation is only part of `step`, and the mirror costs two extra passes over the army.
+  The separation pass itself went from ~3.2 ms to **2.2 ms**, including those passes.
+- **Sprite resolution folded into the vertex fill.** These were two separate walks over 26,000 units,
+  kept apart because a sprite baked mid-pass invalidates the atlas the vertices are indexed against.
+  In a steady battle nothing new is ever baked, so it is one pass now that simply repeats if the cache
+  grew — the retry costs one frame's fill, once, and the saved walk is worth ~1.5 ms every frame.
+
 - **The radar became the second most expensive thing in the frame.** It painted one `fillRect` per
   troop into a strip 490 by 26 pixels — 26,000 draw calls, ~3.5 ms a frame amortised, which is the
   same draw-call wall the army itself hit, hiding in the smallest widget on screen. Blips are written
