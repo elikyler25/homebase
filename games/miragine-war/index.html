@@ -507,7 +507,7 @@ const BASE_INCOME = 300;
 const G = { running:false, over:false, paused:false, round:1, tick:TICK_T, speed:1,
             units:[], shots:[], fx:[], decals:0, W:100, H:100, shake:0, frame:0, hitstop:0, hi:null, help:false,
             shrine:{ owner:-1, prog:0 }, sudden:false, zones:[], poorT:0,
-            ft:8, fps:60, govMs:0, budget:1e9, rscale:1, rsT:0, inc:[0,0], cnt:[0,0] };
+            ft:8, fps:60, govMs:0, budget:1e9, rscale:1, rsT:0, bloodT:0, jolt:0, inc:[0,0], cnt:[0,0] };
 let P = [];
 let CPU = null;                   // {team, level} or null for 2-player
 
@@ -588,6 +588,7 @@ let VIEW = 1;               // world -> css pixels
 // static layers, painted once instead of every frame
 const bgCv = document.createElement("canvas"), bgCtx = bgCv.getContext("2d");
 const decCv = document.createElement("canvas"), decCtx = decCv.getContext("2d");
+const DEC_SCALE = 0.5;
 
 let fitKey = "";
 function resize() {
@@ -615,8 +616,14 @@ function resize() {
   const q = VIEW*DPR;
   ctx.setTransform(q, 0, 0, q, 0, 0);
   ctx.imageSmoothingEnabled = false;      // sprites blit 1:1; filtering is pure cost
-  for (const c of [bgCv, decCv]) { c.width = cv.width; c.height = cv.height; }
-  bgCtx.setTransform(q,0,0,q,0,0); decCtx.setTransform(q,0,0,q,0,0);
+  bgCv.width = cv.width; bgCv.height = cv.height;
+  // The decal layer is deliberately half resolution. Blood is soft blobs, so
+  // nothing is lost, and it quarters the texture the GPU has to take back every
+  // time the layer changes - see bleed().
+  decCv.width = Math.max(1, Math.round(cv.width*DEC_SCALE));
+  decCv.height = Math.max(1, Math.round(cv.height*DEC_SCALE));
+  bgCtx.setTransform(q,0,0,q,0,0);
+  decCtx.setTransform(q*DEC_SCALE,0,0,q*DEC_SCALE,0,0);
   buildTerrain();
   buildZones();
   paintBackground();
@@ -999,14 +1006,29 @@ function hurt(target, amt, src, ranged) {
     P[1-target.team].kills++;
     if (target.u.hero) {           // a champion falling is an event
       P[target.team].heroes = Math.max(0, P[target.team].heroes - 1);
-      G.hitstop = .12; G.shake = 10; boom(target.x, target.y, 170);
+      G.hitstop = .12; G.shake = 10; G.jolt = 0.6;   // claim the jolt: a champion outranks a wall
+      boom(target.x, target.y, 170);
       banner(target.u.name.toUpperCase() + " HAS FALLEN", 1300);
     }
     if (src) src.vet = (src.vet||0) + 1;
     puff(target.x, target.y, target.team, target.u.size);
     bleed(target.x, target.y, target.u.size);
     sfxDie();
-    if (target.u.size >= 30) { G.hitstop = .06; G.shake = Math.min(9, G.shake + 3); }
+    // A big unit falling is worth a jolt - a few frames of hitstop and a shake.
+    // This used to fire on `u.size >= 30`, but size is the battle-size-*scaled*
+    // value: at CHAOS every unit is 3.4x, so fodder is 68 and every single death
+    // armed a 0.06s freeze. Hitstop skips the simulation entirely, so the game
+    // stopped simulating on 71% of frames the moment the armies met (79% on the
+    // largest map) with the screen shaking flat out. That is not lag, but it is
+    // impossible to tell apart from it.
+    //   - baseSize is the unscaled value, so only units that are genuinely big
+    //     qualify, at any battle size.
+    //   - a mass battle gets none of it: with hundreds dying a second there is no
+    //     individual death to punctuate.
+    //   - and it cannot stack, so a handful of walls falling together is one jolt.
+    if (target.u.baseSize >= 30 && G.units.length < 900 && G.jolt <= 0) {
+      G.jolt = 0.35; G.hitstop = .06; G.shake = Math.min(9, G.shake + 3);
+    }
   }
 }
 
@@ -1263,7 +1285,8 @@ function step(dt) {
       a.step += dt*a.u.spd*.2;
       a.y = Math.max(TOP(), Math.min(BOT(), a.y));
       a.dust -= dt;
-      if (a.dust <= 0 && a.u.spd > 55 && !G.crowd && G.fx.length < FX_CAP) {
+      // baseSpd, not spd, for the same reason as baseSize above.
+      if (a.dust <= 0 && a.u.baseSpd > 55 && !G.crowd && G.fx.length < FX_CAP) {
         a.dust = .12;
         G.fx.push({ t:"p", x:a.x-(a.team===0?6:-6), y:a.y+a.u.size*.8,
                     vx:(Math.random()-.5)*18, vy:-8-Math.random()*12,
@@ -1408,6 +1431,9 @@ function step(dt) {
     else if (f.t === "txt") { f.y -= 26*dt; }
   }
   G.fx = G.fx.filter(f => f.life > 0);
+  G.jolt -= dt;
+  G.bloodT -= dt;
+  if (G.bloodT <= 0) { G.bloodT = 0.17; flushBlood(); }   // ~6 texture changes a second
   G.units = G.units.filter(u => !u.dead || (u.fade = (u.fade ?? .5) - dt) > 0);
 }
 
@@ -1429,15 +1455,39 @@ function puff(x, y, team, size) {
     G.fx.push({ t:"p", x, y, vx:(Math.random()-.5)*140, vy:-Math.random()*130,
                 life:.5, max:.5, c, r:1.5+Math.random()*size*.3 });
 }
+/* Blood persists, so it lives on its own canvas - but that canvas is both written
+   to and used as a drawImage source, and a canvas that changed this frame has to
+   be handed back to the GPU as a texture before it can be drawn. Painting a spot
+   per death meant that happened on every frame of every fight, beginning the
+   instant the two armies touched, which is exactly when the game fell over.
+
+   Spots are queued and flushed a few times a second instead, so the layer changes
+   about six times a second rather than sixty, and at half resolution each change
+   is a quarter of the pixels. Deaths in a crowd are thinned as well: past a few
+   thousand troops nobody is counting individual stains. */
+const BLOOD = ["rgba(96,18,14,.22)","rgba(96,18,14,.27)","rgba(88,16,12,.32)"];
+const blood = [];
+const BLOOD_QUEUE = 400, DECAL_MAX = 9000;
+let bleedN = 0;
 function bleed(x, y, size) {
-  for (let i=0;i<2;i++) {
-    const dx=x+(Math.random()-.5)*size, dy=y+size*.7+(Math.random()-.5)*size*.5;
-    decCtx.fillStyle = "rgba(96,18,14," + (.2+Math.random()*.14) + ")";
-    decCtx.beginPath();
-    decCtx.ellipse(dx, dy, size*(.3+Math.random()*.4), size*(.14+Math.random()*.18), 0, 0, 6.29);
-    decCtx.fill();
+  if (G.decals > DECAL_MAX || blood.length > BLOOD_QUEUE) return;
+  if (G.crowd && (++bleedN & 3)) return;      // one death in four once it is a melee
+  blood.push(x, y, size);
+}
+function flushBlood() {
+  if (!blood.length) return;
+  for (let i = 0; i < blood.length; i += 3) {
+    const x = blood[i], y = blood[i+1], size = blood[i+2];
+    for (let k = 0; k < 2; k++) {
+      const dx = x+(Math.random()-.5)*size, dy = y+size*.7+(Math.random()-.5)*size*.5;
+      decCtx.fillStyle = BLOOD[(Math.random()*3)|0];
+      decCtx.beginPath();
+      decCtx.ellipse(dx, dy, size*(.3+Math.random()*.4), size*(.14+Math.random()*.18), 0, 0, 6.29);
+      decCtx.fill();
+    }
+    G.decals++;
   }
-  G.decals++;
+  blood.length = 0;
 }
 function boom(x, y, r) {
   if (G.fx.length > FX_CAP) return;
@@ -1504,7 +1554,7 @@ function draw() {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(bgCv, 0, 0);
-  if (G.decals) ctx.drawImage(decCv, 0, 0);   // nothing on it yet: skip the blit
+  if (G.decals) ctx.drawImage(decCv, 0, 0, cv.width, cv.height);  // empty: skip it
   ctx.restore();
 
   drawShrine();
@@ -2723,7 +2773,8 @@ function newGame() {
   [0,1].forEach(t => { P[t].faction = FACTIONS[pick[t]]; P[t].roster = FACTIONS[pick[t]].units; });
   buildShops();
   CPU = modeId === "2p" ? null : { team:1, level:modeId, t:0 };
-  G.units=[]; G.shots=[]; G.fx=[]; G.decals=0; decCtx.clearRect(0,0,G.W,G.H);
+  G.units=[]; G.shots=[]; G.fx=[]; G.decals=0; blood.length=0;
+  decCtx.clearRect(0,0,G.W,G.H);
   G.round=1; G.tick=TICK_T; G.shake=0; G.speed=1;
   G.shrine={ owner:-1, prog:0 }; G.sudden=false; G.hi=null; G.help=false;
   cards.forEach(row => row.forEach(el => el.classList.remove("sel")));

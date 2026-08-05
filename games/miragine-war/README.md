@@ -352,6 +352,26 @@ underneath, so a rematch with different armies is one tap.
   line is legible. The single biggest thing for readability was not detail but the dark rim around each
   body — at this density what makes a troop visible is the edge between it and the one behind it.
 
+- **And it was never lag at all.** "It lags the second the two armies meet" turned out to be the
+  literal truth, and the cause was not performance. A big unit falling is supposed to land a punch —
+  a few frames of *hitstop* and a screen shake — and the test for "big" was `u.size >= 30`. But `size`
+  is the battle-size-**scaled** value: at CHAOS every unit is 3.4× and fodder is 68, at MAELSTROM 5.5×
+  and fodder is 110. So **every single death** armed a 0.06 s freeze. Since hitstop skips the
+  simulation entirely, the game stopped simulating on **71% of frames at CHAOS and 79% at MAELSTROM**
+  the instant the armies met, with the screen shaking flat out. Measured on NORMAL, where nothing is
+  scaled: 0%.
+
+  That is not slowness, but it is impossible to tell apart from it — and it is why several rounds of
+  genuine optimisation changed nothing. The test is `baseSize` now, so only units that are actually
+  big qualify at any scale; a mass battle gets none of it, since with hundreds dying a second there is
+  no individual death to punctuate; and it cannot stack, so a row of walls falling together is one
+  jolt rather than a continuous freeze. A champion falling still outranks a wall. Both big sizes now
+  measure **0% frozen**, and a wall dying in a small battle still lands its punch.
+
+  The same bug was in the dust puff (`u.spd > 55`, also scaled) and had already been found and fixed
+  once in the minimap blips. Scaled stats compared against unscaled constants: worth grepping for as
+  a class rather than fixing one at a time.
+
 - **The worst bug in the project was a scroll handler.** `fit()` is wired to `visualViewport`'s
   **scroll** event so the board stays pinned when a phone's address bar slides. Every one of those
   calls ran a full `resize()`: rebuild the terrain, repaint the entire background, drop the sprite
