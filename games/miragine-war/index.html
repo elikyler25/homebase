@@ -389,16 +389,23 @@
    of them — factions differ in flavour, small tilts and their champion, never in
    raw power. */
 const ROLE = {
-  swarm:   { price:  15, income: 2, hp:  70, armour: 0, type:"light",   spd: 86, dL: 12, dA:   5, rng: 40, ws:0.75, size:20, kind:"melee"  },
-  line:    { price: 135, income: 9, hp: 260, armour: 4, type:"armored", spd: 82, dL: 33, dA:  24, rng: 48, ws:0.80, size:25, kind:"melee"  },
-  slayer:  { price: 230, income:11, hp: 170, armour: 1, type:"light",   spd:178, dL: 98, dA:   9, rng: 44, ws:0.55, size:22, kind:"melee"  },
-  shooter: { price: 250, income:14, hp: 200, armour: 2, type:"light",   spd: 74, dL: 36, dA:  36, rng:260, ws:1.10, size:22, kind:"ranged" },
-  breaker: { price: 570, income:20, hp: 260, armour: 3, type:"light",   spd: 74, dL: 26, dA: 152, rng:208, ws:1.00, size:23, kind:"ranged" },
-  rider:   { price:1020, income:28, hp: 620, armour: 6, type:"armored", spd:194, dL: 76, dA:  38, rng: 56, ws:0.75, size:32, kind:"mount", splash:53 },
-  siege:   { price:1330, income:38, hp: 300, armour: 2, type:"light",   spd: 64, dL: 78, dA:  78, rng:316, ws:1.40, size:25, kind:"ranged", splash:99 },
-  titan:   { price:2240, income:44, hp:1700, armour:14, type:"armored", spd: 56, dL: 78, dA:  58, rng: 64, ws:1.00, size:40, kind:"melee"  },
-  hero:    { price:5700, income:62, hp:2600, armour:11, type:"armored", spd: 96, dL:150, dA: 128, rng: 74, ws:0.75, size:52, kind:"melee", hero:true },
+  // The ladder is deliberately steep: each tier costs roughly two and a half times
+  // the one below and hits about that much harder. Value-per-gold stays broadly
+  // flat, so massing cheap troops is still a real strategy - what changes is that a
+  // Titan is a genuine commitment rather than a slightly dearer soldier. The old
+  // curve was nearly flat through the middle (230 against 250, 1020 against 1330),
+  // so with plenty of gold there was no reason not to simply buy the top of it.
+  swarm:   { price:   15, income:  2, hp:  70, armour: 0, type:"light",   spd: 86, dL: 12, dA:   5, rng: 40, ws:0.75, size:20, kind:"melee"  },
+  line:    { price:  140, income:  9, hp: 265, armour: 4, type:"armored", spd: 82, dL: 34, dA:  25, rng: 48, ws:0.80, size:25, kind:"melee"  },
+  slayer:  { price:  340, income: 13, hp: 205, armour: 1, type:"light",   spd:178, dL:117, dA:  11, rng: 44, ws:0.55, size:22, kind:"melee"  },
+  shooter: { price:  370, income: 17, hp: 245, armour: 2, type:"light",   spd: 74, dL: 44, dA:  44, rng:260, ws:1.10, size:22, kind:"ranged" },
+  breaker: { price:  900, income: 25, hp: 330, armour: 3, type:"light",   spd: 74, dL: 32, dA: 188, rng:208, ws:1.00, size:23, kind:"ranged" },
+  rider:   { price: 2200, income: 42, hp: 950, armour: 7, type:"armored", spd:194, dL:110, dA:  55, rng: 56, ws:0.75, size:32, kind:"mount", splash:53 },
+  siege:   { price: 2500, income: 53, hp: 415, armour: 2, type:"light",   spd: 64, dL:104, dA: 104, rng:316, ws:1.40, size:25, kind:"ranged", splash:99 },
+  titan:   { price: 6000, income: 74, hp:2900, armour:18, type:"armored", spd: 56, dL:120, dA:  90, rng: 64, ws:1.00, size:40, kind:"melee", splash:96 },
+  hero:    { price:15000, income:102, hp:4300, armour:15, type:"armored", spd: 96, dL:225, dA: 192, rng: 74, ws:0.75, size:52, kind:"melee", hero:true },
 };
+
 const ROLE_LABEL = { swarm:"fodder", line:"shield line", slayer:"light-killer", shooter:"skirmisher",
                      breaker:"armour-breaker", rider:"flanker", siege:"artillery", titan:"wall", hero:"CHAMPION" };
 const mk = (role, name, col, art, over) => ({ ...ROLE[role], role, name, col, art, ...(over||{}) });
@@ -422,9 +429,9 @@ const FACTIONS = [
     mk("rider","Wolf Rider","#7f6a4a",{head:"bare",body:"tunic",weapon:"spear",mount:true,skin:"#d8a878"}),
     mk("siege","Boulder Thrower","#9a8f78",{head:"bare",body:"tatter",weapon:"club",skin:"#d8a878"}),
     mk("titan","Mammoth","#8d6c4a",{head:"horns",body:"plate",weapon:"club",mount:true,aura:"#b58c5a"},
-       {hp:2020, size:46}),                                   // signature perk
+       {hp:3450, size:46}),                                   // signature perk: +550 HP
     mk("hero","Chieftain","#e0b45a",{head:"horns",body:"plate",weapon:"axe",cape:"#5a3a18",aura:"#ffd070",pauldrons:true},
-       {price:5600, hp:3100, dL:152, dA:132, splash:70, auraBuff:{r:340, dmg:0.30}}),
+       {price:14700, hp:5100, dL:228, dA:198, splash:70, auraBuff:{r:340, dmg:0.30}}),
   ]},
   { id:"legion", name:"LEGION", tint:"#d9d9e2",
     blurb:"Shields and reach, and a god who throws lightning.",
@@ -438,7 +445,7 @@ const FACTIONS = [
     mk("siege","Ballista","#9a8f78",{head:"helm",body:"tunic",weapon:"bow"}),
     mk("titan","Minotaur","#8a5a3a",{head:"horns",body:"plate",weapon:"axe",pauldrons:true}),
     mk("hero","Zeus","#f0e8b0",{head:"crown",body:"robe",weapon:"staff",cape:"#d8d0a0",aura:"#fff2a0",orb:"#ffffff"},
-       {price:6100, hp:2850, armour:14, kind:"ranged", rng:360, ws:1.00, dL:190, dA:168, spd:84, splash:104, chain:5}),
+       {price:16000, hp:4700, armour:18, kind:"ranged", rng:360, ws:1.00, dL:285, dA:252, spd:84, splash:104, chain:5}),
   ]},
   { id:"norse", name:"NORSE", tint:"#8fb4d8",
     blurb:"Everything charges at once, and Thor lands like a meteor.",
@@ -452,7 +459,7 @@ const FACTIONS = [
     mk("siege","Stone Thrower","#8f9aa8",{head:"helm",body:"tunic",weapon:"club"}),
     mk("titan","Ice Giant","#a8d8ea",{head:"horns",body:"plate",weapon:"greatsword",aura:"#bfe8ff"}),
     mk("hero","Thor","#e8d070",{head:"helm",body:"plate",weapon:"greatsword",cape:"#7a2a2a",aura:"#9fd8ff",pauldrons:true},
-       {price:5900, hp:3300, dL:172, dA:152, ws:0.80, spd:86, splash:190}),
+       {price:15500, hp:5450, dL:258, dA:228, ws:0.80, spd:86, splash:190}),
   ]},
   { id:"dynasty", name:"DYNASTY", tint:"#e0776a",
     blurb:"Fire from range, and a champion that simply does not stop.",
@@ -466,7 +473,7 @@ const FACTIONS = [
     mk("siege","Hwacha","#c86a4a",{head:"kasa",body:"tunic",weapon:"bow"}),
     mk("titan","Iron Ox","#8fa0b8",{head:"visor",body:"plate",weapon:"greatsword",pauldrons:true,tower:true,glow:"#ffd070"}),
     mk("hero","Monkey King","#f0c040",{head:"crown",body:"tunic",weapon:"spear",cape:"#c83a2a",aura:"#ffd84a"},
-       {price:5800, hp:2300, spd:210, ws:0.55, dL:158, dA:122, type:"light", armour:4, drain:0.38}),
+       {price:15300, hp:3800, spd:210, ws:0.55, dL:237, dA:183, type:"light", armour:5, drain:0.38}),
   ]},
 ];
 
@@ -532,7 +539,7 @@ const SIZES = {
   // Gold is deliberately lower than CHAOS x10's: army income scales with the army,
   // so at eight times the troops a smaller multiplier already funds more, and x200
   // made every unit price irrelevant.
-  chaos10:{ label:"MAELSTROM",     world:66000, gold:120, auto:0.001,  size:5.5, spd:18, hp:1500000, cap:26000, hero:{hp:16, price:250} },
+  chaos10:{ label:"MAELSTROM",     world:66000, gold:200, auto:0.001,  size:5.5, spd:18, hp:1500000, cap:26000, hero:{hp:16, price:100} },
 };
 let sizeId = "normal";
 function applyBattleSize() {
@@ -768,7 +775,13 @@ const sfxDie   = () => throttled("die", 60, () => tone(240+Math.random()*80, .09
    ============================================================ */
 function dmgOf(src, dst) {
   const raw = dst.u.type === "light" ? src.u.dL : src.u.dA;
-  return Math.max(2, raw - dst.u.armour);
+  // The floor is a fraction of the attacker's own damage, not a flat 2. A flat
+  // minimum meant armour stopped mattering once numbers got large enough - a
+  // thousand fodder chipping 2 apiece out-damaged what they were supposedly unable
+  // to hurt, and armoured troops lost to the same gold in bodies. Proportional, a
+  // wall takes 0.4 a swing from fodder instead of 2, and still nothing is ever
+  // outright invulnerable, so a fight can never stalemate.
+  return Math.max(raw * 0.08, raw - dst.u.armour);
 }
 
 let UID = 0;
@@ -978,8 +991,8 @@ const CPU_LEVELS = {
   // hard's costPow is above 1: recruiting continuously makes value-per-gold the
   // whole game, and at 1.0 it still liked the big expensive units enough to stall
   // saving for them - it fielded six troops against a player's eighty-seven.
-  easy:   { think: 2.0,  smart: 0.35, costPow: 0.00, maxPrice: 820,  blind: true,  mend: false, gap: 5.0, reach: 0.4 },
-  normal: { think: 1.6,  smart: 0.60, costPow: 0.60, maxPrice: 1250, noise: 0.55,  mend: true,  gap: 2.2, reach: 0.4 },
+  easy:   { think: 2.0,  smart: 0.35, costPow: 0.00, maxPrice: 1300,  blind: true,  mend: false, gap: 5.0, reach: 0.4 },
+  normal: { think: 1.6,  smart: 0.60, costPow: 0.60, maxPrice: 2300, noise: 0.55,  mend: true,  gap: 2.2, reach: 0.4 },
   hard:   { think: 0.25, smart: 1.00, costPow: 1.35, maxPrice: 9999, noise: 0,     mend: true,  gap: 1.0, reach: 0.4 },
 };
 function gapMul(team) {

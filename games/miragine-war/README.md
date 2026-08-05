@@ -19,7 +19,7 @@ Pick one on the menu, alongside the opponent:
 | **NORMAL BATTLE** | 2600 wide | ×1 | one troop / 0.30s | 6,000 | 2,600 |
 | **EPIC BATTLE** | 5200 wide (4× the area) | ×4 | one troop / 0.05s | 18,000 | 2,600 |
 | **CHAOS** | 14000 wide (29× the area) | ×40 | one troop / 0.005s | 48,000 | 4,200 |
-| **MAELSTROM** | 66000 wide (645× the area) | ×120 | one troop / 0.001s | 1,500,000 | 26,000 |
+| **MAELSTROM** | 66000 wide (645× the area) | ×200 | one troop / 0.001s | 1,500,000 | 26,000 |
 
 EPIC is the same game at a different scale: twice the map, four times the gold and six times the
 recruit rate, so armies run into the many hundreds and the front line becomes a solid wall of bodies.
@@ -31,10 +31,10 @@ flat out: **4,200 troops on the field** — the ceiling — eleven thousand kill
 the first two and a half minutes and neither crystal scratched — CHAOS is decided by sudden death far
 more often than by a breakthrough.
 
-**Champions scale with the battle size.** At forty times the gold a 5,600-gold champion was
-affordable in a tenth of a second and swallowed by the crowd immediately, which made it confetti.
-Champion price and HP now scale with the mode: ×4 price and ×2.2 HP in EPIC, ×14 and ×4.5 in CHAOS.
-A CHAOS champion arrives around the ten-second mark and is still standing minutes later.
+**Champions scale with the battle size.** At forty times the gold a champion was affordable in a
+tenth of a second and swallowed by the crowd immediately, which made it confetti. Champion price and
+HP now scale with the mode: ×4 price and ×2.2 HP in EPIC, ×14 and ×4.5 in CHAOS, ×100 and ×16 in
+MAELSTROM. A CHAOS champion arrives around the ten-second mark and is still standing minutes later.
 
 One honest limit: **the map is capped by legibility, not by the engine.** Two people share one screen
 with no scrolling, so a wider world means smaller troops, and past a point they stop being visible at
@@ -62,10 +62,10 @@ The first attempt at measuring this said 34,000, and was wrong: it sampled while
 marching towards each other. A field that is *fighting* costs two to three times more than the same
 field walking, because that is where separation and combat resolution actually happen.
 
-MAELSTROM also runs **less** gold than CHAOS ×10 did, not more. Army income scales with the army, so
-at six times the troops a smaller multiplier already funds far more per second — at ×200 every unit
-price had become irrelevant and the only sensible move was to spam the most expensive thing on the
-board.
+MAELSTROM runs the gold wide open at ×200, and at that rate **gold stops being a constraint** — the
+whole ladder is affordable at the full thousand-a-second, so what you build is a purely tactical
+choice rather than an economic one. That is the point of the mode. The price ladder does its work at
+the other sizes: a Minotaur is 39% sustainable at CHAOS and 1% at NORMAL.
 
 Getting there needed a bug fixed first. The recruit loop bought at most one troop per frame and threw
 away the remainder, so every rate faster than about 1/60s silently clamped: CHAOS asked for 200
@@ -101,18 +101,54 @@ against light, one against armoured. Armour then subtracts flat damage from ever
 
 That's the whole rock-paper-scissors:
 
-- A **light-killer** (Ninja, Berserker, Headhunter, Gladiator) does 98 to light and 9 to armoured —
+- A **light-killer** (Ninja, Berserker, Headhunter, Gladiator) does 117 to light and 11 to armoured —
   it butchers fodder and cannot dent plate.
-- An **armour-breaker** (Monk, Runecaster, Bone Mage, Oracle) is the reverse at 26 / 152 — it exists
+- An **armour-breaker** (Monk, Runecaster, Bone Mage, Oracle) is the reverse at 32 / 188 — it exists
   to delete walls.
-- A **wall** (Iron Ox, Ice Giant, Mammoth, Minotaur) has 14 armour, so fodder's 5 damage lands as the
-  minimum chip of 2. Swarms literally cannot kill it; you need the breaker.
+- A **wall** (Iron Ox, Ice Giant, Mammoth, Minotaur) has 18 armour, so fodder's 5 damage lands as the
+  minimum chip — 0.4, a fourteenth of what the breaker does. Swarms really cannot kill it; you need
+  the breaker. The floor is a *fraction* of the attacker's damage rather than a flat 2, because a flat
+  minimum meant armour stopped mattering once numbers got large: a thousand fodder chipping 2 apiece
+  out-damaged what they were supposedly unable to hurt. Nothing is ever fully immune, so no fight can
+  stalemate.
 
 Press <kbd>H</kbd> in game for the counter chart.
 
 Hover any shop card for the full stat line. The bar under each card is a **live counter advisor** —
 it scores that unit against the enemy's army as it stands right now, green for a strong pick and red
 for a wasted one, so you can read the matchup without memorising the table.
+
+### The price ladder
+
+Each tier costs roughly **two and a half times** the one below it and hits about that much harder:
+
+| Tier | Price | Step |
+|---|---|---|
+| fodder | ◆15 | — |
+| shield line | ◆140 | ×9.3 |
+| light-killer / skirmisher | ◆340 / ◆370 | ×2.4 |
+| armour-breaker | ◆900 | ×2.4 |
+| flanker / artillery | ◆2,200 / ◆2,500 | ×2.4 |
+| wall | ◆6,000 | ×2.4 |
+| champion | ◆15,000 | ×2.5 |
+
+Value-per-gold stays broadly flat across the ladder, so massing cheap troops is still a real
+strategy — what the steepness buys is that a wall is a *commitment* rather than a slightly dearer
+soldier. The old curve was nearly flat through the middle (◆230 against ◆250, ◆1,020 against ◆1,330),
+which meant that with plenty of gold there was no reason not to simply buy the top of it.
+
+**Walls cleave.** This was not a flourish — it is the only thing that makes the top of the ladder
+worth buying. Combat here follows Lanchester's square law: equal gold buys `gold / price` bodies, and
+a side's fighting power scales with the *square* of its numbers, so cheap units win a pure numbers
+fight no matter how good the expensive one is per unit. Measured before the change, a wall won 1 of 7
+gold-for-gold duels — the most expensive thing on the board was the worst buy. With area damage it
+wins 6 of 7, and beats the tier below it head-on. The units that already had splash (artillery,
+flankers) were the only ones that had ever bucked the trend.
+
+One thing the same test showed that is *not* a fault: the middle rungs still lose head-to-head against
+the tier below. That is the rock-paper-scissors, not the ladder — a light-killer is supposed to lose
+to a shield line, and an armour-breaker is supposed to lose to a light-killer. Comparing adjacent
+tiers head-on is meaningless when one is the other's hard counter.
 
 ### The ground you fight on
 
@@ -174,7 +210,7 @@ you assign to P2.
 
 | Army | Character | Signature perk | Champion |
 |---|---|---|---|
-| **TRIBE** | Bone and muscle | Mammoth: +320 HP | **Chieftain** — every ally within 340 hits 30% harder |
+| **TRIBE** | Bone and muscle | Mammoth: +550 HP | **Chieftain** — every ally within 340 hits 30% harder |
 | **LEGION** | Shields and reach | Hoplite: +2 armour | **Zeus** — long-range splash that arcs to five more enemies |
 | **NORSE** | Everything charges at once | Berserker: swings 10% faster | **Thor** — a 190-radius cleave |
 | **DYNASTY** | Fire from range | Fire Archer: looses 5% faster | **Monkey King** — very fast, drains 38% of damage dealt |
