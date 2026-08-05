@@ -58,6 +58,8 @@ export interface TrackDef {
   laps: number;
   /** Which car classes may enter. First entry is the default. */
   classes: string[];
+  /** Championship this circuit belongs to, 1-3. Higher tiers unlock with medals. */
+  tier: 1 | 2 | 3;
   /**
    * Medal thresholds as multipliers of the reference time — the race time a
    * perfectly-driven ideal line would set, simulated at load. Self-calibrating,

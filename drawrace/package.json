@@ -7,7 +7,8 @@
     "dev": "node build.mjs --dev",
     "tune": "esbuild tools/tune.ts --bundle --platform=node --format=esm --outfile=.tmp/tune.mjs --log-level=warning && node .tmp/tune.mjs",
     "check": "tsc --noEmit",
-    "playtest": "node build.mjs && node tools/playtest.mjs"
+    "playtest": "node build.mjs && node tools/playtest.mjs",
+    "diag": "esbuild tools/diag.ts --bundle --platform=node --format=esm --outfile=.tmp/diag.mjs --log-level=warning && node .tmp/diag.mjs"
   },
   "keywords": [],
   "author": "",

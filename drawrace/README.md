@@ -24,7 +24,9 @@ to be at that speed, there, with the grip it actually has.
 - **Smoke is diegetic.** Tyre smoke appears exactly when the grip budget is blown, off the
   rear wheels — it is the feedback, not a decoration on top of it.
 
-Eight circuits, three car classes, two laps, medals scaled off a simulated ideal lap.
+**Twelve circuits across three championships**, three car classes, two laps, medals scaled off a
+simulated ideal lap. Later championships unlock on medals won, so the loose surfaces and the
+formula cars arrive once your drawing hand has had some practice.
 
 Cars are drawn per class rather than tinted from one shape: a rally hatchback with light pods
 and a roof spoiler, a GT coupe with haunches and a swan-neck wing, an open-wheeler with
@@ -51,6 +53,7 @@ Two harnesses, because they catch different things.
 npm run check      # tsc, strict
 npm run tune       # headless physics harness — no DOM, real Vehicle/Track/Line code
 npm run playtest   # drives the built game in Chromium at iPhone size, screenshots each phase
+npm run diag       # isolates path vs speed profile when the car misbehaves
 ```
 
 `npm run tune` asserts the properties that make the game work rather than just that it runs:
@@ -60,8 +63,36 @@ substantive bugs in this build — a lap counter that scored the grid crossing a
 lap, a tyre-scrub term acting as a speed governor, a racing-line optimiser that drove itself
 off a technical circuit, and a planning margin that inverted the entire AI field.
 
+It also models a *realistic* stroke, not an idealised one — centreline-ish path, finger wobble,
+and braking that begins AT the corner rather than before it. That distinction mattered: against
+the idealised stroke everything looked fine, while a realistic one finished last on all eight
+tracks sliding 24-30 s a race. See "Why the player's car used to drift" below.
+
 `npm run playtest [track]` traces a real stroke with pointer events and captures
 `shots/<track>/*.png`.
+
+## Why the player's car used to drift
+
+Worth recording, because the diagnosis was not where it looked. The player and the AI run
+identical physics, so the asymmetry had to be in how their lines were built. `npm run diag`
+walks the four combinations:
+
+| | slide | lateral demand |
+|---|---|---|
+| optimised path + planned profile | 0.00 s | 56% of grip |
+| **player path** + planned profile | 0.00 s | 46% of grip |
+| optimised path + **naive profile** | 11.94 s | **116%** of grip |
+| player path + naive profile | 20.37 s | **144%** of grip |
+
+The path was innocent — a wobbly hand-drawn path slides *zero* when its speeds are planned. It
+was entirely the speed profile: the AI's planner keeps a deliberate margin, while a person
+eyeballing corner speed lands near the theoretical limit, so every ordinary stroke sat
+permanently over the grip budget and understeered the whole lap.
+
+The fix was to raise the grip budget so a sensible stroke fits inside it (`GRIP_SCALE`), lower
+the AI's skill to compensate, strengthen the post-limit tyre falloff so greed still costs, and
+cut the slip-angle visual — at its old coefficient an understeering car ploughing wide struck a
+35-degree oversteer drift pose against the AI's steady 2-4.
 
 ## Layout
 
@@ -69,7 +100,7 @@ off a technical circuit, and a planning margin that inverted the entire AI field
 |------|------|
 | `src/math.ts` | vectors, damping, deterministic PRNG |
 | `src/track.ts` | closed spline, arc-length resampling, surfaces, spatial-grid projection |
-| `src/tracks.ts` | the eight circuits |
+| `src/tracks.ts` | the twelve circuits |
 | `src/carart.ts` | per-class car sprites, baked offscreen |
 | `src/line.ts` | pointer input → arc-length path with a speed at every node |
 | `src/vehicle.ts` | the physics: friction circle, tyre falloff, path following, turbo |
@@ -89,6 +120,6 @@ speed by the same factor, so the mapping holds on a phone and a desktop alike.
 
 ## Not yet built
 
-The original shipped 180 challenges across 30 tracks. This is the engine and eight circuits —
-the career tree, balloon skill runs, hot-seat, and the remaining layouts are content on top of
+The original shipped 180 challenges across 30 tracks. This has twelve circuits and a three-tier
+career; balloon skill runs, hot-seat multiplayer and the remaining layouts are content on top of
 a core that is already doing the hard part.

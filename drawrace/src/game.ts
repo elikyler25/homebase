@@ -11,6 +11,25 @@ import { CAR_CLASSES, CarClass } from "./vehicle";
 
 type Phase = "menu" | "draw" | "race" | "results";
 
+/**
+ * The career. Three championships, each gated on medals won in the ones before
+ * it, so the harder surfaces and the formula cars arrive only once the drawing
+ * hand has had some practice on asphalt.
+ */
+interface Championship {
+  tier: 1 | 2 | 3;
+  name: string;
+  blurb: string;
+  /** Medals needed anywhere in the game before this one opens. */
+  needs: number;
+}
+
+const CHAMPIONSHIPS: Championship[] = [
+  { tier: 1, name: "Rookie Cup", blurb: "Learn the line", needs: 0 },
+  { tier: 2, name: "National Series", blurb: "Loose surfaces, faster cars", needs: 3 },
+  { tier: 3, name: "World League", blurb: "Everything you have", needs: 8 },
+];
+
 interface Progress {
   best: Record<string, number>;
   medals: Record<string, "gold" | "silver" | "bronze">;
@@ -89,32 +108,76 @@ export class Game {
     $("btn-turbo").addEventListener("click", () => this.tryTurbo());
     $("btn-next").addEventListener("click", () => {
       const i = TRACKS.findIndex((t) => t.id === this.track.def.id);
-      this.selectTrack(TRACKS[(i + 1) % TRACKS.length].id);
+      // Skip past anything still locked, rather than dropping the player into a
+      // championship they have not earned.
+      for (let k = 1; k <= TRACKS.length; k++) {
+        const next = TRACKS[(i + k) % TRACKS.length];
+        if (this.isUnlocked(next.tier)) {
+          this.selectTrack(next.id);
+          return;
+        }
+      }
     });
+  }
+
+  /** Total medals won, which is what gates the later championships. */
+  private get medalCount(): number {
+    return Object.keys(this.progress.medals).length;
+  }
+
+  private isUnlocked(tier: number): boolean {
+    const c = CHAMPIONSHIPS.find((x) => x.tier === tier);
+    return !c || this.medalCount >= c.needs;
   }
 
   private buildTrackMenu(): void {
     const list = $("track-list");
     list.innerHTML = "";
-    for (const def of TRACKS) {
-      const card = document.createElement("button");
-      card.className = "track-card";
-      const medal = this.progress.medals[def.id];
-      const best = this.progress.best[def.id];
-      card.innerHTML = `
-        <div class="tc-top">
-          <span class="tc-name">${def.name}</span>
-          ${medal ? `<span class="medal ${medal}"></span>` : ""}
+    const won = this.medalCount;
+    const golds = Object.values(this.progress.medals).filter((m) => m === "gold").length;
+    $("career-progress").textContent =
+      `${won}/${TRACKS.length} medals · ${golds} gold`;
+
+    for (const champ of CHAMPIONSHIPS) {
+      const defs = TRACKS.filter((t) => t.tier === champ.tier);
+      if (!defs.length) continue;
+      const open = this.isUnlocked(champ.tier);
+      const head = document.createElement("div");
+      head.className = `tier-head${open ? "" : " locked"}`;
+      head.innerHTML = `
+        <div class="th-left">
+          <div class="th-name">${champ.name}</div>
+          <div class="th-blurb">${
+            open ? champ.blurb : `Win ${champ.needs - won} more medal${champ.needs - won === 1 ? "" : "s"} to unlock`
+          }</div>
         </div>
-        <div class="tc-meta">
-          <span class="pill surf-${def.surface}">${def.surface}</span>
-          <span class="pill">${CAR_CLASSES[def.classes[0]].name}</span>
-          <span class="pill">${def.laps} laps</span>
-        </div>
-        <div class="tc-best">${best ? `Best ${formatTime(best)}` : "Not raced"}</div>
+        <div class="th-count">${
+          defs.filter((d) => this.progress.medals[d.id]).length
+        }/${defs.length}</div>
       `;
-      card.addEventListener("click", () => this.selectTrack(def.id));
-      list.appendChild(card);
+      list.appendChild(head);
+
+      for (const def of defs) {
+        const card = document.createElement("button");
+        card.className = `track-card${open ? "" : " locked"}`;
+        if (!open) card.disabled = true;
+        const medal = this.progress.medals[def.id];
+        const best = this.progress.best[def.id];
+        card.innerHTML = `
+          <div class="tc-top">
+            <span class="tc-name">${def.name}</span>
+            ${medal ? `<span class="medal ${medal}"></span>` : ""}
+          </div>
+          <div class="tc-meta">
+            <span class="pill surf-${def.surface}">${def.surface}</span>
+            <span class="pill">${CAR_CLASSES[def.classes[0]].name}</span>
+            <span class="pill">${def.laps} laps</span>
+          </div>
+          <div class="tc-best">${best ? `Best ${formatTime(best)}` : "Not raced"}</div>
+        `;
+        if (open) card.addEventListener("click", () => this.selectTrack(def.id));
+        list.appendChild(card);
+      }
     }
   }
 

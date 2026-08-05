@@ -78,6 +78,40 @@
   /* -------------------------------------------------------------- menu */
   #track-list { display: flex; flex-direction: column; gap: 10px; }
 
+  .career-bar {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 0 2px 12px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 16px;
+  }
+  .career-label {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--dim); font-weight: 700;
+  }
+  #career-progress { font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .tier-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px;
+    margin: 14px 2px 2px;
+  }
+  .tier-head:first-child { margin-top: 0; }
+  .th-name { font-size: 13px; font-weight: 700; letter-spacing: 0.02em; }
+  .th-blurb { font-size: 11.5px; color: var(--dim); margin-top: 2px; }
+  .th-count {
+    font-size: 11.5px; color: var(--dim); font-variant-numeric: tabular-nums;
+    padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,0.06);
+  }
+  .tier-head.locked .th-name { color: var(--dim); }
+  .tier-head.locked .th-blurb { color: var(--amber); }
+
+  .track-card.locked {
+    opacity: 0.4;
+    cursor: default;
+    filter: saturate(0.4);
+  }
+  .track-card.locked:active { transform: none; }
+
   .track-card {
     text-align: left;
     background: var(--panel);
@@ -262,6 +296,10 @@
       Trace your racing line around the circuit. How fast you draw is how fast the car
       goes &mdash; so slow your finger through the corners, or watch it run wide.
     </p>
+    <div class="career-bar">
+      <span class="career-label">Career</span>
+      <span id="career-progress">0/12 medals</span>
+    </div>
     <div id="track-list"></div>
     <div class="spacer"></div>
     <p class="sub" style="margin-top:22px;opacity:0.7">
