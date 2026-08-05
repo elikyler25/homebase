@@ -3,8 +3,8 @@
 A rebuild of **DrawRace 2: Racing Evolved** (RedLynx, 2011) for the web, mobile-first.
 
 Trace your racing line around the circuit. How fast you draw is how fast the car goes — so
-slow your finger through the corners, or watch it run wide. Then lift your finger and watch
-the lap play out against four opponents.
+slow your finger through the corners, or watch it run wide. Then lift your finger and watch the
+lap play out against four opponents.
 
 ## The mechanic
 
@@ -122,6 +122,8 @@ cut the slip-angle visual — at its old coefficient an understeering car plough
 | `src/game.ts` | phases, input, camera, HUD |
 | `tools/tune.ts` | physics harness |
 | `tools/playtest.mjs` | browser playtest |
+| `tools/diag.ts` | path-vs-profile isolation |
+| `tools/carsheet.ts` | renders the car sprites large, for judging the art |
 
 ### One calibration worth knowing
 
@@ -132,6 +134,6 @@ speed by the same factor, so the mapping holds on a phone and a desktop alike.
 
 ## Not yet built
 
-The original shipped 180 challenges across 30 tracks. This has twelve circuits and a three-tier
-career; balloon skill runs, hot-seat multiplayer and the remaining layouts are content on top of
-a core that is already doing the hard part.
+The original shipped 180 challenges across 30 tracks. This has twelve circuits, three balloon
+skill events and a three-tier career. Hot-seat multiplayer, a ghost of your own best lap, and the
+remaining layouts are content on top of a core that is already doing the hard part.
