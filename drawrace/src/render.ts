@@ -10,6 +10,7 @@ import { RacingLine } from "./line";
 import { Vec2, clamp, damp, lerp, vadd, vscale } from "./math";
 import { Entrant } from "./race";
 import { Track } from "./track";
+import { Vehicle } from "./vehicle";
 
 export interface Palette {
   ground: string;
@@ -696,6 +697,32 @@ export class Renderer {
       ctx.stroke();
       ctx.restore();
     }
+  }
+
+  /**
+   * The ghost, drawn as the car's own silhouette rather than a translucent copy
+   * of the sprite. A faded sprite at speed reads as a second real car and the
+   * player tries to race it side by side; a flat outline reads as a record.
+   */
+  drawGhost(v: Vehicle): void {
+    const ctx = this.ctx;
+    const spr = carSprite(v.car.id, "#ffffff");
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    ctx.translate(v.pos.x, v.pos.y);
+    ctx.rotate(v.heading);
+    ctx.drawImage(spr.shadow, -SPRITE_L / 2, -SPRITE_W / 2, SPRITE_L, SPRITE_W);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = "rgba(190,225,255,0.9)";
+    ctx.lineWidth = 0.2;
+    ctx.setLineDash([0.9, 0.7]);
+    ctx.beginPath();
+    ctx.arc(v.pos.x, v.pos.y, v.car.radius * 1.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   /** Marker ring drawn under the player's car so it never gets lost in traffic. */

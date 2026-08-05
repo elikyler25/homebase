@@ -151,6 +151,44 @@ export const TRACKS: TrackDef[] = [
     ],
   },
   {
+    id: "marina",
+    name: "Marina Point",
+    surface: "asphalt",
+    width: 19,
+    tier: 1,
+    laps: 2,
+    classes: ["gt", "rally"],
+    medals: { gold: 1.025, silver: 1.075, bronze: 1.16 },
+    // A big flowing ring with one notch in the west: the only place on the lap
+    // that asks for a real lift, and it arrives after the longest fast section.
+    //
+    // This layout was rebuilt five times and `npm run where` is why. Every
+    // earlier version put a deep in-and-out pinch on the east side, and each
+    // time a realistic stroke lost three seconds in a single twelfth of the lap
+    // — it arrived far too fast and ground almost to a halt — while the loss
+    // everywhere else looked completely normal. A pinch entered off the fastest
+    // part of the circuit is not a corner, it is a wall. The notch here is the
+    // Nordic device instead: same corner speed, no direction reversal.
+    points: [
+      [0, -76],
+      [42, -70],
+      [70, -50],
+      [80, -20],
+      [76, 12],
+      [62, 42],
+      [38, 64],
+      [6, 76],
+      [-28, 74],
+      [-52, 60],
+      [-42, 42],
+      [-60, 26],
+      [-74, -2],
+      [-76, -34],
+      [-62, -60],
+      [-32, -76],
+    ],
+  },
+  {
     id: "dustbowl",
     name: "Dust Bowl",
     surface: "gravel",
@@ -244,6 +282,69 @@ export const TRACKS: TrackDef[] = [
     ],
   },
   {
+    id: "ridgeway",
+    name: "Ridgeway",
+    surface: "asphalt",
+    width: 18,
+    tier: 2,
+    laps: 2,
+    classes: ["formula", "gt"],
+    medals: { gold: 1.02, silver: 1.07, bronze: 1.15 },
+    // Two long approaches into the same slow complex from opposite directions.
+    // In a formula car the entry speeds are high enough that the braking has to
+    // start while the corner is still off the top of the phone.
+    points: [
+      [0, -84],
+      [48, -78],
+      [80, -56],
+      [88, -22],
+      [76, 2],
+      [50, 6],
+      [38, 26],
+      [58, 44],
+      [76, 58],
+      [54, 76],
+      [16, 86],
+      [-24, 84],
+      [-58, 68],
+      [-80, 38],
+      [-86, -2],
+      [-74, -44],
+      [-42, -74],
+    ],
+  },
+  {
+    id: "timber",
+    name: "Timber Trail",
+    surface: "gravel",
+    width: 19,
+    tier: 2,
+    laps: 2,
+    classes: ["rally"],
+    medals: { gold: 1.03, silver: 1.085, bronze: 1.18 },
+    // Busiest gravel layout in the game: barely 60 m between direction changes,
+    // so there is never quite time to get the speed back before the next one.
+    points: [
+      [0, -72],
+      [36, -68],
+      [62, -50],
+      [70, -22],
+      [56, -2],
+      [26, 4],
+      [10, 26],
+      [34, 44],
+      [60, 58],
+      [42, 78],
+      [6, 82],
+      [-30, 74],
+      [-58, 56],
+      [-74, 26],
+      [-76, -12],
+      [-62, -46],
+      [-32, -68],
+    ],
+  },
+  {
     id: "oldtown",
     name: "Old Town",
     surface: "asphalt",
@@ -323,6 +424,33 @@ export const TRACKS: TrackDef[] = [
       [-88, -4],
       [-74, -46],
       [-38, -74],
+    ],
+  },
+  {
+    id: "whiteout",
+    name: "Whiteout",
+    surface: "ice",
+    width: 20,
+    tier: 3,
+    laps: 2,
+    classes: ["gt", "rally"],
+    medals: { gold: 1.035, silver: 1.09, bronze: 1.2 },
+    // No hairpin anywhere, and it is still the hardest ice track: every corner
+    // is fast enough to look free and slippery enough not to be.
+    points: [
+      [0, -86],
+      [52, -78],
+      [84, -52],
+      [92, -12],
+      [80, 30],
+      [56, 62],
+      [20, 84],
+      [-22, 88],
+      [-58, 72],
+      [-82, 42],
+      [-90, 0],
+      [-80, -44],
+      [-46, -76],
     ],
   },
   {

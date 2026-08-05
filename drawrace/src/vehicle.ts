@@ -121,6 +121,8 @@ export class Vehicle {
   turboCharge = 0;
   turboTimer = 0;
   turboReady = true;
+  /** Distances at which turbo was deployed, so a ghost can replay them. */
+  turboAt: number[] = [];
 
   telemetry: VehicleTelemetry = {
     speed: 0,
@@ -175,6 +177,7 @@ export class Vehicle {
     if (this.turboCharge < 0.25 || this.turboTimer > 0) return false;
     this.turboTimer = 1.1 + this.turboCharge * 0.5;
     this.turboCharge = 0;
+    this.turboAt.push(this.distance);
     return true;
   }
 

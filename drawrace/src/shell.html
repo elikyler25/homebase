@@ -105,6 +105,36 @@
   .tier-head.locked .th-name { color: var(--dim); }
   .tier-head.locked .th-blurb { color: var(--amber); }
 
+  /* ---------------------------------------------------------- hot seat */
+  .hotseat-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .hs-title { font-size: 13px; font-weight: 700; }
+  .hs-blurb { font-size: 11.5px; color: var(--dim); margin-top: 2px; }
+  .hs-opts { display: flex; gap: 6px; }
+  .hs-chip {
+    font: inherit; font-size: 12px; font-weight: 650;
+    min-width: 36px; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.05);
+    color: var(--dim); cursor: pointer;
+  }
+  .hs-chip.on { color: #fff; background: var(--accent); border-color: transparent; }
+
+  #screen-handover { align-items: center; justify-content: center; text-align: center; }
+  .ho-who { font-size: 40px; font-weight: 900; letter-spacing: -0.03em; }
+  .ho-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    display: inline-block; vertical-align: -2px; margin-right: 10px;
+  }
+  #ho-sub { color: var(--dim); font-size: 13.5px; margin: 10px 0 26px; line-height: 1.5; max-width: 320px; }
+
   .track-card.locked {
     opacity: 0.4;
     cursor: default;
@@ -314,7 +344,14 @@
     </p>
     <div class="career-bar">
       <span class="career-label">Career</span>
-      <span id="career-progress">0/12 medals</span>
+      <span id="career-progress">0/16 medals</span>
+    </div>
+    <div class="hotseat-bar">
+      <div>
+        <div class="hs-title">Hot seat</div>
+        <div class="hs-blurb" id="hs-blurb">One phone, one stroke each</div>
+      </div>
+      <div class="hs-opts" id="hs-opts"></div>
     </div>
     <div id="track-list"></div>
     <div class="spacer"></div>
@@ -356,6 +393,10 @@
         <div class="hud-label">Time</div>
         <div class="hud-value small" id="hud-time">0:00.000</div>
       </div>
+      <div class="hud-card hidden" id="hud-ghost-card">
+        <div class="hud-label">Ghost</div>
+        <div class="hud-value small" id="hud-ghost">+0.0</div>
+      </div>
       <div class="hud-spacer"></div>
       <div class="hud-card" style="text-align:right">
         <div class="hud-label" id="hud-track">Track</div>
@@ -372,6 +413,16 @@
       </div>
     </div>
     <div id="countdown" class="hidden">3</div>
+  </div>
+
+  <!-- -------------------------------------------------------- handover -->
+  <div id="screen-handover" class="screen hidden">
+    <div class="spacer"></div>
+    <div class="ho-who"><span class="ho-dot" id="ho-dot"></span><span id="ho-name">Player 2</span></div>
+    <p id="ho-sub">Pass the phone. Draw your line without watching anyone else&rsquo;s.</p>
+    <button id="btn-handover" class="btn primary" style="min-width:200px">Ready</button>
+    <div class="spacer"></div>
+    <button id="btn-handover-quit" class="btn ghost small">Abandon</button>
   </div>
 
   <!-- --------------------------------------------------------- results -->

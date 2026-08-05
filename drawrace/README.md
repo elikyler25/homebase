@@ -24,11 +24,25 @@ to be at that speed, there, with the grip it actually has.
 - **Smoke is diegetic.** Tyre smoke appears exactly when the grip budget is blown, off the
   rear wheels — it is the feedback, not a decoration on top of it.
 
-**Twelve circuits and three balloon skill events across three championships**, three car classes,
+**Sixteen circuits and three balloon skill events across three championships**, three car classes,
 medals scaled off a simulated ideal lap. Later championships unlock on medals won, so the loose
 surfaces and the formula cars arrive once your drawing hand has had some practice. Where a
 circuit admits more than one class you pick before drawing, and results are filed per class —
 a lap in a rally car around a GT circuit is a different problem.
+
+**Your best lap comes back as a ghost.** What gets saved is the stroke, not a recording of
+positions — the physics is deterministic, so re-driving the line reproduces the lap for about
+1.3 kB, and the ghost stays valid if the physics is ever retuned. The HUD carries a live delta
+so you can see which corner you are actually losing it in. The ghost is scenery: no contact, no
+ranking, no effect on the race it appears in, and the harness asserts all three.
+
+**Hot seat** puts two to four people on one phone. Everyone draws in turn behind a handover
+screen, then all the strokes race at once. Two things change to keep it a fair comparison: the
+grid is a single row abreast rather than the usual stagger — worth about half a second across
+four slots, which is more than the difference between two people's lines — and turbo fires by
+rule instead of by tap, since one screen cannot take a tap for four cars. Nothing is written to
+the career; a shared-device race would otherwise credit whoever owns the phone with a lap
+somebody else drew.
 
 **Skill events** are the other mode: no opponents, one lap, and a course strewn with balloons
 placed deliberately *off* the racing line. The fast line stops being automatically the right
@@ -53,17 +67,19 @@ npm run dev        # unminified
 ```
 
 Open `dist/index.html` in any browser, or add it to your iPhone home screen for full-screen
-play. No CDN, no external requests, no network at runtime. The whole game is ~72 kB.
+play. No CDN, no external requests, no network at runtime. The whole game is ~82 kB.
 
 ## Verification
 
-Two harnesses, because they catch different things.
+Four harnesses, because they catch different things.
 
 ```
 npm run check      # tsc, strict
 npm run tune       # headless physics harness — no DOM, real Vehicle/Track/Line code
 npm run playtest   # drives the built game in Chromium at iPhone size, screenshots each phase
+npm run modes      # drives the ghost and hot seat in a browser — they live in shell state
 npm run diag       # isolates path vs speed profile when the car misbehaves
+npm run where      # says which twelfth of the lap a realistic stroke is losing time in
 ```
 
 `npm run tune` asserts the properties that make the game work rather than just that it runs:
@@ -79,7 +95,17 @@ the idealised stroke everything looked fine, while a realistic one finished last
 sliding 24-30 s a race. See "Why the player's car used to drift" below.
 
 `npm run playtest [track]` traces a real stroke with pointer events and captures
-`shots/<track>/*.png`.
+`shots/<track>/*.png`. `npm run modes` uses the same tracing to check the parts that live in
+game-shell state rather than in physics — localStorage, phase order, which screen is showing —
+because those pass `tune` while being completely broken in a browser.
+
+`npm run where` is newer and earned its place immediately. It buckets a lap into twelfths and
+prints, for the reference line and a realistic stroke, the time spent in each bucket and how
+much of it was over the grip budget. The distinction it draws is the useful one: a circuit
+losing time evenly across twelve buckets is simply hard, while a circuit losing three seconds in
+*one* bucket has a specific corner a person cannot drive. Marina Point was rebuilt five times on
+that evidence — every earlier version had a deep in-and-out pinch entered off the fastest part
+of the lap, which is not a corner, it is a wall.
 
 ## Why the player's car used to drift
 
@@ -110,7 +136,8 @@ cut the slip-angle visual — at its old coefficient an understeering car plough
 |------|------|
 | `src/math.ts` | vectors, damping, deterministic PRNG |
 | `src/track.ts` | closed spline, arc-length resampling, surfaces, spatial-grid projection |
-| `src/tracks.ts` | the twelve circuits |
+| `src/tracks.ts` | the sixteen circuits |
+| `src/ghost.ts` | saving and replaying your best stroke |
 | `src/carart.ts` | per-class car sprites, baked offscreen |
 | `src/line.ts` | pointer input → arc-length path with a speed at every node |
 | `src/vehicle.ts` | the physics: friction circle, tyre falloff, path following, turbo |
@@ -122,7 +149,10 @@ cut the slip-angle visual — at its old coefficient an understeering car plough
 | `src/game.ts` | phases, input, camera, HUD |
 | `tools/tune.ts` | physics harness |
 | `tools/playtest.mjs` | browser playtest |
+| `tools/modes.mjs` | browser check for the ghost and hot seat |
+| `tools/stroke.mjs` | shared "trace a lap with pointer events" helper |
 | `tools/diag.ts` | path-vs-profile isolation |
+| `tools/where.ts` | which twelfth of the lap the time goes in |
 | `tools/carsheet.ts` | renders the car sprites large, for judging the art |
 
 ### One calibration worth knowing
@@ -134,6 +164,7 @@ speed by the same factor, so the mapping holds on a phone and a desktop alike.
 
 ## Not yet built
 
-The original shipped 180 challenges across 30 tracks. This has twelve circuits, three balloon
-skill events and a three-tier career. Hot-seat multiplayer, a ghost of your own best lap, and the
-remaining layouts are content on top of a core that is already doing the hard part.
+The original shipped 180 challenges across 30 tracks. This has sixteen circuits, three balloon
+skill events, a three-tier career, ghosts and hot seat. The remaining fourteen layouts are
+content on top of a core that is already doing the hard part — though "content" undersells it:
+every new circuit has to survive `npm run tune`, and the sixteenth took five rebuilds.

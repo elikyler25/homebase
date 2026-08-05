@@ -8,7 +8,9 @@
     "tune": "esbuild tools/tune.ts --bundle --platform=node --format=esm --outfile=.tmp/tune.mjs --log-level=warning && node .tmp/tune.mjs",
     "check": "tsc --noEmit",
     "playtest": "node build.mjs && node tools/playtest.mjs",
-    "diag": "esbuild tools/diag.ts --bundle --platform=node --format=esm --outfile=.tmp/diag.mjs --log-level=warning && node .tmp/diag.mjs"
+    "modes": "node build.mjs && node tools/modes.mjs",
+    "diag": "esbuild tools/diag.ts --bundle --platform=node --format=esm --outfile=.tmp/diag.mjs --log-level=warning && node .tmp/diag.mjs",
+    "where": "esbuild tools/where.ts --bundle --platform=node --format=esm --outfile=.tmp/where.mjs --log-level=warning && node .tmp/where.mjs"
   },
   "keywords": [],
   "author": "",

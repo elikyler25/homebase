@@ -2,16 +2,26 @@
 
 import { DRIVER_POOL } from "./ai";
 import { GameAudio } from "./audio";
+import { GhostData, decodeGhost, encodeGhost } from "./ghost";
 import { RacingLine, RawSample } from "./line";
 import { Vec2, clamp, formatGap, formatTime, lerp, vdist } from "./math";
-import { Race, medalFor, referenceTime } from "./race";
+import { HumanEntry, Race, Standing, medalFor, referenceTime } from "./race";
 import { Renderer } from "./render";
 import { BALLOON_RADIUS, Balloon, SKILL_EVENTS, SkillEvent, placeBalloons } from "./skill";
 import { Track } from "./track";
 import { TRACKS } from "./tracks";
 import { CAR_CLASSES, CarClass } from "./vehicle";
 
-type Phase = "menu" | "draw" | "race" | "results";
+type Phase = "menu" | "draw" | "handover" | "race" | "results";
+
+/**
+ * Hot seat: everyone plays on one device, so the players take turns drawing and
+ * then all the strokes race at once. Colours are fixed per seat rather than per
+ * car class, because in this mode "which car is mine" matters more than "what
+ * class am I driving" — everybody is in the same machine.
+ */
+const SEAT_COLOURS = ["#ff5c5c", "#4fc3f7", "#ffd23f", "#7ee787"];
+const seatName = (i: number): string => `P${i + 1}`;
 
 /**
  * The career. Three championships, each gated on medals won in the ones before
@@ -28,8 +38,8 @@ interface Championship {
 
 const CHAMPIONSHIPS: Championship[] = [
   { tier: 1, name: "Rookie Cup", blurb: "Learn the line", needs: 0 },
-  { tier: 2, name: "National Series", blurb: "Loose surfaces, faster cars", needs: 3 },
-  { tier: 3, name: "World League", blurb: "Everything you have", needs: 8 },
+  { tier: 2, name: "National Series", blurb: "Loose surfaces, faster cars", needs: 4 },
+  { tier: 3, name: "World League", blurb: "Everything you have", needs: 10 },
 ];
 
 interface Progress {
@@ -37,6 +47,8 @@ interface Progress {
   medals: Record<string, "gold" | "silver" | "bronze">;
   /** Best balloon count per skill event. */
   balloons?: Record<string, number>;
+  /** The stroke behind each personal best, replayed as a ghost. */
+  ghosts?: Record<string, GhostData>;
   muted?: boolean;
 }
 
@@ -107,6 +119,11 @@ export class Game {
   /** Last countdown integer announced, so pips fire once each. */
   private lastPip = 99;
 
+  /** 0 when hot seat is off, otherwise how many people are sharing the device. */
+  private seats = 0;
+  /** Strokes banked so far this hot-seat round, one per seat that has drawn. */
+  private seatLines: RacingLine[] = [];
+
   // Drawing state
   private drawing = false;
   private raw: RawSample[] = [];
@@ -141,6 +158,8 @@ export class Game {
       $(id).addEventListener("click", () => this.setPhase("menu"));
     }
     $("btn-clear").addEventListener("click", () => this.resetStroke());
+    $("btn-handover").addEventListener("click", () => this.startDraw());
+    $("btn-handover-quit").addEventListener("click", () => this.setPhase("menu"));
     $("btn-sound").addEventListener("click", () => this.toggleSound());
     $("btn-skip").addEventListener("click", () => this.finishRaceFast());
     $("btn-turbo").addEventListener("click", () => this.tryTurbo());
@@ -208,7 +227,26 @@ export class Game {
     $("btn-sound").classList.toggle("muted", muted);
   }
 
+  private buildSeatPicker(): void {
+    const row = $("hs-opts");
+    row.innerHTML = "";
+    for (const n of [0, 2, 3, 4]) {
+      const chip = document.createElement("button");
+      chip.className = `hs-chip${n === this.seats ? " on" : ""}`;
+      chip.textContent = n === 0 ? "Off" : String(n);
+      chip.addEventListener("click", () => {
+        this.seats = n;
+        this.buildSeatPicker();
+      });
+      row.appendChild(chip);
+    }
+    $("hs-blurb").textContent = this.seats
+      ? `${this.seats} players draw in turn, then race — no medals, just bragging rights`
+      : "One phone, one stroke each";
+  }
+
   private buildTrackMenu(): void {
+    this.buildSeatPicker();
     const list = $("track-list");
     list.innerHTML = "";
     const won = this.medalCount;
@@ -288,6 +326,7 @@ export class Game {
     const ev = SKILL_EVENTS.find((e) => e.id === eventId);
     if (!ev) return;
     this.skill = ev;
+    this.seatLines = [];
     const def = TRACKS.find((t) => t.id === ev.trackId) ?? TRACKS[0];
     this.track = new Track(def);
     this.carClass = CAR_CLASSES[ev.classId] ?? CAR_CLASSES.gt;
@@ -299,9 +338,15 @@ export class Game {
     this.startDraw();
   }
 
+  /** Hot seat applies to circuits only — a balloon run is a solo puzzle. */
+  private get hotSeat(): boolean {
+    return this.seats > 0 && !this.skill;
+  }
+
   private selectTrack(id: string, classId?: string): void {
     this.skill = null;
     this.balloons = [];
+    this.seatLines = [];
     const def = TRACKS.find((t) => t.id === id) ?? TRACKS[0];
     this.track = new Track(def);
     const wanted = classId && def.classes.includes(classId) ? classId : def.classes[0];
@@ -339,25 +384,48 @@ export class Game {
 
   private setPhase(p: Phase): void {
     this.phase = p;
-    for (const id of ["screen-menu", "screen-draw", "screen-race", "screen-results"]) {
-      $(id).classList.add("hidden");
+    for (const id of ["menu", "draw", "handover", "race", "results"]) {
+      $(`screen-${id}`).classList.add("hidden");
     }
-    $(`screen-${p === "results" ? "results" : p}`).classList.remove("hidden");
+    $(`screen-${p}`).classList.remove("hidden");
     document.body.dataset.phase = p;
     if (p === "menu") {
       this.buildTrackMenu();
       this.race = null;
+      this.seatLines = [];
     }
   }
 
   private startDraw(): void {
+    // "Redraw" from the results of a hot-seat race means the whole round again,
+    // not player one drawing over a race that has already happened.
+    if (this.phase === "results") this.seatLines = [];
     this.resetStroke();
     this.renderer.clearMarks();
     this.race = null;
     this.setPhase("draw");
     this.fitCamera(true);
-    $("draw-hint").textContent = "Trace your line from the start — how fast you draw is how fast you go";
-    $("draw-hint").classList.remove("warn");
+    const hint = $("draw-hint");
+    hint.classList.remove("warn");
+    hint.textContent = this.hotSeat
+      ? `${seatName(this.seatLines.length)} — trace your line from the start`
+      : "Trace your line from the start — how fast you draw is how fast you go";
+    // Nobody may change class mid-round: the hot-seat race is a comparison of
+    // strokes, and it stops being one the moment two people drive different cars.
+    $("class-row").classList.toggle("hidden", this.hotSeat && this.seatLines.length > 0);
+  }
+
+  /** Between two seats: hide the previous stroke and wait for a tap. */
+  private showHandover(): void {
+    const i = this.seatLines.length;
+    $("ho-name").textContent = `Player ${i + 1}`;
+    ($("ho-dot") as HTMLElement).style.background = SEAT_COLOURS[i % SEAT_COLOURS.length];
+    $("ho-sub").textContent =
+      i === this.seats - 1
+        ? "Last one. Pass the phone, then everybody watches."
+        : "Pass the phone. Draw your line without watching anyone else's.";
+    this.previewLine = null;
+    this.setPhase("handover");
   }
 
   private resetStroke(): void {
@@ -380,22 +448,50 @@ export class Game {
       this.warn("That line is too short to race — trace the whole lap");
       return;
     }
+
+    // Hot seat: bank this stroke and hand over until everyone has drawn.
+    if (this.hotSeat) {
+      this.seatLines.push(line);
+      if (this.seatLines.length < this.seats) {
+        this.showHandover();
+        return;
+      }
+    }
+
     // A skill run is a puzzle, not a race: no opponents, one lap.
-    const drivers = this.skill ? [] : DRIVER_POOL.slice(0, 4);
+    const drivers = this.skill || this.hotSeat ? [] : DRIVER_POOL.slice(0, 4);
+    const rivals: HumanEntry[] = this.hotSeat
+      ? this.seatLines.slice(1).map((l, i) => ({
+          line: l,
+          car: this.carClass,
+          name: seatName(i + 1),
+          colour: SEAT_COLOURS[(i + 1) % SEAT_COLOURS.length],
+        }))
+      : [];
+    const playerLine = this.hotSeat ? this.seatLines[0] : line;
     for (const b of this.balloons) b.popped = false;
-    this.race = new Race(
-      this.track,
-      line,
-      this.carClass,
-      drivers,
-      this.carClass,
-      this.skill ? this.skill.laps : this.track.def.laps,
-    );
+
+    this.race = new Race(this.track, playerLine, this.carClass, drivers, this.carClass, {
+      laps: this.skill ? this.skill.laps : this.track.def.laps,
+      rivals,
+      ghost: this.hotSeat || this.skill ? null : this.loadGhost(),
+      autoTurbo: this.hotSeat,
+    });
     this.renderer.clearMarks();
     this.setPhase("race");
-    this.previewLine = line;
+    this.previewLine = playerLine;
     this.lastPip = 99;
+    // Hot seat has no "my car" to hang a button on, and the ghost card is only
+    // meaningful when there is a ghost.
+    $("btn-turbo").parentElement?.classList.toggle("hidden", this.hotSeat);
+    $("hud-ghost-card").classList.toggle("hidden", !this.race.ghost);
     this.audio.startRace();
+  }
+
+  /** The stroke behind the current best on this circuit in this car, if any. */
+  private loadGhost(): { line: RacingLine; turboAt: number[] } | null {
+    const key = resultKey(this.track.def.id, this.carClass.id);
+    return decodeGhost(this.progress.ghosts?.[key]);
   }
 
   private finishRaceFast(): void {
@@ -414,12 +510,27 @@ export class Game {
       this.showSkillResults(me.time);
       return;
     }
+    if (this.hotSeat) {
+      this.showHotSeatResults(rows);
+      return;
+    }
     const medal = medalFor(me.time, this.reference, this.track.def.medals);
 
     const key = resultKey(this.track.def.id, this.carClass.id);
     const prevBest = this.progress.best[key];
     const improved = !prevBest || me.time < prevBest;
-    if (improved) this.progress.best[key] = me.time;
+    if (improved) {
+      this.progress.best[key] = me.time;
+      // The ghost is the stroke behind the best time, so it is saved with it —
+      // otherwise the two disagree and the ghost stops being a record of
+      // anything. Storage failures are survivable: worst case, no ghost.
+      const pv = this.race.player.vehicle;
+      const g = encodeGhost(pv.line, pv.turboAt);
+      if (g) {
+        this.progress.ghosts = this.progress.ghosts ?? {};
+        this.progress.ghosts[key] = g;
+      }
+    }
     const order = { bronze: 1, silver: 2, gold: 3 } as const;
     const prevMedal = this.progress.medals[key];
     if (medal && (!prevMedal || order[medal] > order[prevMedal])) {
@@ -441,10 +552,59 @@ export class Game {
       : `Best ${formatTime(prevBest ?? Infinity)}`;
 
     const table = $("result-table");
-    table.innerHTML = rows
+    let html = rows
       .map(
         (r) => `
         <div class="row ${r.isPlayer ? "me" : ""}">
+          <span class="pos">${r.position}</span>
+          <span class="dot" style="background:${r.colour}"></span>
+          <span class="nm">${r.name}</span>
+          <span class="tm">${formatTime(r.time)}</span>
+          <span class="gp">${r.position === 1 ? "" : formatGap(r.gap)}</span>
+        </div>`,
+      )
+      .join("");
+    // The ghost is listed but never ranked — it is your old lap, not a rival.
+    const ghost = this.race.ghost;
+    if (ghost?.finished) {
+      html += `
+        <div class="row" style="opacity:0.62">
+          <span class="pos">&middot;</span>
+          <span class="dot" style="background:rgba(190,225,255,0.55)"></span>
+          <span class="nm">Ghost</span>
+          <span class="tm">${formatTime(ghost.finishTime)}</span>
+          <span class="gp">${formatGap(me.time - ghost.finishTime)}</span>
+        </div>`;
+    }
+    table.innerHTML = html;
+
+    this.audio.stopRace();
+    this.audio.cue("finish");
+    this.setPhase("results");
+  }
+
+  /**
+   * Hot seat is scored between the people in the room and nothing else: no
+   * medals, no personal bests, no ghost. Writing a shared-device race into a
+   * single profile's career would credit whoever happens to own the phone with
+   * a lap somebody else drew.
+   */
+  private showHotSeatResults(rows: Standing[]): void {
+    const winner = rows[0];
+    $("result-pos").textContent = winner.name;
+    $("result-time").textContent = formatTime(winner.time);
+    $("result-ref").textContent = `${this.seats} players · ${this.track.def.name}`;
+    $("result-best").textContent =
+      rows.length > 1 ? `by ${formatGap(rows[1].time - winner.time)}` : "";
+    const medalEl = $("result-medal");
+    medalEl.className = "medal big gold";
+    medalEl.title = "Winner";
+    $("result-medal-label").textContent = "Winner";
+
+    $("result-table").innerHTML = rows
+      .map(
+        (r) => `
+        <div class="row ${r.position === 1 ? "me" : ""}">
           <span class="pos">${r.position}</span>
           <span class="dot" style="background:${r.colour}"></span>
           <span class="nm">${r.name}</span>
@@ -727,7 +887,14 @@ export class Game {
         turbo: pv.turboTimer > 0,
       });
       this.updateRaceHud();
-      this.raceCamera(dt);
+      // Hot seat has no single car to follow — chasing player one would hide
+      // whoever is actually winning — so the whole circuit stays in frame.
+      if (this.hotSeat) {
+        this.fitCamera(false);
+        this.renderer.camera.update(dt);
+      } else {
+        this.raceCamera(dt);
+      }
       if (this.race.finished) this.showResults();
     } else {
       this.renderer.camera.update(dt);
@@ -756,8 +923,9 @@ export class Game {
       r.drawParticles();
       if (this.race) {
         const lead = this.race.standings()[0];
+        if (this.race.ghost) r.drawGhost(this.race.ghost);
         for (const e of this.race.entrants) {
-          if (e.isPlayer) r.drawPlayerMarker(e, this.pulse);
+          if (e.isPlayer && !this.hotSeat) r.drawPlayerMarker(e, this.pulse);
         }
         for (const e of this.race.entrants) {
           r.drawCar(e, !e.isPlayer && e.name === lead.name);
@@ -829,12 +997,30 @@ export class Game {
     const v = this.race.player.vehicle;
     $("hud-pos").textContent = this.skill
       ? `${this.balloonsPopped}/${this.balloons.length}`
-      : `${me.position}/${rows.length}`;
-    $("hud-pos-label").textContent = this.skill ? "Balloons" : "Pos";
+      : this.hotSeat
+        ? rows[0].name
+        : `${me.position}/${rows.length}`;
+    $("hud-pos-label").textContent = this.skill
+      ? "Balloons"
+      : this.hotSeat
+        ? "Leading"
+        : "Pos";
+
+    if (this.race.ghost) {
+      const d = this.race.ghostDelta();
+      const el = $("hud-ghost");
+      el.textContent = isFinite(d) ? formatGap(d) : "—";
+      el.style.color = d <= 0 ? "#7ee787" : "#ff8a80";
+    }
+    // In hot seat there is no "my car", so lap and speed follow whoever leads —
+    // reading out player one's numbers under a "Leading: P3" label is a lie.
+    const focus = this.hotSeat
+      ? (this.race.entrants.find((e) => e.name === rows[0].name)?.vehicle ?? v)
+      : v;
     const laps = this.race.laps;
-    $("hud-lap").textContent = `${clamp(v.currentLap, 1, laps)}/${laps}`;
+    $("hud-lap").textContent = `${clamp(focus.currentLap, 1, laps)}/${laps}`;
     $("hud-time").textContent = formatTime(this.race.elapsed);
-    $("hud-speed").textContent = `${Math.round(v.telemetry.speed * 3.6)}`;
+    $("hud-speed").textContent = `${Math.round(focus.telemetry.speed * 3.6)}`;
     ($("turbo-fill") as HTMLElement).style.width = `${Math.round(v.turboCharge * 100)}%`;
     $("btn-turbo").classList.toggle("ready", v.turboCharge >= 0.25 && v.turboTimer <= 0);
 

@@ -10,10 +10,10 @@ import { mkdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { CHROME, traceLap } from "./stroke.mjs";
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const shots = join(root, "shots", process.argv[2] ? process.argv[2] : "harbour");
-const CHROME = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
-
 const trackId = process.argv[2] ?? null;
 
 await mkdir(shots, { recursive: true });
@@ -54,76 +54,19 @@ await page.waitForSelector("#screen-draw:not(.hidden)", { timeout: 5000 });
 await page.waitForTimeout(400);
 await page.screenshot({ path: join(shots, "2-draw-empty.png") });
 
-// Build a stroke in screen space from the track's own ideal line, paced by the
-// speed profile — fast down the straights, slow through the corners, which is
-// exactly what a competent player's finger does.
-const stroke = await page.evaluate(() => {
-  const g = window.__drawrace;
-  const cam = g.renderer.camera;
-  const W = g.renderer.cssWidth;
-  const H = g.renderer.cssHeight;
-  const track = g.track;
-  const toScreen = (p) => [
-    (p.x - cam.center.x) * cam.scale + W / 2,
-    (p.y - cam.center.y) * cam.scale + H / 2,
-  ];
-
-  const samples = track.samples;
-  const step = 5;
-  const pts = [];
-  for (let i = 0; i < samples.length; i += step) {
-    // Bias toward the INSIDE of the corner, like a real racing line. `nor` is
-    // the +90 degree rotation of the tangent, which points at the centre of
-    // curvature when curv is positive — so the inside is +sign(curv), and
-    // getting this backwards traces the outside of every corner and off the
-    // track, which is exactly what it did.
-    const s = samples[i];
-    const off = Math.sign(s.curv) * Math.min(track.halfWidth * 0.55, Math.abs(s.curv) * 900);
-    const p = { x: s.pos.x + s.nor.x * off, y: s.pos.y + s.nor.y * off };
-    pts.push({ screen: toScreen(p), curv: Math.abs(s.curv) });
-  }
-  pts.push({ screen: toScreen(samples[0].pos), curv: 0 });
-
-  // Pace the stroke the way a competent player would: the time spent on each
-  // metre is inversely proportional to the speed that corner physically allows.
-  const car = g.carClass;
-  const aMax = car.grip * track.surface.grip * 9.81 * 0.85;
-  for (const p of pts) {
-    const v = p.curv > 1e-5 ? Math.min(car.maxSpeed, Math.sqrt(aMax / p.curv)) : car.maxSpeed;
-    p.v = Math.max(6, v);
-  }
-  return { pts, scale: cam.scale, lapLength: track.length };
+// Trace the lap, screenshotting partway through. ~3 s of drawing at a gain of
+// 0.3 should race in roughly 3 / 0.3 = ~10 s a lap.
+const { drawMs, points } = await traceLap(page, {
+  totalMs: 3000,
+  onProgress: async (i, n) => {
+    if (i === Math.floor(n * 0.55)) {
+      await page.screenshot({ path: join(shots, "3-draw-partial.png") });
+    }
+  },
 });
 
-// Pace: total draw time targets ~6.5 s, distributed so tight curvature gets more
-// time per metre. DRAW_SPEED_GAIN is 0.3, so ~6.5 s of drawing should race in
-// roughly 6.5 / 0.3 = ~22 s per lap.
-const TARGET_DRAW_MS = 3000; // dispatching ~120 pointer moves adds real overhead
-const weights = stroke.pts.map((p) => 1 / p.v);
-const totalW = weights.reduce((a, b) => a + b, 0);
-
-const [sx, sy] = stroke.pts[0].screen;
-await page.mouse.move(sx, sy);
-await page.mouse.down();
-const t0 = Date.now();
-for (let i = 1; i < stroke.pts.length; i++) {
-  const [x, y] = stroke.pts[i].screen;
-  await page.mouse.move(x, y);
-  const want = (weights[i] / totalW) * TARGET_DRAW_MS;
-  const spent = Date.now() - t0;
-  const target = (weights.slice(0, i + 1).reduce((a, b) => a + b, 0) / totalW) * TARGET_DRAW_MS;
-  void want;
-  const wait = Math.max(0, Math.round(target - spent));
-  if (wait > 0) await page.waitForTimeout(wait);
-  if (i === Math.floor(stroke.pts.length * 0.55)) {
-    await page.screenshot({ path: join(shots, "3-draw-partial.png") });
-  }
-}
-const drawMs = Date.now() - t0;
-await page.mouse.up();
-
 const pct = await page.evaluate(() => document.getElementById("draw-pct").textContent);
-console.log(`stroke: ${stroke.pts.length} points in ${drawMs} ms, coverage ${pct}`);
+console.log(`stroke: ${points} points in ${drawMs} ms, coverage ${pct}`);
 
 // Racing?
 await page.waitForSelector("#screen-race:not(.hidden)", { timeout: 5000 });

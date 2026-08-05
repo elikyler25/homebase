@@ -11,10 +11,11 @@
 //      more and spends time off the road.
 //   4. AI skill levels are monotonic and land either side of a human line.
 
-import { buildAiLine, buildReferenceLine, speedProfile, optimiseLine } from "../src/ai";
+import { DRIVER_POOL, buildAiLine, buildReferenceLine, speedProfile, optimiseLine } from "../src/ai";
+import { decodeGhost, encodeGhost } from "../src/ghost";
 import { DRAW_SPEED_GAIN, RacingLine, RawSample } from "../src/line";
 import { Vec2, vadd, vdist, vscale } from "../src/math";
-import { PHYS_DT, referenceTime, simulateHeadless } from "../src/race";
+import { PHYS_DT, Race, referenceTime, simulateHeadless } from "../src/race";
 import { Track } from "../src/track";
 import { TRACKS } from "../src/tracks";
 import { CAR_CLASSES, CarClass, Vehicle } from "../src/vehicle";
@@ -334,6 +335,97 @@ console.log("Line mechanics");
 
   const r = simulateHeadless(track, car, line, 2);
   check("simulateHeadless agrees with harness", r.finished, `${f(r.time)}s`);
+}
+
+// The ghost and the hot seat both add cars to a race. The properties worth
+// pinning are that the ghost reproduces the lap it claims to be, and that
+// adding it changes nothing about the race it is shown next to.
+console.log("Ghost and hot seat");
+{
+  const track = new Track(TRACKS[0]);
+  const car = CAR_CLASSES.gt;
+  const stroke = realisticStroke(track, car, { lag: 6, wobble: 1.4, pace: 0.94 });
+  const line = RacingLine.fromInput(
+    synthDraw(stroke.pts, stroke.speeds),
+    car.maxSpeed,
+    car.brake,
+  );
+
+  const original = race(track, car, line, 2).time;
+  const data = encodeGhost(line, []);
+  const back = decodeGhost(data ?? undefined);
+  check("ghost round-trips through storage", !!back, `${data ? data.p.length / 3 : 0} points`);
+  const replay = back ? race(track, car, back.line, 2).time : Infinity;
+  const drift = Math.abs(replay - original) / original;
+  // Storing every fourth node and resampling loses a little of the stroke. What
+  // matters is that the ghost is still recognisably the lap it is labelled
+  // with — a ghost half a second out is a ghost nobody trusts.
+  check(
+    "ghost replays the lap it recorded",
+    drift < 0.02,
+    `${f(original)}s -> ${f(replay)}s (${f(drift * 100, 1)}%)`,
+  );
+  check(
+    "ghost storage stays small",
+    JSON.stringify(data).length < 4000,
+    `${JSON.stringify(data).length} bytes`,
+  );
+
+  // A ghost must be scenery: no contact, no ranking, no effect on the result.
+  const drivers = DRIVER_POOL.slice(0, 4);
+  const solo = new Race(track, line, car, drivers, car, {});
+  const withGhost = new Race(track, line, car, drivers, car, { ghost: back });
+  for (const r of [solo, withGhost]) {
+    r.update(3);
+    let guard = 0;
+    while (!r.finished && guard++ < 6000) r.update(1 / 60);
+  }
+  const a = solo.standings().find((s) => s.isPlayer)!;
+  const b = withGhost.standings().find((s) => s.isPlayer)!;
+  check(
+    "a ghost does not touch the race it appears in",
+    Math.abs(a.time - b.time) < 1e-9 && a.position === b.position,
+    `${f(a.time)}s P${a.position} vs ${f(b.time)}s P${b.position}`,
+  );
+  check(
+    "ghost is not an entrant",
+    withGhost.standings().length === solo.standings().length,
+    `${withGhost.standings().length} classified`,
+  );
+
+  // Hot seat: four drawn cars, no AI, everyone home. Only the lag varies —
+  // how late each "player" notices the corner they are arriving at — because
+  // that is the one stroke parameter where better is unambiguous. (Pace is not:
+  // drawing closer to the theoretical limit makes you slower, which is the
+  // lesson the whole game is built on.)
+  const rivals = [12, 7, 2].map((lag, i) => {
+    const s = realisticStroke(track, car, { lag, wobble: 1.2, pace: 0.92 });
+    return {
+      line: RacingLine.fromInput(synthDraw(s.pts, s.speeds), car.maxSpeed, car.brake),
+      car,
+      name: `P${i + 2}`,
+      colour: "#ffffff",
+    };
+  });
+  const hs = new Race(track, line, car, [], car, { rivals, autoTurbo: true });
+  hs.update(3);
+  let guard = 0;
+  while (!hs.finished && guard++ < 12000) hs.update(1 / 60);
+  const table = hs.standings();
+  check("hot seat classifies every seat", table.length === 4, `${table.length} cars`);
+  check(
+    "hot seat finishes",
+    table.every((r) => r.finished),
+    table.map((r) => `${r.name} ${f(r.time)}`).join("  "),
+  );
+  // The sharper stroke must beat the laggier one. If the auto-turbo rule or the
+  // grid handed a seat an advantage, this is where it would show.
+  const at = (n: string) => table.findIndex((r) => r.name === n);
+  check(
+    "a sharper stroke beats a laggier one in the hot seat",
+    at("P4") < at("P3") && at("P3") < at("P2"),
+    table.map((r) => r.name).join(" > "),
+  );
 }
 
 console.log(
