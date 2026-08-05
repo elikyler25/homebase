@@ -39,13 +39,18 @@ export class Race {
   player!: Entrant;
   private accumulator = 0;
 
+  /** Laps for this event; defaults to the circuit's own, overridden by skill runs. */
+  readonly laps: number;
+
   constructor(
     readonly track: Track,
     playerLine: RacingLine,
     playerCar: CarClass,
     drivers: AiDriver[],
     aiCar: CarClass,
+    laps?: number,
   ) {
+    this.laps = laps ?? track.def.laps;
     const grid = gridSlots(track, drivers.length + 1);
 
     this.player = {
@@ -95,7 +100,7 @@ export class Race {
     for (const e of this.entrants) {
       if (e.vehicle.finished) continue;
       e.vehicle.step(dt);
-      if (e.vehicle.lapsDone >= this.track.def.laps) {
+      if (e.vehicle.lapsDone >= this.laps) {
         e.vehicle.finished = true;
         e.vehicle.finishTime = this.elapsed;
       }
@@ -113,7 +118,7 @@ export class Race {
         for (const e of this.entrants) {
           if (e.vehicle.finished) continue;
           e.vehicle.step(PHYS_DT);
-          if (e.vehicle.lapsDone >= this.track.def.laps) {
+          if (e.vehicle.lapsDone >= this.laps) {
             e.vehicle.finished = true;
             e.vehicle.finishTime = this.elapsed;
           }
@@ -137,7 +142,7 @@ export class Race {
       time: e.vehicle.finishTime,
       finished: e.vehicle.finished,
       gap: 0,
-      lap: Math.min(e.vehicle.currentLap, this.track.def.laps),
+      lap: Math.min(e.vehicle.currentLap, this.laps),
       _dist: e.vehicle.distance,
     }));
     rows.sort((a, b) => {

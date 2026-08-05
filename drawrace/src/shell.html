@@ -142,6 +142,8 @@
   .pill.surf-asphalt { background: rgba(120,140,160,0.18); color: #b9c7d4; }
   .pill.surf-gravel  { background: rgba(180,140,80,0.2);   color: #e0c9a0; }
   .pill.surf-ice     { background: rgba(120,180,220,0.18); color: #bcdcf0; }
+  .pill.skillpill    { background: rgba(255,200,60,0.18);  color: #ffd98a; }
+  .track-card.skill { border-color: rgba(255,200,60,0.22); }
 
   .medal {
     width: 14px; height: 14px; border-radius: 50%;
@@ -179,7 +181,20 @@
   }
   #draw-pct { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
 
-  .draw-bottom { display: flex; justify-content: center; gap: 10px; }
+  .draw-bottom { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+  .class-row { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
+  .class-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font: inherit; font-size: 12px; font-weight: 600;
+    padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.05);
+    color: var(--dim);
+    cursor: pointer;
+  }
+  .class-chip.on { color: var(--text); border-color: rgba(255,255,255,0.34); background: rgba(255,255,255,0.12); }
+  .cc-dot { width: 8px; height: 8px; border-radius: 50%; }
 
   /* -------------------------------------------------------------- race */
   .hud-row { display: flex; gap: 8px; align-items: flex-start; }
@@ -274,6 +289,7 @@
     border-color: rgba(255,255,255,0.14);
   }
   .btn.small { font-size: 12.5px; padding: 8px 13px; border-radius: 10px; }
+  .btn.muted { color: var(--dim); opacity: 0.75; }
 
   .btn-row { display: flex; gap: 9px; margin-top: 18px; }
   .btn-row .btn { flex: 1; text-align: center; }
@@ -316,9 +332,11 @@
         <div class="bar"><div id="draw-bar"></div></div>
         <span id="draw-pct">0%</span>
       </div>
+      <div id="class-row" class="class-row hidden"></div>
     </div>
     <div class="draw-bottom">
       <button id="btn-clear" class="btn small ghost">Clear line</button>
+      <button id="btn-sound" class="btn small ghost">Sound on</button>
       <button id="btn-menu" class="btn small ghost">Tracks</button>
     </div>
   </div>
@@ -327,7 +345,7 @@
   <div id="screen-race" class="overlay hidden">
     <div class="hud-row">
       <div class="hud-card">
-        <div class="hud-label">Pos</div>
+        <div class="hud-label" id="hud-pos-label">Pos</div>
         <div class="hud-value" id="hud-pos">1/5</div>
       </div>
       <div class="hud-card">

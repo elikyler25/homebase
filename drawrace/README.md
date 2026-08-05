@@ -20,13 +20,23 @@ to be at that speed, there, with the grip it actually has.
   wider, less grip, wider still. Overcooking a hairpin costs you the corner, not a tenth.
 - **Turbo charges under braking** and takes its cut of the grip budget *first* — which is why
   deploying it mid-corner is a good way to end up in the scenery.
-- **Surfaces bite differently.** Asphalt, gravel, ice: 1.0 / 0.82 / 0.56 friction.
+- **Surfaces bite differently.** Asphalt, gravel, ice: 1.0 / 0.82 / 0.64 friction.
 - **Smoke is diegetic.** Tyre smoke appears exactly when the grip budget is blown, off the
   rear wheels — it is the feedback, not a decoration on top of it.
 
-**Twelve circuits across three championships**, three car classes, two laps, medals scaled off a
-simulated ideal lap. Later championships unlock on medals won, so the loose surfaces and the
-formula cars arrive once your drawing hand has had some practice.
+**Twelve circuits and three balloon skill events across three championships**, three car classes,
+medals scaled off a simulated ideal lap. Later championships unlock on medals won, so the loose
+surfaces and the formula cars arrive once your drawing hand has had some practice. Where a
+circuit admits more than one class you pick before drawing, and results are filed per class —
+a lap in a rally car around a GT circuit is a different problem.
+
+**Skill events** are the other mode: no opponents, one lap, and a course strewn with balloons
+placed deliberately *off* the racing line. The fast line stops being automatically the right
+answer, because every detour has to be paid back somewhere else.
+
+**Sound is synthesized, not sampled** — oscillators and filtered noise, so it costs no bytes and
+cannot fall out of sync with the physics. The tyre squeal is driven by the same understeer value
+the grip budget produces, so it starts exactly when the tyres actually let go.
 
 Cars are drawn per class rather than tinted from one shape: a rally hatchback with light pods
 and a roof spoiler, a GT coupe with haunches and a swan-neck wing, an open-wheeler with
@@ -43,7 +53,7 @@ npm run dev        # unminified
 ```
 
 Open `dist/index.html` in any browser, or add it to your iPhone home screen for full-screen
-play. No CDN, no external requests, no network at runtime. The whole game is ~57 kB.
+play. No CDN, no external requests, no network at runtime. The whole game is ~72 kB.
 
 ## Verification
 
@@ -65,8 +75,8 @@ off a technical circuit, and a planning margin that inverted the entire AI field
 
 It also models a *realistic* stroke, not an idealised one — centreline-ish path, finger wobble,
 and braking that begins AT the corner rather than before it. That distinction mattered: against
-the idealised stroke everything looked fine, while a realistic one finished last on all eight
-tracks sliding 24-30 s a race. See "Why the player's car used to drift" below.
+the idealised stroke everything looked fine, while a realistic one finished last on every track,
+sliding 24-30 s a race. See "Why the player's car used to drift" below.
 
 `npm run playtest [track]` traces a real stroke with pointer events and captures
 `shots/<track>/*.png`.
@@ -106,7 +116,9 @@ cut the slip-angle visual — at its old coefficient an understeering car plough
 | `src/vehicle.ts` | the physics: friction circle, tyre falloff, path following, turbo |
 | `src/ai.ts` | racing-line optimiser + speed profile; opponents share the player's physics |
 | `src/race.ts` | grid, clock, contact, headless sim for medal calibration |
-| `src/render.ts` | baked track layer, speed-coded line, skid marks, particles |
+| `src/render.ts` | baked track layer, speed-coded line, skid marks, particles, balloons |
+| `src/audio.ts` | synthesized engine, tyre squeal, rumble, turbo, cues |
+| `src/skill.ts` | balloon skill events and their placement |
 | `src/game.ts` | phases, input, camera, HUD |
 | `tools/tune.ts` | physics harness |
 | `tools/playtest.mjs` | browser playtest |

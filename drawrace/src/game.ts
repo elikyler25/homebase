@@ -1,10 +1,12 @@
 // Game shell: track select -> draw -> race -> results, plus input, camera and HUD.
 
 import { DRIVER_POOL } from "./ai";
+import { GameAudio } from "./audio";
 import { RacingLine, RawSample } from "./line";
 import { Vec2, clamp, formatGap, formatTime, lerp, vdist } from "./math";
 import { Race, medalFor, referenceTime } from "./race";
 import { Renderer } from "./render";
+import { BALLOON_RADIUS, Balloon, SKILL_EVENTS, SkillEvent, placeBalloons } from "./skill";
 import { Track } from "./track";
 import { TRACKS } from "./tracks";
 import { CAR_CLASSES, CarClass } from "./vehicle";
@@ -33,18 +35,45 @@ const CHAMPIONSHIPS: Championship[] = [
 interface Progress {
   best: Record<string, number>;
   medals: Record<string, "gold" | "silver" | "bronze">;
+  /** Best balloon count per skill event. */
+  balloons?: Record<string, number>;
+  muted?: boolean;
 }
 
-const STORE_KEY = "drawrace.progress.v1";
+const STORE_KEY = "drawrace.progress.v2";
+const STORE_KEY_V1 = "drawrace.progress.v1";
+
+/**
+ * Results are keyed by circuit AND car class. A lap in a rally car around a GT
+ * circuit is a different problem, so filing both under the circuit alone would
+ * let a slow car's time overwrite a fast one's and make "best" meaningless.
+ */
+const resultKey = (trackId: string, classId: string): string => `${trackId}:${classId}`;
 
 function loadProgress(): Progress {
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) return { best: {}, medals: {}, ...JSON.parse(raw) };
+    // Migrate a v1 profile: those entries were keyed by circuit alone, and were
+    // always driven in that circuit's default class.
+    const old = localStorage.getItem(STORE_KEY_V1);
+    if (old) {
+      const p = JSON.parse(old) as Progress;
+      const out: Progress = { best: {}, medals: {}, muted: p.muted };
+      const defaultClass = (id: string) =>
+        TRACKS.find((t) => t.id === id)?.classes[0] ?? "gt";
+      for (const [id, v] of Object.entries(p.best ?? {})) {
+        out.best[resultKey(id, defaultClass(id))] = v;
+      }
+      for (const [id, v] of Object.entries(p.medals ?? {})) {
+        out.medals[resultKey(id, defaultClass(id))] = v;
+      }
+      return out;
+    }
   } catch {
     /* private mode, corrupt payload — a fresh profile is the right fallback */
   }
-  return { best: {}, medals: {} };
+  return { best: {}, medals: {}, balloons: {} };
 }
 
 function saveProgress(p: Progress): void {
@@ -71,6 +100,12 @@ export class Game {
   /** Camera scale at which the whole circuit fits; the race camera works off it. */
   private fitScale = 2;
   private progress = loadProgress();
+  private audio = new GameAudio();
+  /** Non-null when the current event is a balloon run rather than a race. */
+  private skill: SkillEvent | null = null;
+  private balloons: Balloon[] = [];
+  /** Last countdown integer announced, so pips fire once each. */
+  private lastPip = 99;
 
   // Drawing state
   private drawing = false;
@@ -91,6 +126,8 @@ export class Game {
       this.renderer.resize();
       this.fitCamera(true);
     });
+    this.audio.setEnabled(!this.progress.muted);
+    this.syncSoundButton();
     this.buildTrackMenu();
     this.setPhase("menu");
     requestAnimationFrame(this.frame);
@@ -104,6 +141,7 @@ export class Game {
       $(id).addEventListener("click", () => this.setPhase("menu"));
     }
     $("btn-clear").addEventListener("click", () => this.resetStroke());
+    $("btn-sound").addEventListener("click", () => this.toggleSound());
     $("btn-skip").addEventListener("click", () => this.finishRaceFast());
     $("btn-turbo").addEventListener("click", () => this.tryTurbo());
     $("btn-next").addEventListener("click", () => {
@@ -120,9 +158,35 @@ export class Game {
     });
   }
 
-  /** Total medals won, which is what gates the later championships. */
+  /**
+   * Circuits with at least one medal. Deliberately counts circuits rather than
+   * circuit-class pairs: otherwise re-running one track in all three cars would
+   * unlock the whole career without ever seeing a second layout.
+   */
   private get medalCount(): number {
-    return Object.keys(this.progress.medals).length;
+    const seen = new Set<string>();
+    for (const k of Object.keys(this.progress.medals)) seen.add(k.split(":")[0]);
+    return seen.size;
+  }
+
+  /** Best medal earned on a circuit in any class, for the menu card. */
+  private bestMedalFor(trackId: string): "gold" | "silver" | "bronze" | undefined {
+    const order = { bronze: 1, silver: 2, gold: 3 } as const;
+    let best: "gold" | "silver" | "bronze" | undefined;
+    for (const [k, v] of Object.entries(this.progress.medals)) {
+      if (k.split(":")[0] !== trackId) continue;
+      if (!best || order[v] > order[best]) best = v;
+    }
+    return best;
+  }
+
+  private bestTimeFor(trackId: string): number | undefined {
+    let best: number | undefined;
+    for (const [k, v] of Object.entries(this.progress.best)) {
+      if (k.split(":")[0] !== trackId) continue;
+      if (best === undefined || v < best) best = v;
+    }
+    return best;
   }
 
   private isUnlocked(tier: number): boolean {
@@ -130,11 +194,25 @@ export class Game {
     return !c || this.medalCount >= c.needs;
   }
 
+  private toggleSound(): void {
+    const muted = !this.progress.muted;
+    this.progress.muted = muted;
+    saveProgress(this.progress);
+    this.audio.setEnabled(!muted);
+    this.syncSoundButton();
+  }
+
+  private syncSoundButton(): void {
+    const muted = !!this.progress.muted;
+    $("btn-sound").textContent = muted ? "Sound off" : "Sound on";
+    $("btn-sound").classList.toggle("muted", muted);
+  }
+
   private buildTrackMenu(): void {
     const list = $("track-list");
     list.innerHTML = "";
     const won = this.medalCount;
-    const golds = Object.values(this.progress.medals).filter((m) => m === "gold").length;
+    const golds = TRACKS.filter((t) => this.bestMedalFor(t.id) === "gold").length;
     $("career-progress").textContent =
       `${won}/${TRACKS.length} medals · ${golds} gold`;
 
@@ -152,7 +230,7 @@ export class Game {
           }</div>
         </div>
         <div class="th-count">${
-          defs.filter((d) => this.progress.medals[d.id]).length
+          defs.filter((d) => this.bestMedalFor(d.id)).length
         }/${defs.length}</div>
       `;
       list.appendChild(head);
@@ -161,8 +239,8 @@ export class Game {
         const card = document.createElement("button");
         card.className = `track-card${open ? "" : " locked"}`;
         if (!open) card.disabled = true;
-        const medal = this.progress.medals[def.id];
-        const best = this.progress.best[def.id];
+        const medal = this.bestMedalFor(def.id);
+        const best = this.bestTimeFor(def.id);
         card.innerHTML = `
           <div class="tc-top">
             <span class="tc-name">${def.name}</span>
@@ -170,7 +248,7 @@ export class Game {
           </div>
           <div class="tc-meta">
             <span class="pill surf-${def.surface}">${def.surface}</span>
-            <span class="pill">${CAR_CLASSES[def.classes[0]].name}</span>
+            <span class="pill">${def.classes.map((c) => CAR_CLASSES[c].name).join(" / ")}</span>
             <span class="pill">${def.laps} laps</span>
           </div>
           <div class="tc-best">${best ? `Best ${formatTime(best)}` : "Not raced"}</div>
@@ -178,17 +256,83 @@ export class Game {
         if (open) card.addEventListener("click", () => this.selectTrack(def.id));
         list.appendChild(card);
       }
+
+      for (const ev of SKILL_EVENTS.filter((e) => e.tier === champ.tier)) {
+        const card = document.createElement("button");
+        card.className = `track-card skill${open ? "" : " locked"}`;
+        if (!open) card.disabled = true;
+        const key = resultKey(ev.id, ev.classId);
+        const medal = this.progress.medals[key];
+        const best = this.progress.balloons?.[key];
+        card.innerHTML = `
+          <div class="tc-top">
+            <span class="tc-name">${ev.name}</span>
+            ${medal ? `<span class="medal ${medal}"></span>` : ""}
+          </div>
+          <div class="tc-meta">
+            <span class="pill skillpill">Balloons</span>
+            <span class="pill">${CAR_CLASSES[ev.classId].name}</span>
+            <span class="pill">${ev.balloons.length} to pop</span>
+          </div>
+          <div class="tc-best">${
+            best !== undefined ? `Best ${best}/${ev.balloons.length}` : "Not attempted"
+          }</div>
+        `;
+        if (open) card.addEventListener("click", () => this.selectSkill(ev.id));
+        list.appendChild(card);
+      }
     }
   }
 
-  private selectTrack(id: string): void {
+  private selectSkill(eventId: string): void {
+    const ev = SKILL_EVENTS.find((e) => e.id === eventId);
+    if (!ev) return;
+    this.skill = ev;
+    const def = TRACKS.find((t) => t.id === ev.trackId) ?? TRACKS[0];
+    this.track = new Track(def);
+    this.carClass = CAR_CLASSES[ev.classId] ?? CAR_CLASSES.gt;
+    this.renderer.setTrack(this.track);
+    this.balloons = placeBalloons(this.track, ev.balloons);
+    this.reference = Infinity;
+    $("hud-track").textContent = ev.name;
+    $("class-row").classList.add("hidden");
+    this.startDraw();
+  }
+
+  private selectTrack(id: string, classId?: string): void {
+    this.skill = null;
+    this.balloons = [];
     const def = TRACKS.find((t) => t.id === id) ?? TRACKS[0];
     this.track = new Track(def);
-    this.carClass = CAR_CLASSES[def.classes[0]] ?? CAR_CLASSES.gt;
+    const wanted = classId && def.classes.includes(classId) ? classId : def.classes[0];
+    this.carClass = CAR_CLASSES[wanted] ?? CAR_CLASSES.gt;
     this.renderer.setTrack(this.track);
+    // Medal thresholds are relative to a perfect lap IN THIS CAR, so switching
+    // class re-bases them: a gold in the rally car is a gold for the rally car.
     this.reference = referenceTime(this.track, this.carClass.id);
     $("hud-track").textContent = def.name;
+    this.buildClassPicker();
     this.startDraw();
+  }
+
+  private buildClassPicker(): void {
+    const row = $("class-row");
+    const defs = this.track.def.classes;
+    row.innerHTML = "";
+    row.classList.toggle("hidden", defs.length < 2);
+    for (const id of defs) {
+      const car = CAR_CLASSES[id];
+      if (!car) continue;
+      const chip = document.createElement("button");
+      chip.className = `class-chip${id === this.carClass.id ? " on" : ""}`;
+      chip.innerHTML =
+        `<span class="cc-dot" style="background:${car.colour}"></span>${car.name}`;
+      chip.addEventListener("click", () => {
+        if (id === this.carClass.id) return;
+        this.selectTrack(this.track.def.id, id);
+      });
+      row.appendChild(chip);
+    }
   }
 
   // ---------------------------------------------------------------- phases
@@ -236,11 +380,22 @@ export class Game {
       this.warn("That line is too short to race — trace the whole lap");
       return;
     }
-    const drivers = DRIVER_POOL.slice(0, 4);
-    this.race = new Race(this.track, line, this.carClass, drivers, this.carClass);
+    // A skill run is a puzzle, not a race: no opponents, one lap.
+    const drivers = this.skill ? [] : DRIVER_POOL.slice(0, 4);
+    for (const b of this.balloons) b.popped = false;
+    this.race = new Race(
+      this.track,
+      line,
+      this.carClass,
+      drivers,
+      this.carClass,
+      this.skill ? this.skill.laps : this.track.def.laps,
+    );
     this.renderer.clearMarks();
     this.setPhase("race");
     this.previewLine = line;
+    this.lastPip = 99;
+    this.audio.startRace();
   }
 
   private finishRaceFast(): void {
@@ -254,15 +409,21 @@ export class Game {
     if (!this.race) return;
     const rows = this.race.standings();
     const me = rows.find((r) => r.isPlayer)!;
+
+    if (this.skill) {
+      this.showSkillResults(me.time);
+      return;
+    }
     const medal = medalFor(me.time, this.reference, this.track.def.medals);
 
-    const prevBest = this.progress.best[this.track.def.id];
+    const key = resultKey(this.track.def.id, this.carClass.id);
+    const prevBest = this.progress.best[key];
     const improved = !prevBest || me.time < prevBest;
-    if (improved) this.progress.best[this.track.def.id] = me.time;
+    if (improved) this.progress.best[key] = me.time;
     const order = { bronze: 1, silver: 2, gold: 3 } as const;
-    const prevMedal = this.progress.medals[this.track.def.id];
+    const prevMedal = this.progress.medals[key];
     if (medal && (!prevMedal || order[medal] > order[prevMedal])) {
-      this.progress.medals[this.track.def.id] = medal;
+      this.progress.medals[key] = medal;
     }
     saveProgress(this.progress);
 
@@ -293,6 +454,60 @@ export class Game {
       )
       .join("");
 
+    this.audio.stopRace();
+    this.audio.cue("finish");
+    this.setPhase("results");
+  }
+
+  /**
+   * Skill runs are graded on balloons collected, not on lap time. There is no
+   * reference lap to scale against — the ideal line through a given set of
+   * balloons is a different problem for every layout — so the grade is simply
+   * how much of the course you actually cleared.
+   */
+  private showSkillResults(time: number): void {
+    const ev = this.skill!;
+    const got = this.balloonsPopped;
+    const total = this.balloons.length;
+    const frac = total ? got / total : 0;
+    const medal: "gold" | "silver" | "bronze" | null =
+      got === total ? "gold" : frac >= 0.8 ? "silver" : frac >= 0.6 ? "bronze" : null;
+
+    const key = resultKey(ev.id, ev.classId);
+    this.progress.balloons = this.progress.balloons ?? {};
+    const prev = this.progress.balloons[key];
+    const improved = prev === undefined || got > prev;
+    if (improved) this.progress.balloons[key] = got;
+    const order = { bronze: 1, silver: 2, gold: 3 } as const;
+    const prevMedal = this.progress.medals[key];
+    if (medal && (!prevMedal || order[medal] > order[prevMedal])) {
+      this.progress.medals[key] = medal;
+    }
+    saveProgress(this.progress);
+
+    $("result-pos").textContent = `${got}/${total}`;
+    $("result-time").textContent = formatTime(time);
+    $("result-ref").textContent =
+      got === total ? "Every balloon popped" : `${total - got} missed`;
+    $("result-best").textContent = improved
+      ? "New best"
+      : `Best ${prev}/${total}`;
+    const medalEl = $("result-medal");
+    medalEl.className = medal ? `medal big ${medal}` : "medal big none";
+    $("result-medal-label").textContent = medal
+      ? medal[0].toUpperCase() + medal.slice(1)
+      : "No medal";
+    $("result-table").innerHTML = `
+      <div class="row me">
+        <span class="pos">·</span>
+        <span class="dot" style="background:${this.carClass.colour}"></span>
+        <span class="nm">${ev.name}</span>
+        <span class="tm">${got}/${total}</span>
+        <span class="gp"></span>
+      </div>`;
+
+    this.audio.stopRace();
+    this.audio.cue("finish");
     this.setPhase("results");
   }
 
@@ -330,6 +545,7 @@ export class Game {
   }
 
   private onPointerDown(e: PointerEvent): void {
+    this.audio.unlock();
     if (this.phase === "race") {
       this.tryTurbo();
       return;
@@ -413,6 +629,7 @@ export class Game {
   private tryTurbo(): void {
     if (this.phase !== "race" || !this.race) return;
     if (this.race.deployPlayerTurbo()) {
+      this.audio.cue("turbo");
       $("btn-turbo").classList.add("fired");
       setTimeout(() => $("btn-turbo").classList.remove("fired"), 220);
     }
@@ -499,6 +716,16 @@ export class Game {
         }
       }
       this.renderer.stepParticles(dt);
+      const pv = this.race.player.vehicle;
+      if (this.skill) this.popBalloons(pv.pos);
+      this.audio.update({
+        speed: pv.telemetry.speed,
+        maxSpeed: this.carClass.maxSpeed,
+        understeer: pv.telemetry.understeer,
+        gripBudget: this.carClass.grip * this.track.surface.grip * 9.81,
+        onTrack: pv.telemetry.onTrack,
+        turbo: pv.turboTimer > 0,
+      });
       this.updateRaceHud();
       this.raceCamera(dt);
       if (this.race.finished) this.showResults();
@@ -516,6 +743,8 @@ export class Game {
     const r = this.renderer;
     r.beginFrame();
     r.drawTrackLayer();
+
+    if (this.skill) r.drawBalloons(this.balloons, BALLOON_RADIUS, this.pulse);
 
     if (this.phase === "draw") {
       if (this.previewLine) r.drawLine(this.previewLine, { alpha: 0.95 });
@@ -564,6 +793,29 @@ export class Game {
     ctx.restore();
   }
 
+  private popBalloons(carPos: Vec2): void {
+    for (const b of this.balloons) {
+      if (b.popped) continue;
+      const dx = b.pos.x - carPos.x;
+      const dy = b.pos.y - carPos.y;
+      if (dx * dx + dy * dy <= BALLOON_RADIUS * BALLOON_RADIUS) {
+        b.popped = true;
+        this.audio.cue("pip");
+        for (let i = 0; i < 6; i++) {
+          this.renderer.addParticle(
+            b.pos,
+            { x: (Math.random() - 0.5) * 22, y: (Math.random() - 0.5) * 22 },
+            "tyre",
+          );
+        }
+      }
+    }
+  }
+
+  private get balloonsPopped(): number {
+    return this.balloons.filter((b) => b.popped).length;
+  }
+
   private updateDrawProgress(): void {
     const pct = clamp((this.lapCovered / this.track.length) * 100, 0, 100);
     ($("draw-bar") as HTMLElement).style.width = `${pct}%`;
@@ -575,8 +827,12 @@ export class Game {
     const rows = this.race.standings();
     const me = rows.find((r) => r.isPlayer)!;
     const v = this.race.player.vehicle;
-    $("hud-pos").textContent = `${me.position}/${rows.length}`;
-    $("hud-lap").textContent = `${clamp(v.currentLap, 1, this.track.def.laps)}/${this.track.def.laps}`;
+    $("hud-pos").textContent = this.skill
+      ? `${this.balloonsPopped}/${this.balloons.length}`
+      : `${me.position}/${rows.length}`;
+    $("hud-pos-label").textContent = this.skill ? "Balloons" : "Pos";
+    const laps = this.race.laps;
+    $("hud-lap").textContent = `${clamp(v.currentLap, 1, laps)}/${laps}`;
     $("hud-time").textContent = formatTime(this.race.elapsed);
     $("hud-speed").textContent = `${Math.round(v.telemetry.speed * 3.6)}`;
     ($("turbo-fill") as HTMLElement).style.width = `${Math.round(v.turboCharge * 100)}%`;
@@ -587,6 +843,10 @@ export class Game {
       const n = Math.ceil(this.race.countdown - 0.6);
       cd.textContent = n > 0 ? String(n) : "GO";
       cd.classList.remove("hidden");
+      if (n !== this.lastPip) {
+        this.lastPip = n;
+        this.audio.cue(n > 0 ? "pip" : "go");
+      }
     } else {
       cd.classList.add("hidden");
     }

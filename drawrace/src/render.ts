@@ -219,20 +219,30 @@ export class Renderer {
     }
     c.restore();
 
+    /**
+     * The road surface as a ring, built as TWO closed subpaths — outer edge and
+     * inner edge — filled even-odd.
+     *
+     * Building it as one path (outer forward, inner backward, closePath) leaves a
+     * degenerate edge running straight across the track at s = 0 where the two
+     * ends meet. Nonzero winding fills it correctly, but the coincident boundary
+     * edges there get partial antialiasing coverage, and the result was a thin
+     * dark hairline drawn across the start/finish line on every circuit. Two
+     * separate rings have no such edge to leave a gap along.
+     */
     const ribbon = (inset: number): void => {
       c.beginPath();
-      const L = track.left;
-      const R = track.right;
-      const push = (idx: number, sign: number, first: boolean) => {
-        const smp = track.samples[idx];
-        const p = vadd(smp.pos, vscale(smp.nor, sign * (track.halfWidth - inset)));
-        const q = this.toLayer(p);
-        if (first) c.moveTo(q.x, q.y);
-        else c.lineTo(q.x, q.y);
-      };
-      for (let i = 0; i < L.length; i++) push(i, 1, i === 0);
-      for (let i = R.length - 1; i >= 0; i--) push(i, -1, false);
-      c.closePath();
+      const n = track.samples.length;
+      for (const sign of [1, -1]) {
+        for (let i = 0; i < n; i++) {
+          const smp = track.samples[i];
+          const p = vadd(smp.pos, vscale(smp.nor, sign * (track.halfWidth - inset)));
+          const q = this.toLayer(p);
+          if (i === 0) c.moveTo(q.x, q.y);
+          else c.lineTo(q.x, q.y);
+        }
+        c.closePath();
+      }
     };
 
     // Trackside cover, outside the run-off. Placed by walking the centreline and
@@ -245,7 +255,7 @@ export class Renderer {
     c.save();
     c.fillStyle = pal.runoff;
     ribbon(-5.5);
-    c.fill();
+    c.fill("evenodd");
     c.restore();
 
     // No canvas shadow on the road fill. The ribbon is an annulus drawn as one
@@ -257,13 +267,13 @@ export class Renderer {
     c.save();
     c.fillStyle = pal.road;
     ribbon(0);
-    c.fill();
+    c.fill("evenodd");
     c.restore();
 
     // Surface grain: fine speckle, clipped to the road.
     c.save();
     ribbon(0);
-    c.clip();
+    c.clip("evenodd");
     c.fillStyle = pal.roadAlt;
     for (let i = 0; i < 1400; i++) {
       const x = pseudo(i * 1.37 + 3) * w;
@@ -578,6 +588,51 @@ export class Renderer {
       ctx.closePath();
       ctx.fill();
     }
+    ctx.restore();
+  }
+
+  /** Balloons for skill runs: bright, bobbing, unmistakably a target. */
+  drawBalloons(
+    balloons: { pos: Vec2; popped: boolean }[],
+    radius: number,
+    pulse: number,
+  ): void {
+    const ctx = this.ctx;
+    ctx.save();
+    balloons.forEach((b, i) => {
+      if (b.popped) return;
+      const bob = Math.sin(pulse * Math.PI * 2 + i * 0.7) * 0.22;
+      const r = radius * 0.62;
+      const x = b.pos.x;
+      const y = b.pos.y + bob;
+
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = "#000";
+      ctx.beginPath();
+      ctx.ellipse(x + 0.4, b.pos.y + 1.4, r * 0.8, r * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = "#ffe27a";
+      ctx.beginPath();
+      ctx.arc(x, y, r * 1.7, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+      const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+      g.addColorStop(0, "#fff6cf");
+      g.addColorStop(0.55, "#ffcf3d");
+      g.addColorStop(1, "#e08a12");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.beginPath();
+      ctx.arc(x - r * 0.32, y - r * 0.36, r * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    });
     ctx.restore();
   }
 
