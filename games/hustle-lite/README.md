@@ -224,7 +224,7 @@ retune. If matches ever start feeling passive again, look here first.
 | `src/pixelfont.css` | the bitmap typeface, embedded as a data URI |
 | `index.html` | dev entry point, loads `src/*` as modules |
 | `build.py` | inlines everything into `dist/` (stdlib only) |
-| `tests/engine.test.mjs` | 182 assertions locking down the solo RPS web |
+| `tests/engine.test.mjs` | 184 assertions locking down the solo RPS web |
 | `tests/squad.test.mjs` | 79 assertions for teams, assists, tagging and lives |
 | `tests/balance.mjs` | balance readout: dominant strategies, dead moves, matchup matrix |
 
