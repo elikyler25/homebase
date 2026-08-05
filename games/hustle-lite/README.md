@@ -35,10 +35,18 @@ stays fixed to the bottom of the window while the rest of the page flows.
 
 - **A camera that follows.** It centres between the fighters and zooms to the distance
   between them, so a close exchange fills the screen instead of playing out as two small
-  figures at the bottom of an empty stage. The backdrop parallaxes at a third of camera
-  speed, which is what makes the movement game legible.
-- **Every exchange is kept.** Drag the frame slider or press <kbd>←</kbd>/<kbd>→</kbd> to
-  walk it a frame at a time; **Replay** re-runs it at speed.
+  figures at the bottom of an empty stage. How far it is *allowed* to push in matters as
+  much as how far out: held at most of the arena, a point-blank exchange is two small
+  figures in a lot of black, which is the single thing that makes a fight feel far away.
+  The backdrop parallaxes at a third of camera speed, which is what makes the movement game
+  legible.
+- **The arena rehearses the move you are holding.** Point at a move and your fighter throws
+  it on a loop against a stand-in who just stands there, tagged `PREVIEW`, with a line for
+  what happened: *reaches on f4 · 7 dmg*, or *falls short from here*. See [Preview, not
+  replay](#preview-not-replay).
+- **Every exchange is kept.** **Last exchange** brings the one that just resolved back,
+  tagged as the record it is. Drag the frame slider or press <kbd>←</kbd>/<kbd>→</kbd> to
+  walk either view a frame at a time; **Replay** re-runs it at speed.
 - **Boxes** overlays hurtboxes in blue and live hitboxes in red, plus dashed outlines for
   invulnerability and parry windows. It is the quickest way to see why something whiffed.
 - **After-images** ghost the frames just gone, so a swing reads as a swing.
@@ -49,6 +57,35 @@ stays fixed to the bottom of the window while the rest of the page flows.
   anticipates, commits and settles. **Speed** in the header runs it at 0.5x, 1x or 1.75x.
 - Frame advantage is printed next to your fighter once the exchange settles, because it is
   the single thing that decides the next turn.
+
+## Preview, not replay
+
+The arena during the planning phase used to hold the exchange that had just finished. That
+is the wrong thing on screen at the wrong moment: the one time you are actually thinking is
+the one time you are shown a decision you have already made.
+
+It now rehearses the move you are pointing at — your fighter throwing it from where you are
+actually standing, against a stand-in who does nothing, looping until you consider another
+one. Focus is sticky, so sliding the cursor off a button does not throw away the rehearsal
+you were reading.
+
+Two things keep it honest:
+
+- **The stand-in is inert, and drawn as a ghost.** It does not play their likeliest reply.
+  A preview that guessed for them would be a prediction dressed up as a fact, and the threat
+  board already answers that question properly.
+- **It is the same `resolveTurn` machinery the fight runs** — one `simulate()` call against a
+  do-nothing opponent. A test pins the preview of a move against a real exchange where the
+  rival plays Hustle (no guard, no parry, no armour, no hitbox — genuinely inert) and asserts
+  the same contact frame, the same outcome and the same damage.
+
+Impact is quieter in a rehearsal: the flash and the damage number stay, the screen shake and
+the confetti do not. Shaking the screen once a second on a loop is distracting, and it is
+also a lie — nothing has been hit yet.
+
+The exchange that just resolved is still one press away on **Last exchange**, and both views
+are labelled, because a preview and a record look identical in an arena and mistaking one for
+the other is the whole bug.
 
 ## Committing a move
 
@@ -224,8 +261,8 @@ retune. If matches ever start feeling passive again, look here first.
 | `src/pixelfont.css` | the bitmap typeface, embedded as a data URI |
 | `index.html` | dev entry point, loads `src/*` as modules |
 | `build.py` | inlines everything into `dist/` (stdlib only) |
-| `tests/engine.test.mjs` | 184 assertions locking down the solo RPS web |
-| `tests/squad.test.mjs` | 79 assertions for teams, assists, tagging and lives |
+| `tests/engine.test.mjs` | 195 assertions locking down the solo RPS web |
+| `tests/squad.test.mjs` | 85 assertions for teams, assists, tagging and lives |
 | `tests/balance.mjs` | balance readout: dominant strategies, dead moves, matchup matrix |
 
 ## Working on it

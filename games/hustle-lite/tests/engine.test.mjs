@@ -7,7 +7,7 @@
 import {
   CHARS, CHAR_IDS, RULES, newMatch, nextRound, resolveTurn, threatBoard, availableMoves,
   chooseAiMove, verdictFor, rng, riskProfile, neutralSet, moveDuration, moveOf, moveTable,
-  yomiChain, postMortem, bestAnswer,
+  yomiChain, postMortem, bestAnswer, previewTurn,
 } from '../src/engine.js';
 
 let pass = 0, fail = 0;
@@ -516,6 +516,59 @@ ok('the AI can play any character',
   const b = resolveTurn(s, ['jab', 'grab']);
   ok('resolution is deterministic', JSON.stringify(a.summary) === JSON.stringify(b.summary));
   ok('resolution does not mutate the input state', s.fighters[0].hp === MAXHP && s.turn === 1);
+}
+
+/* ---------------------------------------------------------- move preview */
+
+/*
+ * The planning arena rehearses the move you are holding. If that rehearsal is not the same
+ * simulation the fight runs, it is a decoration that lies — so pin it to a real exchange
+ * against Hustle, which has no guard, no parry, no armour and no hitbox and is therefore
+ * exactly the inert opponent the preview stands one up against.
+ */
+{
+  const at = (d) => {
+    const s = newMatch('duelist', 'duelist');
+    s.fighters[0].x = 500 - d / 2;
+    s.fighters[1].x = 500 + d / 2;
+    return s;
+  };
+  const s = at(100);
+  const p = previewTurn(s, 0, 'jab');
+  const real = resolveTurn(s, ['jab', 'hustle']);
+  ok('a preview is the real simulation', p !== null);
+  eq('  ...landing on the same frame as the fight', p.contactAt, real.summary[0].contactAt);
+  eq('  ...with the same outcome', p.outcome, real.summary[0].outcome);
+  eq('  ...and the same damage', p.dmg, real.summary[0].dmgDealt);
+  eq('  ...running exactly as long as the move', p.total, moveDuration(moveOf('duelist', 'jab')));
+
+  const far = previewTurn(at(600), 0, 'jab');
+  eq('a preview whiffs when the move cannot reach', far.outcome, 'whiff');
+  eq('  ...and connects when it can', previewTurn(at(90), 0, 'jab').outcome, 'hit');
+
+  const before = JSON.stringify(s);
+  previewTurn(s, 0, 'overhead');
+  previewTurn(s, 1, 'grab');
+  eq('previewing never touches the real state', JSON.stringify(s), before);
+
+  // Every legal option must be previewable — the arena calls this on hover, and a null
+  // there is a blank screen at the exact moment the player is deciding.
+  const gaps = [80, 200, 400].map((d) => at(d));
+  let previewable = 0, opts = 0;
+  for (const g of gaps) {
+    for (const m of availableMoves(g, 0)) {
+      opts++;
+      const pv = previewTurn(g, 0, m.id);
+      if (pv && pv.total >= 1 && pv.timeline.length === pv.total + 1) previewable++;
+    }
+  }
+  eq('every move previews cleanly at every range', previewable, opts);
+
+  const dash = previewTurn(at(400), 0, 'closeIn');
+  ok('a movement preview actually moves',
+    Math.abs(dash.timeline[dash.total].x[0] - dash.timeline[0].x[0]) > 50);
+  eq('  ...while the stand-in stays put',
+    dash.timeline[dash.total].x[1], dash.timeline[0].x[1]);
 }
 
 /* ------------------------------------------------------------ full match */

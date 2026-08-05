@@ -109,6 +109,11 @@ function poseFor(phase, m, k = 0) {
       const step = Math.sin(k * 0.55);
       return { lean: 0.2 + step * 0.1, crouch: 0.12 + Math.abs(step) * 0.06, arm: -0.75 + step * 0.25, reach: 0.34 };
     }
+    case 'idle': {
+      // The stand-in opponent in a move preview: breathing, doing nothing.
+      const b = Math.sin(k * 0.16);
+      return { ...REST, crouch: 0.08 + b * 0.03, arm: -0.7 + b * 0.06 };
+    }
     case 'hustle': {
       const flourish = Math.sin(k * 0.42);
       return { lean: -0.12 + flourish * 0.06, crouch: 0.05, arm: -2.7 + flourish * 0.55, reach: 0.5 };
@@ -317,9 +322,12 @@ export class Stage {
    */
   aimCamera(x0, x1, snap = false) {
     const gap = Math.abs(x0 - x1);
-    const visW = Math.min(W + 40, Math.max(840, gap + 620));
+    // How much of the arena to show. The floor matters as much as the ceiling: hold it at
+    // most of the stage and a close exchange is two small figures in a lot of black, which
+    // is the single thing that makes the fight feel far away.
+    const visW = Math.min(W + 40, Math.max(520, gap + 460));
     const target = {
-      scale: Math.min(this.cssW / visW, this.cssH / 260),
+      scale: Math.min(this.cssW / visW, this.cssH / 210),
       x: Math.max(RULES.ARENA_MIN - 30, Math.min(RULES.ARENA_MAX + 30, (x0 + x1) / 2)),
     };
     if (!this.cam || snap) this.cam = { ...target };
@@ -369,18 +377,32 @@ export class Stage {
   /** Show a static neutral pose — used between turns while you are choosing. */
   setPreview(state, myMove, theirBestMove, showThreat) {
     this.playing = false;
+    this.loop = false;
+    this.hold = 0;
+    this.rehearsal = null;
     this.mode = 'preview';
     this.state = state;
     this.preview = { state, myMove, theirBestMove, showThreat };
     this.draw();
   }
 
-  play(result, state, adv = null) {
+  /**
+   * Run a resolved timeline.
+   *
+   * `opts.rehearsal` marks it as a preview of a move you have not committed to rather than
+   * a record of one you did: the stand-in opponent is ghosted, the caption says so, and it
+   * loops, because a rehearsal you can only watch once is no better than a still.
+   */
+  play(result, state, adv = null, opts = {}) {
     if (state) this.state = state;
     this.snapCam = true;
     this.result = result;
     this.adv = adv;
     this.mode = 'playback';
+    this.rehearsal = opts.rehearsal
+      ? { owner: opts.owner ?? 0, caption: opts.caption ?? '', name: opts.name ?? '' } : null;
+    this.loop = !!opts.loop;
+    this.hold = 0;
     this.frame = 0;
     this.acc = 0;
     this.hitstop = 0;
@@ -394,6 +416,7 @@ export class Stage {
   seek(f) {
     if (!this.result) return;
     this.playing = false;
+    this.hold = 0;                 // dragging the bar takes the loop off autopilot
     this.mode = 'playback';
     this.frame = Math.max(0, Math.min(this.result.total, f));
     this.trails.length = 0;
@@ -420,10 +443,22 @@ export class Stage {
         this.acc += dt * this.fps;
         while (this.acc >= 1) {
           this.acc -= 1;
-          if (this.frame >= this.result.total) { this.playing = false; this.onEnd?.(); break; }
+          if (this.frame >= this.result.total) {
+            // A looping rehearsal holds on the last frame long enough to read it, then
+            // runs again. A real exchange stops dead, because it only happened once.
+            if (this.loop) { this.playing = false; this.hold = 0.75; break; }
+            this.playing = false; this.onEnd?.(); break;
+          }
           this.frame++;
           this.enterFrame(this.frame);
         }
+      }
+    } else if (this.hold > 0) {
+      this.hold -= dt;
+      if (this.hold <= 0) {
+        this.frame = 0; this.acc = 0; this.trails.length = 0; this.floats.length = 0;
+        this.playing = true;
+        this.onFrame?.(0);
       }
     }
     this.draw();
@@ -443,27 +478,31 @@ export class Stage {
         });
       }
     }
+    // A rehearsal keeps the readable part of impact — the flash, the damage number — and
+    // drops the theatre. Shaking the screen every time a looping preview comes round is
+    // both distracting and a lie: nothing has actually been hit.
+    const punch = this.rehearsal ? 0 : 1;
     for (const e of tl.events) {
       const victim = tl.x[1 - e.by];
       if (e.type === 'hit') {
-        this.shake.mag = Math.min(16, 5 + e.dmg * 0.4);
-        this.hitstop = 0.09 + Math.min(0.11, e.dmg * 0.005);
-        this.confetti(victim, GROUND - 110, e.counter ? 30 : 22);
+        this.shake.mag = Math.min(16, 5 + e.dmg * 0.4) * punch;
+        this.hitstop = (0.09 + Math.min(0.11, e.dmg * 0.005)) * punch;
+        if (!this.rehearsal) this.confetti(victim, GROUND - 110, e.counter ? 30 : 22);
         this.float(victim, GROUND - 96, `${e.counter ? 'COUNTER ' : ''}${e.dmg}`, e.counter ? '#ffe066' : '#ffffff');
       } else if (e.type === 'block') {
-        this.shake.mag = 3; this.hitstop = 0.05;
+        this.shake.mag = 3 * punch; this.hitstop = 0.05 * punch;
         this.burst(victim, GROUND - 60, 8, '#9fb3c8');
         this.float(victim, GROUND - 92, 'GUARD', '#9fb3c8');
       } else if (e.type === 'armour') {
-        this.shake.mag = 4; this.hitstop = 0.06;
+        this.shake.mag = 4 * punch; this.hitstop = 0.06 * punch;
         this.burst(victim, GROUND - 60, 10, '#ffab5e');
         this.float(victim, GROUND - 92, 'ARMOUR', '#ffab5e');
       } else if (e.type === 'parry') {
-        this.shake.mag = 7; this.hitstop = 0.19;
+        this.shake.mag = 7 * punch; this.hitstop = 0.19 * punch;
         this.burst(tl.x[e.by], GROUND - 60, 22, '#7cc4ff');
         this.float(tl.x[e.by], GROUND - 100, 'PARRY', '#7cc4ff');
       } else if (e.type === 'clash') {
-        this.shake.mag = 6; this.hitstop = 0.1;
+        this.shake.mag = 6 * punch; this.hitstop = 0.1 * punch;
         this.burst((tl.x[0] + tl.x[1]) / 2, GROUND - 55, 14, '#ffd166');
       }
     }
@@ -589,9 +628,12 @@ export class Stage {
       const sub = this.playing ? Math.min(1, Math.max(0, this.acc)) : 0;
       const nx = r.timeline[Math.min(r.total, this.frame + 1)]?.x[i] ?? tl.x[i];
       const px = lerp(tl.x[i], nx, sub);
+      // In a rehearsal the other fighter is a mannequin, not a prediction. Ghosting them
+      // is what stops the preview reading as "this is what they are going to do".
+      const dummy = this.rehearsal && i !== this.rehearsal.owner;
       drawFighter(g, px, face, poseFor(ph, m, this.frame + sub), colour, {
         flash: flash ? 1 : 0,
-        ghost: ph === 'invuln' ? 0.45 : 0,
+        ghost: dummy ? 0.55 : ph === 'invuln' ? 0.45 : 0,
         down: false,
       });
       if (ph === 'parryWindow') {
@@ -627,8 +669,18 @@ export class Stage {
       g.globalAlpha = 1;
     }
 
-    this.label(`frame ${this.frame} / ${r.total}`, this.leftWorld + 34, this.topWorld + 46, '#5e5e5e', 8, 'left');
+    // The frame counter drops a line when a rehearsal header is sitting above it.
+    this.label(`frame ${this.frame} / ${r.total}`, this.leftWorld + 34,
+      this.topWorld + (this.rehearsal ? 76 : 46), '#5e5e5e', 8, 'left');
     this.label('You', tl.x[0], GROUND - 122, '#ffffff', 8);
+
+    if (this.rehearsal) {
+      this.label(`PREVIEW  ${this.rehearsal.name}`, this.leftWorld + 34, this.topWorld + 34, '#ffe000', 8, 'left');
+      // Sits a line above "You" so the two never land on top of each other at close range.
+      // The readout of what the rehearsal showed lives in the scrub row rather than up here:
+      // a third line of arena text lands on the fighters' own labels on a short window.
+      this.label('standing still', tl.x[1], GROUND - 152, '#5e5e5e', 8);
+    }
 
     // Frame advantage, printed once the exchange has settled. YOMIH puts this number
     // right next to the fighters because it is the single thing that decides the next turn.

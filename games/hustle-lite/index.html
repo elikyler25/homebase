@@ -97,9 +97,12 @@
     <div class="underbar">
       <div class="coach" id="coach" hidden></div>
       <div class="scrub" id="scrubwrap" hidden>
-        <button id="replay" type="button">▶ Replay</button>
+        <span class="tag" id="scrubtag">PREVIEW</span>
+        <span class="cap" id="scrubcap"></span>
+        <button id="replay" type="button">▶ Again</button>
         <input id="scrub" type="range" min="0" max="40" value="0" aria-label="Scrub the exchange frame by frame">
         <span id="scrubval">0f</span>
+        <button id="lastex" type="button" hidden title="Watch the exchange that just happened">Last exchange</button>
       </div>
     </div>
   </section>
@@ -197,11 +200,22 @@
     <li>At turn 70 it is time over, and whoever leads on health takes the round.</li>
   </ul>
 
+  <h3>The arena while you choose</h3>
+  <p>It is not showing you the last exchange. Point at a move and the arena
+     <strong>rehearses it</strong>: your fighter throws it, against an opponent who just
+     stands there, on a loop, tagged <strong>PREVIEW</strong>. You see the wind-up, the reach
+     and whether it even arrives from where you are standing before you spend a turn finding
+     out. The stand-in is greyed because they are a mannequin, not a prediction — what they
+     are likely to <em>do</em> is the threat board's job.</p>
+  <p>The rehearsal is the same simulation the fight runs, so it cannot flatter you. If it
+     says <em>falls short from here</em>, it falls short.</p>
+
   <h3>Reading the exchange</h3>
-  <p>Every exchange is kept after it resolves. Drag the frame slider or use <kbd>←</kbd> and
-     <kbd>→</kbd> to walk it a frame at a time, and hit <strong>Replay</strong> to watch it
-     again at speed. Turn on <strong>Boxes</strong> in the header to see hurtboxes in blue
-     and live hitboxes in red — it is the quickest way to understand why something whiffed.</p>
+  <p>Every exchange is kept after it resolves. <strong>Last exchange</strong> puts it back on
+     screen, tagged as the record it is. Drag the frame slider or use <kbd>←</kbd> and
+     <kbd>→</kbd> to walk either view a frame at a time, and hit <strong>Replay</strong> to
+     watch it again at speed. Turn on <strong>Boxes</strong> in the header to see hurtboxes in
+     blue and live hitboxes in red — it is the quickest way to understand why something whiffed.</p>
 
   <h3>Squad mode</h3>
   <p>Three fighters a side, one on point and two on the bench. Every turn you order your

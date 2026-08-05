@@ -9,7 +9,7 @@ import {
   CHARS, CHAR_IDS, RULES, DIFFICULTY, newMatch, newSquadMatch, nextRound, resolve,
   availableMoves, optionsFor, riskProfile, chooseAiMove, verdictFor, rng, moveDuration,
   moveOf, neutralSet, yomiChain, postMortem, isSquad, pointOf, benchOf, teamAlive,
-  encodeChoice, decodeChoice, choiceLabel,
+  encodeChoice, decodeChoice, choiceLabel, previewTurn,
 } from './engine.js';
 import { Stage, Sfx } from './render.js';
 
@@ -44,6 +44,9 @@ const game = {
   log: [],
   lastResult: null,
   preTurn: null,               // state before the exchange, for the post-mortem
+  lastFocus: null,             // the move the arena is rehearsing; sticky across hover-out
+  preview: null,               // that rehearsal's timeline
+  looking: 'idle',             // what the arena is showing: 'idle' | 'preview' | 'past'
 };
 
 let stage, sfx;
@@ -267,10 +270,19 @@ function frameLine(m) {
 
 /* ---------------------------------------------------------- threat board */
 
+/**
+ * The move the whole right-hand side and the arena are currently about.
+ *
+ * Sticky: sliding the cursor off a button does not throw away the rehearsal and the ranking
+ * you were reading. It stays on the last move you looked at until you look at another one,
+ * or until the turn resolves.
+ */
+const focusChoice = () => game.hovered || game.picked || game.lastFocus;
+
 function renderBoard() {
   const rowsHost = $('#rows');
   const sub = $('#boardsub');
-  const focusId = game.hovered || game.picked;
+  const focusId = focusChoice();
   rowsHost.textContent = '';
   $('#riskwrap').hidden = true;
 
@@ -292,7 +304,6 @@ function renderBoard() {
 
   const p = game.profile[focusId];
   if (!p) { rowsHost.append(el('div', 'empty', 'Pick a move to see their answers.')); return; }
-  const m = p.option?.move ?? moveOf(myChar(), decodeChoice(focusId).moveId);
   sub.innerHTML = `If you throw <b>${choiceLabel(game.state, ME, focusId)}</b>, their options rank like this:`;
 
   $('#riskwrap').hidden = false;
@@ -324,7 +335,9 @@ function renderBoard() {
     parts.push(`you end ${fmtAdv(row.adv)}f`);
     r.append(el('div', 'meta', parts.join('  ·  ')));
 
-    r.addEventListener('mouseenter', () => stage.setPreview(game.state, m, row.move, true));
+    // No stage handler here. This used to repaint the arena with a static pose showing that
+    // answer's reach, which now silently kills the rehearsal running in it — and the row
+    // already says what the answer does. Whatever the arena is showing, it stays showing it.
     rowsHost.append(r);
   });
 }
@@ -360,17 +373,89 @@ function setHover(id) {
   // A selection outranks a hover: once you have picked, the board stays on your pick so
   // you can study it without the mouse wandering over another button and changing it.
   game.hovered = game.picked ? null : id;
+  if (id) game.lastFocus = id;
   renderBoard();
   paintStage();
 }
 
+/**
+ * What the arena shows while you are choosing.
+ *
+ * Not the last exchange. That already happened, and leaving it on screen turns the one
+ * moment you are actually thinking into a rerun of a decision you have already made. The
+ * planning arena rehearses the move you are holding *now* — its wind-up, its reach, and
+ * whether it arrives from where you are standing — and loops it until you pick another.
+ * The last exchange is still there on a button, one press away, clearly labelled as past.
+ */
 function paintStage() {
   if (game.phase !== 'choosing') return;
-  const focusId = game.hovered || game.picked;
-  const mine = focusId ? moveOf(myChar(), decodeChoice(focusId).moveId) : null;
+  const focusId = focusChoice();
   const showThreat = game.oracle === 'full' || game.oracle === 'chain';
-  const best = focusId && showThreat ? game.profile[focusId]?.best.move ?? null : null;
-  stage.setPreview(game.state, mine, best, showThreat);
+
+  if (!focusId) {
+    // Nothing considered yet this turn: hold the exchange that just settled, since the
+    // advantage number printed under it is what decides what you pick next.
+    if (game.looking !== 'past' || !game.lastResult) {
+      game.looking = 'idle';
+      stage.setPreview(game.state, null, null, showThreat);
+    }
+    renderScrub();
+    return;
+  }
+  const mine = moveOf(myChar(), decodeChoice(focusId).moveId);
+  const best = showThreat ? game.profile[focusId]?.best.move ?? null : null;
+  const prev = previewTurn(game.state, ME, focusId);
+  if (!prev) { stage.setPreview(game.state, mine, best, showThreat); renderScrub(); return; }
+
+  game.looking = 'preview';
+  game.preview = prev;
+  stage.onFrame = (f) => { $('#scrub').value = String(f); $('#scrubval').textContent = `${f}f`; };
+  stage.onEnd = () => {};
+  stage.play(prev, game.state, null, {
+    rehearsal: true, owner: ME, loop: true,
+    name: choiceLabel(game.state, ME, focusId).toUpperCase(),
+    caption: previewCaption(prev),
+  });
+  renderScrub();
+}
+
+/** One short line for what the rehearsal showed. Long enough to read at a glance, no longer. */
+function previewCaption(prev) {
+  const m = prev.move;
+  if (prev.outcome === 'hit') return `reaches on f${prev.contactAt} · ${prev.dmg} dmg`;
+  if (prev.outcome === 'whiff') return `falls short from here`;
+  if (m.dash) return `${m.dash.toward ? 'closes' : 'opens'} ${m.dash.dist} · ${moveDuration(m)}f`;
+  return `${moveDuration(m)} frames`;
+}
+
+/**
+ * The scrub row follows whatever the arena is showing, and says which it is. The two are
+ * never the same thing, so labelling it is not decoration.
+ */
+function renderScrub() {
+  const wrap = $('#scrubwrap');
+  document.body.dataset.showing = game.looking;      // hook for the browser tests
+  const showing = game.looking === 'past' ? game.lastResult
+    : game.looking === 'preview' ? game.preview : null;
+  wrap.hidden = !showing;
+  $('#lastex').hidden = !game.lastResult || game.looking === 'past';
+  wrap.classList.toggle('past', game.looking === 'past');
+  $('#scrubtag').textContent = game.looking === 'past' ? 'LAST EXCHANGE' : 'PREVIEW';
+  $('#scrubcap').textContent = game.looking === 'preview' && game.preview
+    ? previewCaption(game.preview) : '';
+  if (!showing) return;
+  $('#scrub').max = String(showing.total);
+  $('#replay').textContent = game.looking === 'past' ? '▶ Replay' : '▶ Again';
+}
+
+/** Re-watch what actually happened, as a thing you asked for rather than the default view. */
+function showLastExchange() {
+  if (!game.lastResult) return;
+  game.looking = 'past';
+  stage.onFrame = (f) => { $('#scrub').value = String(f); $('#scrubval').textContent = `${f}f`; };
+  stage.onEnd = () => {};
+  stage.play(game.lastResult, game.preTurn ?? game.state, game.lastAdv);
+  renderScrub();
 }
 
 function refreshProfile() {
@@ -382,6 +467,7 @@ function refreshProfile() {
 function refreshTurn() {
   game.picked = null;
   game.hovered = null;
+  game.lastFocus = null;
   // An armed teammate who is now on cooldown (or on point) cannot be called any more.
   if (squadMode() && game.assistPick != null
     && !benchOf(game.state, ME).some(({ n }) => n === game.assistPick && game.state.cooldown[ME][n] === 0)) {
@@ -409,6 +495,7 @@ function select(id) {
   sfx.click();
   game.picked = id;
   game.hovered = null;
+  game.lastFocus = id;
   renderMoves();
   renderBoard();
   paintStage();
@@ -442,10 +529,9 @@ function lockIn() {
   renderMoves();
   renderBoard();
   renderLockIn();
-  $('#scrub').max = String(result.total);
-  $('#scrubwrap').hidden = false;
-
+  game.looking = 'past';                 // from here on the arena is a record, not a rehearsal
   game.lastAdv = result.summary[ME].adv;
+  renderScrub();
   stage.onFrame = (f) => {
     $('#scrub').value = String(f);
     $('#scrubval').textContent = `${f}f`;
@@ -505,15 +591,10 @@ function renderCoach(myId, theirId) {
   ));
 }
 
-/** Re-watch the last exchange. The result is kept alive so this works any time. */
+/** Run whatever the arena is currently showing again, from the top. */
 function replay() {
-  if (!game.lastResult) return;
-  stage.onFrame = (f) => {
-    $('#scrub').value = String(f);
-    $('#scrubval').textContent = `${f}f`;
-  };
-  stage.onEnd = () => {};
-  stage.play(game.lastResult, null, game.lastAdv);
+  if (game.looking === 'preview') { paintStage(); return; }
+  showLastExchange();
 }
 
 function showBanner(text, key) {
@@ -563,6 +644,8 @@ function advance() {
   game.state = nextRound(game.state);
   game.phase = 'choosing';
   game.log = [];
+  game.lastResult = null;
+  game.looking = 'idle';
   $('#log').textContent = '';
   $('#coach').hidden = true;
   $('#scrubwrap').hidden = true;
@@ -694,6 +777,7 @@ function startMatch() {
   game.log = [];
   game.lastResult = null;
   game.preTurn = null;
+  game.looking = 'idle';
   $('#overlay').hidden = true;
   $('#scrubwrap').hidden = true;
   $('#coach').hidden = true;
@@ -731,6 +815,7 @@ export function boot() {
     openSelect();
   });
   $('#replay').addEventListener('click', replay);
+  $('#lastex').addEventListener('click', showLastExchange);
   $('#scrub').addEventListener('input', (e) => {
     stage.seek(Number(e.target.value));
     $('#scrubval').textContent = `${e.target.value}f`;

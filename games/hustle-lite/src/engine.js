@@ -685,6 +685,65 @@ export function resolveTurn(state, moveIds) {
 }
 
 /*
+ * A stand-in for "the opponent does nothing". Its recovery is stretched to cover whatever
+ * you are rehearsing, because `targetFor` treats an actor whose move has finished as having
+ * left the field — a one-frame idle would make your attack pass through thin air. It is
+ * never longer than that, so the preview runs exactly as long as the move does.
+ */
+const idleMove = (frames) => M({ id: 'idle', name: 'Waiting', cat: 'idle', recovery: Math.max(1, frames) });
+
+/**
+ * What would the move you are holding do, from where you are standing, right now?
+ *
+ * The planning screen and the replay answer different questions and must not share an
+ * answer. The replay is a record: what happened last turn. This is a rehearsal — your
+ * fighter throwing the move you have selected against an opponent who simply stands there,
+ * so you can read its wind-up, its reach and whether it even arrives before you commit.
+ *
+ * The opponent is deliberately inert rather than playing their likeliest reply. A preview
+ * that guessed for them would be a prediction dressed up as a fact, and the threat board is
+ * already the honest way to ask that question.
+ *
+ * Nothing here touches the real state — the clone goes out with the rest of the result.
+ */
+export function previewTurn(state, myIdx, choiceId) {
+  const s = cloneState(state);
+  const them = 1 - myIdx;
+  const pts = [0, 1].map((i) => pointOf(s, i));
+  const startCombo = [pts[0].combo, pts[1].combo];
+  const pick = decodeChoice(choiceId);
+  const mine = moveOf(pts[myIdx].char, pick.moveId);
+  if (!mine) return null;
+
+  const me = makeActor(myIdx, 'point', pts[myIdx], mine);
+  const extra = [];
+  let span = moveDuration(mine);
+  if (isSquad(s) && pick.assist != null && s.teams[myIdx][pick.assist]?.hp > 0) {
+    const mate = s.teams[myIdx][pick.assist];
+    mate.x = pts[myIdx].x;
+    const lead = (pts[myIdx].x <= pts[them].x ? 1 : -1) * RULES.ASSIST_LEAD;
+    const am = moveOf(mate.char, mate.assist);
+    extra.push(makeActor(myIdx, 'assist', mate, am, RULES.ASSIST_DELAY, lead));
+    span = Math.max(span, RULES.ASSIST_DELAY + moveDuration(am));
+  }
+  // The stand-in has to still be on the field when the last of your actors arrives.
+  const dummy = makeActor(them, 'point', pts[them], idleMove(span));
+  const actors = myIdx === 0 ? [me, dummy, ...extra] : [dummy, me, ...extra];
+
+  const sim = simulate(s, actors, startCombo);
+  return {
+    preview: true, owner: myIdx,
+    timeline: sim.timeline, events: sim.events, total: sim.total,
+    summary: sim.points.map((a) => ({ move: a.m, outcome: a.atk ?? 'idle', defence: a.def })),
+    move: mine,
+    // What it would do to a target who never moves — the ceiling, not the expectation.
+    outcome: me.atk ?? 'idle',
+    dmg: actors.filter((a) => a && a.team === myIdx).reduce((n, a) => n + a.dmgDealt, 0),
+    contactAt: me.contactAt,
+  };
+}
+
+/*
  * Sadness, borrowed from the source game: refusing to engage costs you health. It is
  * tracked per fighter rather than globally, so the one running away is the one who bleeds —
  * otherwise two passive fighters just tie on health and the round is a draw.
@@ -951,6 +1010,7 @@ function settleRound(s) {
 }
 
 function phaseOf(sd, f) {
+  if (sd.m.cat === 'idle') return sd.cutAt !== null && f >= sd.cutAt ? 'stun' : 'idle';
   if (sd.m.cat === 'tag') return 'move';
   if (sd.cutAt !== null && f >= sd.cutAt) return sd.atk === 'parried' ? 'parried' : 'stun';
   const m = sd.m;

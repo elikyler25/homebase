@@ -9,7 +9,7 @@
 import {
   CHARS, RULES, newSquadMatch, resolveSquadTurn, optionsFor, pointOf, benchOf, teamAlive,
   isSquad, encodeChoice, decodeChoice, threatBoard, yomiChain, postMortem, chooseAiMove,
-  riskProfile, choiceLabel, rng, moveOf, resolve, newMatch,
+  riskProfile, choiceLabel, rng, moveOf, resolve, newMatch, previewTurn,
 } from '../src/engine.js';
 
 let pass = 0, fail = 0;
@@ -270,6 +270,38 @@ const go = (s, a, b) => resolveSquadTurn(s, [a, b]);
   for (let i = 0; i < 40; i++) picks.add(chooseAiMove(sq(90), 1, 'fighter', [], rand));
   ok('the AI mixes across squad choices', picks.size > 4, `${picks.size} distinct`);
   ok('  ...and does call assists', [...picks].some((p) => p.includes('|')), [...picks].slice(0, 5).join(' '));
+}
+
+/* ------------------------------------------------------- move preview */
+
+/*
+ * The planning arena has to rehearse a squad choice the same way it rehearses a solo one,
+ * assist and all — otherwise the one mode where two bodies arrive at different times is
+ * the one mode where you cannot see it coming before you commit.
+ */
+{
+  const s = sq(90);
+  const solo = previewTurn(s, 0, 'jab');
+  const withMate = previewTurn(s, 0, encodeChoice('jab', 1));
+  ok('a squad choice previews', withMate !== null);
+  ok('  ...with the teammate on the field', (withMate.timeline.at(-1).extras ?? []).length
+    + (withMate.timeline[RULES.ASSIST_DELAY].extras ?? []).length > 0);
+  ok('  ...running at least as long as the assist needs',
+    withMate.total >= RULES.ASSIST_DELAY, `${withMate.total}f`);
+  ok('  ...and longer than the same move called alone', withMate.total > solo.total,
+    `${withMate.total} vs ${solo.total}`);
+
+  const before = JSON.stringify(s);
+  previewTurn(s, 0, encodeChoice('sweep', 2));
+  ok('previewing a squad choice never touches the real state', JSON.stringify(s) === before);
+
+  let clean = 0;
+  const opts = optionsFor(s, 0);
+  for (const o of opts) {
+    const pv = previewTurn(s, 0, o.id);
+    if (pv && pv.timeline.length === pv.total + 1) clean++;
+  }
+  ok('every squad option previews cleanly', clean === opts.length, `${clean}/${opts.length}`);
 }
 
 /* -------------------------------------------------------- full match */

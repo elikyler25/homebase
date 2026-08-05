@@ -179,7 +179,18 @@ button:disabled { opacity: .38; cursor: not-allowed; }
 
 .scrub { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
 .scrub[hidden] { visibility: hidden; }
-.scrub input { width: 180px; accent-color: var(--you); }
+.scrub input { width: 140px; accent-color: var(--hp); }
+/* The tag is not decoration: a preview of a move you have not thrown and a record of one
+   you have look identical in an arena, and confusing them is the whole bug. */
+.scrub .tag {
+  font-family: var(--px); font-size: 8px; letter-spacing: 1px;
+  color: #000; background: var(--hp); padding: 3px 5px 2px;
+}
+.scrub .cap { color: var(--ink-2); white-space: nowrap; }
+.scrub .cap:empty { display: none; }
+.scrub.past .tag { background: var(--ink-3); color: #000; }
+.scrub.past input { accent-color: var(--ink-2); }
+#lastex[hidden] { display: none; }
 
 /* --------------------------------------------------------------- move strip */
 
@@ -389,6 +400,11 @@ dialog#select { max-width: 780px; }
   .pip { width: 8px; }
   .burst { width: 28px; }
   .brand span, .note { display: none; }
+  /* The scrub row carries a tag, two buttons and a slider; on a phone it wraps under the
+     coach line rather than pushing the page sideways. */
+  .underbar { grid-template-columns: minmax(0, 1fr); }
+  .scrub { flex-wrap: wrap; }
+  .scrub input { width: 100%; min-width: 0; }
   .lrow { grid-template-columns: 14px 1fr; }
   .lrow .lrole, .lrow .lmove { grid-column: 2; }
   .sq { grid-template-columns: 42px 1fr 16px; }
