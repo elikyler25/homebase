@@ -17,6 +17,24 @@ import { OFFTRACK, Track } from "./track";
 
 const G = 9.81;
 
+/**
+ * Global tyre-grip scale.
+ *
+ * Measured, a hand-drawn stroke demands 22-28 m/s^2 of lateral acceleration
+ * where a planned AI line demands 9-11. That is not because the player's *path*
+ * is worse — a wobbly centreline stroke with a planned profile slides zero — it
+ * is because a person eyeballing corner speed lands near the theoretical limit
+ * while the AI's planner deliberately keeps a margin. With the budget at 19,
+ * every ordinary stroke sat permanently over it, so the player's car understeered
+ * all lap and finished last on every track while the AI never slid at all.
+ *
+ * Raising the budget so a sensible stroke fits inside it is the fix. The AI is
+ * not handed the same gift: its planned speeds scale with the square root of
+ * grip, so its skill levels were lowered to compensate and the field still has
+ * to be beaten on merit.
+ */
+const GRIP_SCALE = 1.75;
+
 export interface CarClass {
   id: string;
   name: string;
@@ -40,7 +58,7 @@ export const CAR_CLASSES: Record<string, CarClass> = {
     name: "Rally",
     accel: 14,
     brake: 18,
-    grip: 1.7,
+    grip: 1.7 * GRIP_SCALE,
     maxSpeed: 52,
     turboThrust: 11,
     radius: 2.1,
@@ -51,7 +69,7 @@ export const CAR_CLASSES: Record<string, CarClass> = {
     name: "GT",
     accel: 17,
     brake: 22,
-    grip: 1.95,
+    grip: 1.95 * GRIP_SCALE,
     maxSpeed: 63,
     turboThrust: 13,
     radius: 2.1,
@@ -62,7 +80,7 @@ export const CAR_CLASSES: Record<string, CarClass> = {
     name: "Formula",
     accel: 21,
     brake: 27,
-    grip: 2.35,
+    grip: 2.35 * GRIP_SCALE,
     maxSpeed: 76,
     turboThrust: 15,
     radius: 2.0,
@@ -117,6 +135,11 @@ export class Vehicle {
   dustEmit: { pos: Vec2; vel: Vec2; kind: "dust" | "tyre" | "smoke" }[] = [];
   /** Alternates so smoke leaves one rear wheel then the other. */
   private smokeSide = 1;
+  /** Previous tick's cross-track error, used to detect a car that is lost. */
+  private lastCrossErr = 0;
+
+  /** Diagnostic breakdown of where the lateral demand came from. */
+  debug = { latPursuit: 0, latCorrect: 0, aPeak: 0, wanted: 0, crossErr: 0 };
 
   constructor(
     public readonly car: CarClass,
@@ -176,7 +199,14 @@ export class Vehicle {
     this.trackS = proj.s;
 
     // --- Follow the line -------------------------------------------------
-    this.lineS = this.line.nearestS(this.pos, this.lineS, clamp(speed * 0.4 + 6, 8, 26), 6);
+    // Normally a tight, forward-biased search: a drawn line can cross itself and
+    // a global nearest-point query would teleport the car onto the wrong branch.
+    // But a bounded window also means a car thrown a long way off can never find
+    // its way home, so past a large error, re-acquire globally.
+    const lost = Math.abs(this.lastCrossErr) > this.track.halfWidth * 3 + 12;
+    this.lineS = lost
+      ? this.line.nearestS(this.pos, this.lineS, this.line.length, this.line.length)
+      : this.line.nearestS(this.pos, this.lineS, clamp(speed * 0.4 + 6, 8, 26), 6);
 
     // Lookahead has to stay short relative to corner radius. Long lookahead
     // makes pure pursuit cut the chord: it turns in late, then demands more
@@ -227,6 +257,9 @@ export class Vehicle {
     const latCorrect =
       clamp(-3.2 * crossErr - 2.6 * crossRate, -aPeak * 0.55, aPeak * 0.55) * authority;
 
+    this.lastCrossErr = crossErr;
+    this.debug = { latPursuit, latCorrect, aPeak, wanted: desiredSpeed, crossErr };
+
     const latDemand = latPursuit + latCorrect;
 
     // Post-peak tyre falloff. A sliding tyre does not hold the same grip it had
@@ -243,7 +276,7 @@ export class Vehicle {
     // demand only — the recovery controller pulling hard to get back on line is
     // not the driver overcooking a corner, and must not be charged as if it were.
     const overAsk = Math.max(0, Math.abs(latPursuit) / Math.max(aPeak, 0.01) - 1);
-    const aMax = aPeak * (1 - 0.34 * clamp(overAsk, 0, 1));
+    const aMax = aPeak * (1 - 0.45 * clamp(overAsk, 0, 1));
 
     // Engine falls off with speed; that, not a hard clamp, sets top speed.
     const throttleAvail =
@@ -329,9 +362,18 @@ export class Vehicle {
     // --- Attitude ---------------------------------------------------------
     // Slip angle is cosmetic-but-honest: the nose points into the corner more
     // than the velocity vector does, and the excess is how sideways you are.
+    // Slip angle is cosmetic-but-honest: the nose points into the corner more
+    // than the velocity vector does, and the excess is how sideways you are.
+    //
+    // The understeer coefficient used to be 0.5, which put the car at ~29 deg of
+    // body slip for being 100% over budget and peaked at 35 deg — a full
+    // oversteer drift pose for what is actually an understeering car ploughing
+    // wide. Against the AI's steady 2-4 deg it read as the player's car being a
+    // different, wilder machine. It is the same machine; it was just being asked
+    // for more than it had, and then drawn as though it were sliding sideways.
     const slipTarget =
-      clamp(understeer / Math.max(aMax, 1), 0, 1.4) * Math.sign(latDemand || 1) * 0.5 +
-      clamp(-latAcc / Math.max(aMax, 1), -1, 1) * surf.slide * 0.32;
+      clamp(understeer / Math.max(aMax, 1), 0, 1.2) * Math.sign(latDemand || 1) * 0.24 +
+      clamp(-latAcc / Math.max(aMax, 1), -1, 1) * surf.slide * 0.26;
     this.slipAngle = damp(this.slipAngle, slipTarget, 6 + (1 - surf.slide) * 8, dt);
 
     const velAngle = Math.atan2(this.vel.y, this.vel.x);

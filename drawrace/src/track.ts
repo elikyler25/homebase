@@ -36,7 +36,7 @@ export interface Surface extends SurfaceProps {
 export const SURFACES: Record<SurfaceId, Surface> = {
   asphalt: { id: "asphalt", grip: 1.0, drag: 0.35, slide: 0.28, name: "Asphalt" },
   gravel: { id: "gravel", grip: 0.82, drag: 1.1, slide: 0.55, name: "Gravel" },
-  ice: { id: "ice", grip: 0.56, drag: 0.22, slide: 0.86, name: "Ice" },
+  ice: { id: "ice", grip: 0.64, drag: 0.22, slide: 0.86, name: "Ice" },
 };
 
 /** Off-track is deliberately miserable: this is the cost of a sloppy line. */

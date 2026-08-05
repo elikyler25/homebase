@@ -163,7 +163,12 @@ export class Game {
   }
 
   private beginRace(): void {
-    const line = RacingLine.fromInput(this.raw, this.carClass.maxSpeed, true);
+    const line = RacingLine.fromInput(
+      this.raw,
+      this.carClass.maxSpeed,
+      this.carClass.brake,
+      true,
+    );
     if (!line.valid) {
       this.warn("That line is too short to race — trace the whole lap");
       return;
@@ -309,7 +314,12 @@ export class Game {
     }
 
     if (this.raw.length > 3) {
-      this.previewLine = RacingLine.fromInput(this.raw, this.carClass.maxSpeed, false);
+      this.previewLine = RacingLine.fromInput(
+        this.raw,
+        this.carClass.maxSpeed,
+        this.carClass.brake,
+        false,
+      );
     }
     this.updateDrawProgress();
 

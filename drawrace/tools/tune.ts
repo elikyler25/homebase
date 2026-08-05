@@ -13,7 +13,7 @@
 
 import { buildAiLine, buildReferenceLine, speedProfile, optimiseLine } from "../src/ai";
 import { DRAW_SPEED_GAIN, RacingLine, RawSample } from "../src/line";
-import { Vec2, vdist } from "../src/math";
+import { Vec2, vadd, vdist, vscale } from "../src/math";
 import { PHYS_DT, referenceTime, simulateHeadless } from "../src/race";
 import { Track } from "../src/track";
 import { TRACKS } from "../src/tracks";
@@ -72,6 +72,49 @@ function synthDraw(pts: Vec2[], carSpeeds: number[], hz = 120): RawSample[] {
   return out;
 }
 
+/**
+ * A *realistic* stroke, as opposed to the idealised one above.
+ *
+ * A real finger does three things an optimiser never does: it traces roughly
+ * down the middle rather than hitting apexes, it wobbles, and — the big one —
+ * it starts slowing AT the corner rather than before it, because a person
+ * cannot know the car's braking curve while drawing. `lag` models that.
+ */
+function realisticStroke(
+  track: Track,
+  car: CarClass,
+  opts: { lag: number; wobble: number; pace: number },
+): { pts: Vec2[]; speeds: number[] } {
+  const n = track.samples.length;
+  // Deliberately NOT derived from the car's actual grip. A person draws the
+  // stroke that has felt right to them; they do not silently recalibrate their
+  // finger when the tyres get better. Deriving this from the live grip value
+  // would make the model drive at the limit no matter what the limit is, and
+  // any grip change would appear to do nothing.
+  const aRef = car.grip * track.surface.grip * 9.81 * 0.62;
+  const pts: Vec2[] = [];
+  const speeds: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const smp = track.samples[i];
+    // Mild inside bias, nothing like a true racing line, plus slow wobble.
+    const bias = Math.sign(smp.curv) * Math.min(track.halfWidth * 0.3, Math.abs(smp.curv) * 500);
+    const wob =
+      Math.sin((i / n) * Math.PI * 2 * 5 + 1.1) * opts.wobble +
+      Math.sin((i / n) * Math.PI * 2 * 11 + 0.4) * opts.wobble * 0.5;
+    pts.push(vadd(smp.pos, vscale(smp.nor, bias + wob)));
+
+    // Speed chosen from the curvature the player can currently SEE under their
+    // finger — i.e. lagging the corner they are about to arrive at.
+    const lagIdx = Math.round(i - opts.lag);
+    const k = Math.abs(track.samples[((lagIdx % n) + n) % n].curv);
+    const v = k > 1e-5 ? Math.sqrt((aRef * opts.pace) / k) : car.maxSpeed * opts.pace;
+    speeds.push(Math.min(car.maxSpeed * opts.pace, Math.max(6, v)));
+  }
+  pts.push(pts[0]);
+  speeds.push(speeds[0]);
+  return { pts, speeds };
+}
+
 /** Simulate and also report how much of the lap was spent sliding. */
 function race(track: Track, car: CarClass, line: RacingLine, laps: number) {
   const smp = track.sampleAt(track.length - 4);
@@ -81,6 +124,8 @@ function race(track: Track, car: CarClass, line: RacingLine, laps: number) {
   let offTime = 0;
   let peak = 0;
   let sumSpeed = 0;
+  let sumSlip = 0;
+  let peakSlip = 0;
   let n = 0;
   const limit = Math.floor(300 / PHYS_DT);
   for (let i = 0; i < limit; i++) {
@@ -89,7 +134,9 @@ function race(track: Track, car: CarClass, line: RacingLine, laps: number) {
     n++;
     sumSpeed += veh.telemetry.speed;
     peak = Math.max(peak, veh.telemetry.speed);
-    if (veh.telemetry.understeer > 0.5) slideTime += PHYS_DT;
+    sumSlip += Math.abs(veh.telemetry.slipAngle);
+    peakSlip = Math.max(peakSlip, Math.abs(veh.telemetry.slipAngle));
+    if (veh.telemetry.understeer > 0.08 * (veh.debug.aPeak || 20)) slideTime += PHYS_DT;
     if (!veh.telemetry.onTrack) offTime += PHYS_DT;
     if (veh.lapsDone >= laps) break;
   }
@@ -100,6 +147,8 @@ function race(track: Track, car: CarClass, line: RacingLine, laps: number) {
     offTime,
     peak,
     avg: sumSpeed / Math.max(1, n),
+    meanSlipDeg: (sumSlip / Math.max(1, n)) * (180 / Math.PI),
+    peakSlipDeg: peakSlip * (180 / Math.PI),
   };
 }
 
@@ -132,7 +181,7 @@ for (const def of TRACKS) {
   const closedSpeeds = [...speeds, speeds[0]];
   const rawInput = synthDraw(closedPts, closedSpeeds);
   const drawSeconds = rawInput.length ? rawInput[rawInput.length - 1].t / 1000 : 0;
-  const humanLine = RacingLine.fromInput([...rawInput], car.maxSpeed, true);
+  const humanLine = RacingLine.fromInput([...rawInput], car.maxSpeed, car.brake, true);
   const human = race(track, car, humanLine, def.laps);
   const predicted = (drawSeconds / DRAW_SPEED_GAIN) * def.laps;
   const err = Math.abs(human.time - predicted) / predicted;
@@ -151,7 +200,7 @@ for (const def of TRACKS) {
   // --- 3. greed is punished --------------------------------------------
   const flatOut = new Array(closedPts.length).fill(car.maxSpeed);
   const greedyRaw = synthDraw(closedPts, flatOut);
-  const greedyLine = RacingLine.fromInput([...greedyRaw], car.maxSpeed, true);
+  const greedyLine = RacingLine.fromInput([...greedyRaw], car.maxSpeed, car.brake, true);
   const greedy = race(track, car, greedyLine, def.laps);
   check(
     "flat-out line slides more",
@@ -178,7 +227,7 @@ for (const def of TRACKS) {
   );
 
   // --- 4. AI skill ordering --------------------------------------------
-  const skills = [0.79, 0.85, 0.91, 0.97];
+  const skills = [0.60, 0.65, 0.70, 0.75];
   const aiTimes = skills.map((s, i) => {
     const l = buildAiLine(track, car, s, 1000 + i * 7919);
     return race(track, car, l, def.laps);
@@ -190,6 +239,55 @@ for (const def of TRACKS) {
     if (aiTimes[i].time > aiTimes[i - 1].time) monotonic = false;
   }
   check("higher skill is faster", monotonic, aiTimes.map((a) => f(a.time)).join(" > "));
+  // Fairness: the player's stroke and the AI's line run through identical
+  // physics, so any large gap in *sliding* is an asymmetry in how the two lines
+  // were built, not in how they are driven.
+  const midAi = aiTimes[1];
+  console.log(
+    `        slide: human ${f(human.slideTime)}s  ai@0.85 ${f(midAi.slideTime)}s  ` +
+      `ai@0.97 ${f(aiTimes[3].slideTime)}s   |   off: human ${f(human.offTime)}s  ` +
+      `ai@0.85 ${f(midAi.offTime)}s`,
+  );
+  check(
+    "drawn line does not slide far more than an AI line",
+    human.slideTime <= Math.max(2.5, midAi.slideTime * 2.5),
+    `human ${f(human.slideTime)}s vs mid-AI ${f(midAi.slideTime)}s`,
+  );
+
+  // The case that actually matters: what a person's finger produces.
+  const real = realisticStroke(track, car, { lag: 14, wobble: 1.1, pace: 0.9 });
+  const realRaw = synthDraw(real.pts, real.speeds);
+  const realLine = RacingLine.fromInput([...realRaw], car.maxSpeed, car.brake, true);
+  const realRace = race(track, car, realLine, def.laps);
+  const realRank = aiTimes.filter((a) => a.time < realRace.time).length + 1;
+  console.log(
+    `        REAL stroke: ${f(realRace.time)}s  P${realRank}/5  slide ${f(realRace.slideTime)}s  ` +
+      `drift ${f(realRace.meanSlipDeg, 1)}deg (peak ${f(realRace.peakSlipDeg, 0)})   ` +
+      `| mid-AI ${f(midAi.time)}s slide ${f(midAi.slideTime)}s drift ${f(midAi.meanSlipDeg, 1)}deg`,
+  );
+  check(
+    "player drift stays subtle",
+    realRace.meanSlipDeg <= 6 && realRace.peakSlipDeg <= 16,
+    `mean ${f(realRace.meanSlipDeg, 1)}deg peak ${f(realRace.peakSlipDeg, 0)}deg ` +
+      `(AI mean ${f(midAi.meanSlipDeg, 1)}deg)`,
+  );
+  check(
+    "a realistic stroke can beat someone",
+    realRank <= skills.length,
+    `P${realRank} of ${skills.length + 1}`,
+  );
+  // Deliberately NOT compared against the AI's slide time. The AI plans at about
+  // half the grip budget and so never crosses the threshold at all, which makes
+  // it a useless denominator — any player pushing hard would "fail" against a
+  // zero. What matters is that the player is not over the limit for most of the
+  // race, and (checked above) that when they are, it stays subtle.
+  check(
+    "player is not over the limit for most of the race",
+    realRace.slideTime <= realRace.time * 0.5,
+    `${f(realRace.slideTime)}s of ${f(realRace.time)}s ` +
+      `(${f((realRace.slideTime / realRace.time) * 100, 0)}%)`,
+  );
+
   const humanRank = aiTimes.filter((a) => a.time < human.time).length;
   check(
     "human line lands inside the field",

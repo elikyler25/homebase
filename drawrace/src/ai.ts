@@ -23,12 +23,12 @@ export interface AiDriver {
 }
 
 export const DRIVER_POOL: AiDriver[] = [
-  { name: "Aalto", skill: 0.97, colour: "#c084fc" },
-  { name: "Bergman", skill: 0.91, colour: "#34d399" },
-  { name: "Costa", skill: 0.85, colour: "#fb923c" },
-  { name: "Duval", skill: 0.79, colour: "#60a5fa" },
-  { name: "Eskola", skill: 0.73, colour: "#f472b6" },
-  { name: "Falk", skill: 0.67, colour: "#a3e635" },
+  { name: "Aalto", skill: 0.75, colour: "#c084fc" },
+  { name: "Bergman", skill: 0.70, colour: "#34d399" },
+  { name: "Costa", skill: 0.65, colour: "#fb923c" },
+  { name: "Duval", skill: 0.60, colour: "#60a5fa" },
+  { name: "Eskola", skill: 0.55, colour: "#f472b6" },
+  { name: "Falk", skill: 0.50, colour: "#a3e635" },
 ];
 
 /**
