@@ -118,6 +118,31 @@ Hover any shop card for the full stat line. The bar under each card is a **live 
 it scores that unit against the enemy's army as it stands right now, green for a strong pick and red
 for a wasted one, so you can read the matchup without memorising the table.
 
+### Reach
+
+**The piercer outranges everything on the field**, including the enemy crystal's own guns — so it can
+shell a crystal without being shot back, and on HOLD it never leaves your half at all. Its shot does
+not stop at whatever it was aimed at: it runs down the line and hits everyone standing in it, up to
+fourteen bodies. That is what makes reach worth paying for in a crowd this deep. It is slow, fragile,
+useless in a scrum, and ◆6,500.
+
+Adding it exposed something bigger, though. **Every length in the game was frozen while bodies grew.**
+`size` and `speed` scaled with the battle size; `range`, `splash`, sight, the crystal's guns and the
+shrine's capture circle did not. Measured in body-widths, which is the only unit that matters when
+everything is on one screen:
+
+| | body | shooter standoff | artillery splash | sight |
+|---|---|---|---|---|
+| NORMAL | 20 | 11.1 bodies | 5.0 | 28 |
+| CHAOS | 68 | 3.3 | 1.5 | 8.2 |
+| MAELSTROM | 110 | **2.1** | **0.9** | **5.1** |
+
+At MAELSTROM a shooter stood two body-widths behind a swordsman — that is melee — and artillery's
+splash radius was smaller than one body, so the entire artillery role had quietly become single
+target. Every length now scales with the bodies, and all four sizes read identically: 11.1-body
+standoff, 5-body splash, 28-body sight. The big battles play like the game they are supposed to be
+rather than like a shoving match.
+
 ### The price ladder
 
 Each tier costs roughly **two and a half times** the one below it and hits about that much harder:
@@ -129,7 +154,7 @@ Each tier costs roughly **two and a half times** the one below it and hits about
 | light-killer / skirmisher | ◆340 / ◆370 | ×2.4 |
 | armour-breaker | ◆900 | ×2.4 |
 | flanker / artillery | ◆2,200 / ◆2,500 | ×2.4 |
-| wall | ◆6,000 | ×2.4 |
+| wall / piercer | ◆6,000 / ◆6,500 | ×2.4 |
 | champion | ◆15,000 | ×2.5 |
 
 Value-per-gold stays broadly flat across the ladder, so massing cheap troops is still a real
@@ -219,9 +244,9 @@ you assign to P2.
 themselves when they arrive and when they die, and they are worth roughly their price in troops —
 three of the four hold against ~42 shield-line soldiers bought with the same gold.
 
-### The eight roles
+### The ten roles
 
-Every army fields the same eight jobs at the same stats. That is deliberate: simulated round-robins
+Every army fields the same ten jobs at the same stats. That is deliberate: simulated round-robins
 showed that even small per-faction stat tilts swung entire matchups — range worst of all, since a
 ranged unit fires from behind a screen and takes almost nothing back — so making one army "the
 long-ranged one" quietly made it the best one. Identity lives in the art, the names, the perk and the
@@ -230,13 +255,15 @@ champion instead.
 | Role | Price | HP | Armour | Type | vs Light | vs Armored | Range | Job |
 |---|---|---|---|---|---|---|---|---|
 | fodder | 15 | 70 | 0 | light | 12 | 5 | 40 | cheap bodies, and what actually breaks a crystal |
-| shield line | 135 | 260 | 4 | armored | 33 | 24 | 48 | holds the middle |
-| light-killer | 230 | 170 | 1 | light | 98 | 9 | 44 | butchers fodder, cannot dent plate |
-| skirmisher | 250 | 200 | 2 | light | 36 | 36 | 260 | steady ranged damage |
-| armour-breaker | 570 | 260 | 3 | light | 26 | 152 | 208 | the answer to walls |
-| flanker | 1020 | 620 | 6 | armored | 76 | 38 | 56 | fast, cleaves 53 |
-| artillery | 1330 | 300 | 2 | light | 78 | 78 | 316 | longest reach, cleaves 99 |
-| wall | 2240 | 1700 | 14 | armored | 78 | 58 | 64 | swarms literally cannot hurt it |
+| shield line | 140 | 265 | 4 | armored | 34 | 25 | 48 | holds the middle |
+| light-killer | 340 | 205 | 1 | light | 117 | 11 | 44 | butchers fodder, cannot dent plate |
+| skirmisher | 370 | 245 | 2 | light | 44 | 44 | 260 | steady ranged damage |
+| armour-breaker | 900 | 330 | 3 | light | 32 | 188 | 208 | the answer to walls |
+| flanker | 2200 | 950 | 7 | armored | 110 | 55 | 56 | fast, splashes, gets round the flank |
+| artillery | 2500 | 415 | 2 | light | 104 | 104 | 316 | splash from far back |
+| wall | 6000 | 2900 | 18 | armored | 120 | 90 | 64 | soaks everything and cleaves |
+| piercer | 6500 | 420 | 2 | light | 130 | 300 | 520 | outranges the field; the shot runs through the line |
+| champion | 15000 | 4300 | 15 | armored | 225 | 192 | 74 | one per side, and it shows |
 
 **Elites win the field, cheap troops break the crystal.** Siege damage is mostly per-body rather
 than per-power, so a champion is not also the best battering ram. Winning the fight and cashing it

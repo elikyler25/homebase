@@ -403,11 +403,18 @@ const ROLE = {
   rider:   { price: 2200, income: 42, hp: 950, armour: 7, type:"armored", spd:194, dL:110, dA:  55, rng: 56, ws:0.75, size:32, kind:"mount", splash:53 },
   siege:   { price: 2500, income: 53, hp: 415, armour: 2, type:"light",   spd: 64, dL:104, dA: 104, rng:316, ws:1.40, size:25, kind:"ranged", splash:99 },
   titan:   { price: 6000, income: 74, hp:2900, armour:18, type:"armored", spd: 56, dL:120, dA:  90, rng: 64, ws:1.00, size:40, kind:"melee", splash:96 },
+  // Outranges everything on the field including the enemy crystal's own guns
+  // (381), so it can shell a crystal without being shot back - pair it with HOLD
+  // and it never leaves your half. Its shot runs through the whole line rather
+  // than stopping at whatever it was aimed at, which is what makes reach worth
+  // paying for in a crowd this deep. Slow, fragile, and no use in a scrum.
+  marksman:{ price: 6500, income: 78, hp: 420, armour: 2, type:"light",   spd: 58, dL:130, dA: 300, rng:520, ws:1.90, size:26, kind:"ranged", pierce:58 },
   hero:    { price:15000, income:102, hp:4300, armour:15, type:"armored", spd: 96, dL:225, dA: 192, rng: 74, ws:0.75, size:52, kind:"melee", hero:true },
 };
 
 const ROLE_LABEL = { swarm:"fodder", line:"shield line", slayer:"light-killer", shooter:"skirmisher",
-                     breaker:"armour-breaker", rider:"flanker", siege:"artillery", titan:"wall", hero:"CHAMPION" };
+                     breaker:"armour-breaker", rider:"flanker", siege:"artillery", titan:"wall",
+                     marksman:"piercer", hero:"CHAMPION" };
 const mk = (role, name, col, art, over) => ({ ...ROLE[role], role, name, col, art, ...(over||{}) });
 
 /* Four armies. Each troop is a character with one job and one trick, in the
@@ -430,6 +437,7 @@ const FACTIONS = [
     mk("siege","Boulder Thrower","#9a8f78",{head:"bare",body:"tatter",weapon:"club",skin:"#d8a878"}),
     mk("titan","Mammoth","#8d6c4a",{head:"horns",body:"plate",weapon:"club",mount:true,aura:"#b58c5a"},
        {hp:3450, size:46}),                                   // signature perk: +550 HP
+    mk("marksman","Bone Lance","#e6dcc0",{head:"mask",body:"tatter",weapon:"bow",tower:true,scarf:true,skin:"#d8a878"}),
     mk("hero","Chieftain","#e0b45a",{head:"horns",body:"plate",weapon:"axe",cape:"#5a3a18",aura:"#ffd070",pauldrons:true},
        {price:14700, hp:5100, dL:228, dA:198, splash:70, auraBuff:{r:340, dmg:0.30}}),
   ]},
@@ -444,6 +452,7 @@ const FACTIONS = [
     mk("rider","Chariot","#d8c070",{head:"plume",body:"plate",weapon:"lance",mount:true}),
     mk("siege","Ballista","#9a8f78",{head:"helm",body:"tunic",weapon:"bow"}),
     mk("titan","Minotaur","#8a5a3a",{head:"horns",body:"plate",weapon:"axe",pauldrons:true}),
+    mk("marksman","Scorpion","#cfd8e4",{head:"visor",body:"plate",weapon:"bow",tower:true}),
     mk("hero","Zeus","#f0e8b0",{head:"crown",body:"robe",weapon:"staff",cape:"#d8d0a0",aura:"#fff2a0",orb:"#ffffff"},
        {price:16000, hp:4700, armour:18, kind:"ranged", rng:360, ws:1.00, dL:285, dA:252, spd:84, splash:104, chain:5}),
   ]},
@@ -458,6 +467,7 @@ const FACTIONS = [
     mk("rider","Raider","#c8a05a",{head:"helm",body:"plate",weapon:"axe",mount:true}),
     mk("siege","Stone Thrower","#8f9aa8",{head:"helm",body:"tunic",weapon:"club"}),
     mk("titan","Ice Giant","#a8d8ea",{head:"horns",body:"plate",weapon:"greatsword",aura:"#bfe8ff"}),
+    mk("marksman","Harpooner","#a8c8d8",{head:"helm",body:"tunic",weapon:"spear",tower:true,scarf:true}),
     mk("hero","Thor","#e8d070",{head:"helm",body:"plate",weapon:"greatsword",cape:"#7a2a2a",aura:"#9fd8ff",pauldrons:true},
        {price:15500, hp:5450, dL:258, dA:228, ws:0.80, spd:86, splash:190}),
   ]},
@@ -472,6 +482,7 @@ const FACTIONS = [
     mk("rider","Lancer","#d8b45a",{head:"kasa",body:"plate",weapon:"lance",mount:true}),
     mk("siege","Hwacha","#c86a4a",{head:"kasa",body:"tunic",weapon:"bow"}),
     mk("titan","Iron Ox","#8fa0b8",{head:"visor",body:"plate",weapon:"greatsword",pauldrons:true,tower:true,glow:"#ffd070"}),
+    mk("marksman","Dragon Bolt","#e0704a",{head:"kasa",body:"robe",weapon:"bow",tower:true,glow:"#ffb060"}),
     mk("hero","Monkey King","#f0c040",{head:"crown",body:"tunic",weapon:"spear",cape:"#c83a2a",aura:"#ffd84a"},
        {price:15300, hp:3800, spd:210, ws:0.55, dL:237, dA:183, type:"light", armour:5, drain:0.38}),
   ]},
@@ -483,6 +494,7 @@ const ALL_UNITS = [];
 FACTIONS.forEach(f => f.units.forEach(u => {
   u.faction = f; u.idx = f.units.indexOf(u); u.gid = ALL_UNITS.length;
   u.baseSize = u.size; u.baseSpd = u.spd; u.baseHp = u.hp; u.basePrice = u.price;
+  u.baseRng = u.rng; u.baseSplash = u.splash || 0;
   ALL_UNITS.push(u);
 }));
 
@@ -549,16 +561,29 @@ function applyBattleSize() {
   G.budget = c.cap; FX_CAP = FX_MAX;
   REPAIR_COST = Math.round(450 * c.gold);
   REPAIR_HEAL = Math.round(700 * (c.hp / 6000));
+  // Every *length* scales with the bodies. Bodies were already scaled and ranges
+  // were not, so at CHAOS a shooter stood 3.3 body-widths behind a swordsman
+  // instead of 11, and at MAELSTROM 2.1 - which is melee. Artillery was worse:
+  // a splash radius of 0.9 bodies hits exactly one troop, so the entire artillery
+  // role had quietly become single-target. Sight, the crystal's own guns and the
+  // shrine's capture circle were all frozen the same way.
+  SIGHT = Math.round(560 * c.size);
+  CRYSTAL_GUN = Math.round(381 * c.size);
+  SHRINE_R = Math.round(251 * c.size);
   ALL_UNITS.forEach(u => {
     u.size = Math.round(u.baseSize*c.size);
     u.spd  = Math.round(u.baseSpd*c.spd);
+    u.rng  = Math.round(u.baseRng*c.size);
+    if (u.baseSplash) u.splash = Math.round(u.baseSplash*c.size);
     u.hp    = u.hero ? Math.round(u.baseHp    * c.hero.hp)    : u.baseHp;
     u.price = u.hero ? Math.round(u.basePrice * c.hero.price) : u.basePrice;
   });
   spriteCache.clear(); gpu.stamp = -1;
   resize();          // resize() re-evaluates SIMPLE for the new zoom
 }
-const SHRINE_R = 251, SHRINE_GOLD = 240, SUDDEN_ROUND = 28;
+let SHRINE_R = 251;
+const SHRINE_GOLD = 240, SUDDEN_ROUND = 28;
+let CRYSTAL_GUN = 381;
 const shrineX = () => G.W/2, shrineY = () => crystalY();
 function mkPlayer(team) {
   return { team, gold: START_GOLD*goldMul, hp: CRYSTAL_HP, cool: 0, kills: 0, lane: 0, spent: 0,
@@ -942,7 +967,9 @@ function nearby(x, y, r, fn) {
   }
 }
 
-const SIGHT = 560;
+let SIGHT = 560;
+const PIERCE_MAX = 14;   // one bolt may not delete a whole column
+let shotId = 0;
 /* Nearest enemy, searched as rings of cells expanding outwards instead of one
    flat sweep of the whole sight radius. In a packed battle the answer is nearly
    always in the first ring or two, so this stops after a handful of cells rather
@@ -1290,8 +1317,10 @@ function step(dt) {
       } else if (a.u.kind === "ranged") {
         sfxBow();
         G.shots.push({ x:a.x, y:a.y-7, tx:a.tgt.x, ty:a.tgt.y-7, src:a, tgt:a.tgt,
-                       sp:a.u.splash?611:930, splash:a.u.splash||0, team:a.team, t:0,
-                       col:a.u.splash ? "#e08fff" : "#f5e6b0" });
+                       sp:a.u.splash?611:a.u.pierce?1500:930, splash:a.u.splash||0,
+                       pierce:a.u.pierce||0, ox:a.x, oy:a.y-7, reach:a.u.rng, id:++shotId,
+                       team:a.team, t:0,
+                       col:a.u.pierce ? "#bfe8ff" : a.u.splash ? "#e08fff" : "#f5e6b0" });
       } else {
         arc(a, a.tgt);
         sfxClang();
@@ -1310,8 +1339,8 @@ function step(dt) {
     if (p.hp <= 0) continue;
     p.cool -= dt;
     if (p.cool > 0) continue;
-    let best=null, bd=381*381;
-    nearby(crystalX(p.team), crystalY(), 381, b => {
+    let best=null, bd=CRYSTAL_GUN*CRYSTAL_GUN;
+    nearby(crystalX(p.team), crystalY(), CRYSTAL_GUN, b => {
       if (b.dead || b.team === p.team) return;
       const d=(b.x-crystalX(p.team))**2 + (b.y-crystalY())**2;
       if (d < bd) { bd=d; best=b; }
@@ -1338,6 +1367,28 @@ function step(dt) {
       } else if (s.tgt && !s.tgt.dead) {
         hurt(s.tgt, s.crystal ? 95 : dmgOf(s.src, s.tgt), s.crystal ? null : s.src, true);
         spark(s.tx, s.ty);
+      }
+      if (s.pierce && s.src) {
+        // Everything standing in the line takes the shot, not just what it was
+        // aimed at. Bounded two ways: a hard cap on how many one bolt may hit, and
+        // a stamp per unit so overlapping samples cannot damage anyone twice.
+        let dx = s.tx - s.ox, dy = s.ty - s.oy;
+        const len = hyp(dx, dy) || 1;
+        dx /= len; dy /= len;
+        const far = Math.max(len, s.reach || len), stepP = s.pierce * 1.4;
+        let hit = 0;
+        for (let t = 0; t <= far && hit < PIERCE_MAX; t += stepP) {
+          const px = s.ox + dx*t, py = s.oy + dy*t;
+          nearby(px, py, s.pierce, b => {
+            if (hit >= PIERCE_MAX || b.dead || b.team === s.team || b.pierceId === s.id) return;
+            if (hyp(b.x-px, b.y-py) > s.pierce) return;
+            b.pierceId = s.id;
+            hurt(b, dmgOf(s.src, b), s.src, true);
+            hit++;
+          });
+        }
+        G.fx.push({ t:"beam", x:s.ox, y:s.oy, x2:s.ox+dx*far, y2:s.oy+dy*far,
+                    life:.22, max:.22 });
       }
       if (s.chain && s.src) {            // lightning leaps to whatever stands near
         let hops = 0, fx = s.tx, fy = s.ty;
@@ -1544,7 +1595,12 @@ function draw() {
   let lastA = -1, lastC = "";
   for (const f of G.fx) {
     const k = Math.max(0, f.life/f.max);
-    if (f.t === "bolt") {
+    if (f.t === "beam") {
+      lastA = -1; lastC = "";
+      ctx.globalAlpha = k*.9; ctx.strokeStyle = "#dff4ff";
+      ctx.lineWidth = 2.5 + k*3; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(f.x2, f.y2); ctx.stroke();
+    } else if (f.t === "bolt") {
       lastA = -1; lastC = "";
       ctx.globalAlpha = k; ctx.strokeStyle = "#dff0ff"; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(f.x, f.y);
