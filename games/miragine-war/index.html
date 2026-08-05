@@ -750,7 +750,7 @@ function paintBackground() {
 }
 
 const TOP = () => 144;
-const BOT = () => G.H - 86;                  // leaves room for the radar strip
+const BOT = () => G.H - 34;                  // the strip that used to sit here is gone
 const crystalX = t => (t === 0 ? 116 : G.W - 116);
 const crystalY = () => (TOP()+BOT())/2;
 // fake depth: things lower on the field are nearer the camera
@@ -1568,7 +1568,6 @@ function draw() {
   ctx.globalAlpha = 1;
 
   ctx.restore();
-  drawRadar();
   if (G.help) drawHelp();
   else if (G.paused && G.running && !G.over) drawPause();
 }
@@ -2233,7 +2232,7 @@ function drawTrim(a, q) {
    them into one atlas texture and submits the entire army as a single triangle
    batch. Measured on the same 3,100-troop CHAOS frame: 12.0ms -> 1.0ms.
 
-   Everything else - ground, crystals, effects, bars, radar - stays on the 2D
+   Everything else - ground, crystals, effects, health bars - stays on the 2D
    canvas, and the batch composites into it with one drawImage, so layering and
    screen shake are unchanged. If WebGL is missing, the atlas will not fit, or
    the context is lost, gpu.ok goes false and draw() falls back to the per-unit
@@ -2392,91 +2391,6 @@ function gpuUnits(list, q) {
   }
   ctx.drawImage(gpu.cv, 0, 0);
   return true;
-}
-
-/* ---------- radar strip, like the original's ---------- */
-/* The strip repaints 3,000 blips a frame - about 2ms of fillRect, and a swarm of
-   dots two pixels wide does not change meaningfully at 60Hz. Bake it into a small
-   offscreen canvas a few times a second and blit that instead. */
-let rdCv = null, rdCtx = null, rdT = 0;
-function drawRadar() {
-  // Every size here is screen-relative. Drawing in world units worked when a map
-  // was 2600 wide, but CHAOS is 14000: the strip and its blips were being divided
-  // by five and had shrunk to an unreadable smear along the bottom edge.
-  const px = v => v / VIEW;                       // css pixels -> world units
-  const w = px(Math.min(560, G.W*VIEW*0.34)), h = px(26);
-  const x = (G.W-w)/2, y = G.H - h - px(14), q = VIEW*DPR;
-  const cw = Math.max(2, Math.ceil((w+px(8))*q)), ch = Math.max(2, Math.ceil((h+px(8))*q));
-  if (!rdCv) { rdCv = document.createElement("canvas"); rdCtx = rdCv.getContext("2d"); }
-  if (rdCv.width !== cw || rdCv.height !== ch) { rdCv.width = cw; rdCv.height = ch; rdT = 0; }
-  if (--rdT <= 0) {
-    rdT = 5;
-    rdCtx.setTransform(q, 0, 0, q, -(x-px(4))*q, -(y-px(4))*q);
-    rdCtx.clearRect(x-px(4), y-px(4), w+px(8), h+px(8));
-    const real = ctx; ctx = rdCtx;
-    radarBody(x, y, w, h, px);
-    ctx = real;
-  }
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.drawImage(rdCv, Math.round((x-px(4))*q), Math.round((y-px(4))*q));
-  ctx.restore();
-}
-/* Little-endian is near-universal, but packing a colour the wrong way round would
-   silently swap red and blue rather than fail loudly, so it is worth four lines. */
-const LE = (() => { const b = new ArrayBuffer(4); new Uint32Array(b)[0] = 1;
-                    return new Uint8Array(b)[0] === 1; })();
-const rgb = (r,g,b) => (LE ? (255<<24 | b<<16 | g<<8 | r) : (r<<24 | g<<16 | b<<8 | 255)) >>> 0;
-const BLIP = [rgb(127,196,255), rgb(255,138,106)];
-const RADAR_BG = rgb(30,47,24);
-let rdImg = null, rdPix = null;
-
-function radarBody(x, y, w, h, px) {
-  const b2 = px(2), b4 = px(4), q = VIEW*DPR;
-  ctx.fillStyle = "rgba(10,8,6,.8)";
-  ctx.fillRect(x-b2, y-b2, w+b4, h+b4);
-  ctx.strokeStyle = "#4a3c22"; ctx.lineWidth = b2;
-  ctx.strokeRect(x-b2, y-b2, w+b4, h+b4);
-
-  /* Blips go in as pixels, not rectangles. One fillRect per troop is 26,000 draw
-     calls into a strip 490 by 26 - the same draw-call wall the army itself hit,
-     and worth ~3.5ms a frame amortised. Writing into an ImageData makes it one
-     putImageData plus a flat array store per troop. */
-  const iw = Math.max(1, Math.round(w*q)), ih = Math.max(1, Math.round(h*q));
-  if (!rdImg || rdImg.width !== iw || rdImg.height !== ih) {
-    rdImg = ctx.createImageData(iw, ih);
-    rdPix = new Uint32Array(rdImg.data.buffer);
-  }
-  rdPix.fill(RADAR_BG);
-  const bx = iw/G.W, by = ih/Math.max(1, BOT()-TOP()), top = TOP(), us = G.units;
-  for (let i = 0; i < us.length; i++) {
-    const a = us[i];
-    if (a.dead) continue;
-    const cx = (a.x*bx) | 0, cy = ((a.y-top)*by) | 0;
-    if (cx < 0 || cx >= iw || cy < 0 || cy >= ih) continue;
-    const c = BLIP[a.team];
-    rdPix[cy*iw + cx] = c;
-    if (a.u.baseSize >= 30) {                    // heavies read as a 2x2 block
-      if (cx+1 < iw) rdPix[cy*iw + cx+1] = c;
-      if (cy+1 < ih) { rdPix[(cy+1)*iw + cx] = c;
-                       if (cx+1 < iw) rdPix[(cy+1)*iw + cx+1] = c; }
-    }
-  }
-  // rdCtx is translated so that (x-px(4), y-px(4)) is its origin; putImageData
-  // ignores the transform, so the offset is computed in device pixels here.
-  ctx.putImageData(rdImg, Math.round(px(4)*q), Math.round(px(4)*q));
-
-  for (const t of [0,1]) {
-    ctx.fillStyle = t===0 ? "#bfe6ff" : "#ffd0b0";
-    ctx.fillRect(x + crystalX(t)*(w/G.W) - b2, y + h/2 - b4, b4, px(8));
-  }
-  ctx.fillStyle = G.shrine.owner === 0 ? "#7fc4ff" : G.shrine.owner === 1 ? "#ff8a6a" : "#e8dcb0";
-  ctx.fillRect(x + shrineX()*(w/G.W) - px(1.5), y + h/2 - px(3), px(3), px(6));
-  if (G.speed !== 1) {
-    ctx.fillStyle = "#ffd75e";
-    ctx.font = "bold " + px(16).toFixed(1) + "px 'Trebuchet MS', sans-serif";
-    ctx.fillText(G.speed + "×", x + w + px(10), y + px(13));
-  }
 }
 
 /* ============================================================

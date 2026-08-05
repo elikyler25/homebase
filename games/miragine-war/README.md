@@ -415,12 +415,8 @@ underneath, so a rematch with different armies is one tap.
   In a steady battle nothing new is ever baked, so it is one pass now that simply repeats if the cache
   grew — the retry costs one frame's fill, once, and the saved walk is worth ~1.5 ms every frame.
 
-- **The radar became the second most expensive thing in the frame.** It painted one `fillRect` per
-  troop into a strip 490 by 26 pixels — 26,000 draw calls, ~3.5 ms a frame amortised, which is the
-  same draw-call wall the army itself hit, hiding in the smallest widget on screen. Blips are written
-  straight into an `ImageData` now: one `putImageData` and a flat array store per troop, **3.5 ms →
-  0.4 ms**. The HUD was separately walking all 26,000 units again for a per-side count and income;
-  that tally now happens in the grid rebuild, which already touches every live unit — **1.2 ms →
+- **The HUD was separately walking all 26,000 units every frame** for a per-side count and income.
+  That tally now happens in the grid rebuild, which already touches every live unit — **1.2 ms →
   0.1 ms**.
 - **Separation skips troops that are not crowded.** Checking the occupancy of a unit's own cell is one
   array read and skips the nine-cell scan entirely. It fires for about a quarter of the army in a full
@@ -475,11 +471,6 @@ underneath, so a rematch with different armies is one tap.
   across both crystals, each with scheduled gain ramps. It measures at only 2.9% of a frame budget on
   a desktop, but node creation on a phone is far more expensive, and 400 beeps a second was a buzzsaw
   nobody could hear anyway. Throttled to 19.
-- **The radar is baked.** It repainted 3,000 blips a frame — about 2 ms of `fillRect`, with a
-  `fillStyle` assignment per blip — and a cloud of two-pixel dots does not change meaningfully at
-  60 Hz. Batched by side and cached into a small offscreen canvas refreshed every fifth frame:
-  2.05 ms → 0.23 ms. It was also still sized in *world* units, so growing CHAOS to 14000 wide had
-  quietly shrunk it to a 58×4 pixel smear; every dimension in it is now screen-relative.
 - **`Math.hypot` is not free.** V8's version guards against overflow that coordinates on a
   14000-unit map can never reach, at several times the cost of a plain `sqrt`. It was being called a
   few times per unit per frame.
