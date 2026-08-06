@@ -11,7 +11,7 @@ import { Track } from "../track";
 import { TRACKS } from "../tracks";
 import { CAR_CLASSES } from "../vehicle";
 import { Lane, makeLanes } from "./lane";
-import { MARSHAL_DELAY } from "./slotcar";
+import { MARSHAL_DELAY, slotSpec } from "./slotcar";
 import {
   SLOT_DT,
   SlotRace,
@@ -159,16 +159,20 @@ export class SlotGame {
     const def = TRACKS[index];
     this.track = new Track(def);
     this.lanes = makeLanes(this.track, 4);
-    const car = CAR_CLASSES[def.classes[0]];
+    const car = slotSpec(CAR_CLASSES[def.classes[0]]);
     this.renderer.setTrack(this.track, this.lanes.map((l) => l.offset));
     this.renderer.clearMarks();
-    this.lapReference = slotReferenceTime(this.track, car, this.lanes[0]);
+    this.lapReference = slotReferenceTime(this.track, car, this.lanes[1]);
     this.deslotsThisRace = 0;
 
+    // The player takes an inner lane, not the outermost. Lane 0 is the longest
+    // of the four -- 1106 m against 1038 on Harbour -- and handing it to the
+    // player every single race is a standing handicap nobody agreed to.
+    const order = [1, 0, 2, 3];
     this.race = new SlotRace(this.track, LAPS, [
-      { name: "You", colour: car.colour, car, lane: this.lanes[0] },
+      { name: "You", colour: car.colour, car, lane: this.lanes[order[0]] },
       ...RIVALS.map((r, i) => ({
-        name: r.name, colour: r.colour, car, lane: this.lanes[i + 1], skill: r.skill,
+        name: r.name, colour: r.colour, car, lane: this.lanes[order[i + 1]], skill: r.skill,
       })),
     ]);
     this.held = false;

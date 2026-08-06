@@ -142,6 +142,48 @@ view where it does not. **7.2 s** on Harbour, 9.5 s on Grand Circuit. The LIFT
 cue stays, but it is now confirming something already on screen rather than
 substituting for it.
 
+## The CPUs were not just better, they were cheating
+
+Reported: "the CPUs seem much faster than the player car." They were, by a lot,
+and for a reason that was my fault. A player obeying the cue was **7.8 s down
+over a lap of Harbour and 16.4 s down on Nordic**, beaten by even the weakest
+car by fifteen seconds.
+
+The AI followed a planned speed profile -- the ideal speed at every point on the
+circuit, tracked like a servo. That is information the player cannot have and a
+precision one button cannot reach. The drawn-line game states the principle
+plainly, that opponents get exactly what the player's stroke gives them and run
+through the same simulation, and this had quietly broken it.
+
+The AI now drives off **the same cue the player gets**, and skill is nothing but
+how close to its edge each driver is willing to run. The field went from 7-16 s
+ahead to 1.5-3.5 s, so a player who does anything better than blind obedience
+wins. It also stopped the player always taking lane 0, the longest of the four
+(1106 m against 1038 on Harbour) -- a standing handicap nobody agreed to.
+
+That change exposed a deadlock. The AI reads the cue strictly and without
+hysteresis, so it is the harshest possible reader of that signal -- and a
+STOPPED car still read urgency above 1, because accelerating for the reaction
+window would put it over the limit for something just ahead. One car sat
+motionless 358 m into Grand Circuit for two and a half minutes, and since the
+race waits for everyone, the race never ended. A cue about when to *lift* cannot
+say "not yet" to a car that is not moving. `slottune` asserts it now.
+
+## Faster cars: the magnet, not the top speed
+
+Raising `maxSpeed` makes laps SLOWER. It only stretches the straights -- corner
+speed comes from the grip budget -- so all the extra does is give you more to
+shed, and more of the lap goes on lifting. Measured on Harbour at four magnet
+settings, top speed x1.3 cost about a second a lap at every one of them.
+
+The magnet lifts the whole lap instead. Going from 12 to 44 took a lap from
+39 s to 28 and narrowed the gap to the AI at the same time. The ceiling is set
+the way `GRIP_SCALE` is in the drawn-line game -- by the weakest circuit, since
+past a point flat out simply works and the game is gone.
+
+The magnet is scaled back on low-grip surfaces. At full strength on ice it
+swamped the tyres and every surface drove the same.
+
 ## What was tried and removed
 
 **Reaction lag as a skill knob.** The obvious second dial after planning margin,

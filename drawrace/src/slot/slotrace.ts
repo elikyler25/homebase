@@ -10,7 +10,7 @@ import { clamp } from "../math";
 import { Track } from "../track";
 import { CarClass } from "../vehicle";
 import { Lane, laneCurv } from "./lane";
-import { COAST_BRAKE, MAGNETS, SlotCar } from "./slotcar";
+import { COAST_BRAKE, SlotCar, gripBudgetFor } from "./slotcar";
 
 export const SLOT_DT = 1 / 120;
 
@@ -38,7 +38,7 @@ export function lanePlan(
   margin: number,
 ): number[] {
   const n = track.samples.length;
-  const budget = car.grip * track.surface.grip * 9.81 + (MAGNETS[car.id] ?? 5);
+  const budget = gripBudgetFor(car, track.surface.grip);
   const aLat = budget * margin;
   const stretch = (i: number) =>
     Math.max(0.25, 1 - track.samples[i].curv * lane.offset);
@@ -96,9 +96,8 @@ export interface SlotEntrantOpts {
 export class SlotEntrant {
   readonly cara: SlotCar;
   readonly isPlayer: boolean;
-  /** Target speed the AI is chasing, indexed by lane-point. */
-  private plan: number[] = [];
-  private wanted = 0;
+  /** How far past the cue this driver is willing to run. Higher = braver. */
+  private nerve = 1;
 
   constructor(
     readonly opts: SlotEntrantOpts,
@@ -108,26 +107,31 @@ export class SlotEntrant {
     this.cara = new SlotCar(opts.car, track, opts.lane, startS);
     this.isPlayer = opts.skill === undefined;
     if (!this.isPlayer) {
-      const skill = opts.skill!;
-      // Planning margin is what separates a driver who leaves something for the
-      // bumps from one who deslots at the first hairpin.
-      this.plan = lanePlan(track, opts.car, opts.lane, 0.74 + skill * 0.2);
-      // Skill is margin and nothing else. A reaction-lag term was tried and
-      // removed: measured across three circuits and five margins, 0.3 s of
-      // delay never caused a deslot and was consistently a hair faster, because
-      // the trigger is a closed loop and the braking zones are long. Keeping it
-      // would have been a knob that looked like difficulty and was not.
+      // The AI drives off THE SAME CUE the player gets, and skill is how close
+      // to its edge they are willing to run. Nothing else.
+      //
+      // It used to follow a planned speed profile -- the ideal speed at every
+      // point on the circuit, tracked like a servo. That is information the
+      // player cannot have and a precision one button cannot reach, and it
+      // showed: a player obeying the cue was 7.8 s down over a lap of Harbour
+      // and 16.4 s down on Nordic, beaten by even the weakest car by fifteen
+      // seconds. Not a hard race, a different race. The drawn-line game states
+      // the principle plainly -- opponents get exactly what the player's stroke
+      // gives them and run through the same simulation -- and this had quietly
+      // broken it.
+      // Narrow. Urgency is very sensitive once speeds are high -- the first
+      // range (0.72 + skill*0.5) spread the Nordic field over fifteen seconds,
+      // from a car that ran well past the cue to one that barely reached it.
+      this.nerve = 0.88 + opts.skill! * 0.22;
     }
   }
 
   update(dt: number, track: Track): void {
     if (!this.isPlayer) {
-      const idx =
-        Math.round((this.cara.s / track.length) * this.plan.length) % this.plan.length;
-      this.wanted = this.plan[(idx + this.plan.length) % this.plan.length];
-      this.cara.throttle = this.cara.speed < this.wanted;
+      this.cara.throttle = this.cara.cueUrgency < this.nerve;
     }
     this.cara.step(dt, 0);
+    void track;
   }
 }
 

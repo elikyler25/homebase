@@ -22,6 +22,7 @@ import { Track } from "../src/track";
 import { TRACKS } from "../src/tracks";
 import { CAR_CLASSES } from "../src/vehicle";
 import { makeLanes, laneLength } from "../src/slot/lane";
+import { slotSpec } from "../src/slot/slotcar";
 import {
   SLOT_DT,
   SlotRace,
@@ -51,7 +52,10 @@ const sweep = only.length
 
 for (const def of sweep) {
   const track = new Track(def);
-  const car = CAR_CLASSES[def.classes[0]];
+  // The SAME car the game ships. Reading CAR_CLASSES directly meant the harness
+  // was driving an unboosted car with a boosted magnet -- a combination that
+  // exists nowhere in the game -- and it duly reported that flat out worked.
+  const car = slotSpec(CAR_CLASSES[def.classes[0]]);
   const lanes = makeLanes(track, 4);
   const mid = lanes[1];
   console.log(
@@ -120,6 +124,11 @@ for (const def of sweep) {
   );
 
   // --- 5. misjudging the corner is what costs you ----------------------
+  // 25%, not the 18% this used to ask for. The magnet that makes a slot car
+  // quick also makes it forgiving, and after it went from 12 to 44 an 18%
+  // overestimate was survivable on the gentler circuits -- 1 deslot on Harbour
+  // against 13 on Nordic. A quarter too fast costs you everywhere, and that is
+  // the honest number for the car as it now is rather than as it was.
   // NOT reaction time. The first version of this asserted that a sharper
   // trigger beats a laggier one, and it is simply false here: with a closed
   // loop on the trigger and only a coasting motor to slow the car, braking
@@ -128,11 +137,11 @@ for (const def of sweep) {
   // three circuits, a 0.30 s delay never once cost a deslot and was marginally
   // FASTER every time. Slot racing is not a reflex game; it is a calibration
   // game, and the assertion should test calibration.
-  const greedy = simulateSlot(track, car, mid, overconfidentPolicy(track, car, mid, 0.88, 1.18), 1);
+  const greedy = simulateSlot(track, car, mid, overconfidentPolicy(track, car, mid, 0.88, 1.25), 1);
   check(
     "a driver who overestimates the grip deslots",
     greedy.deslots > 0,
-    `${greedy.deslots} deslots driving the 0.88 plan 18% too fast, vs ${clean.deslots} on plan`,
+    `${greedy.deslots} deslots driving the 0.88 plan 25% too fast, vs ${clean.deslots} on plan`,
   );
   check(
     "and is slower for it",
@@ -178,6 +187,18 @@ for (const def of sweep) {
     `${f(deg(greedy.tailPeak), 0)} deg when deslotting vs ${f(deg(clean.tailPeak), 0)} clean`,
   );
 
+  // --- 5d. an AI obeying the cue must never strand itself ---------------
+  // The AI drives off the same cue with a nerve threshold and no hysteresis, so
+  // it is the strictest possible reader of that signal. If the cue can ever say
+  // "do not accelerate" to a car that is not moving, that car sits there
+  // forever -- and since the race waits for everyone, so does the race.
+  const brave = simulateSlot(track, car, mid, (c) => c.cueUrgency < 1.065, 1);
+  check(
+    "a car obeying the cue strictly still gets going and gets round",
+    brave.finished,
+    `${f(brave.time)}s, ${brave.deslots} deslots`,
+  );
+
   // --- 6. medals are reachable ------------------------------------------
   const medals = slotMedals(ref);
   check(
@@ -214,7 +235,10 @@ for (const def of sweep) {
 {
   const def = sweep[0] ?? TRACKS[0];
   const track = new Track(def);
-  const car = CAR_CLASSES[def.classes[0]];
+  // The SAME car the game ships. Reading CAR_CLASSES directly meant the harness
+  // was driving an unboosted car with a boosted magnet -- a combination that
+  // exists nowhere in the game -- and it duly reported that flat out worked.
+  const car = slotSpec(CAR_CLASSES[def.classes[0]]);
   const lanes = makeLanes(track, 4);
   console.log(`\nA full race on ${def.name}`);
 

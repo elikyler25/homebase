@@ -24,7 +24,30 @@ import { Lane, laneCurv } from "./lane";
 const G = 9.81;
 
 /** How much of the tyre budget the guide pin adds. Flat, like a real magnet. */
-export const MAGNETS: Record<string, number> = { rally: 7.5, gt: 5.5, formula: 3.5 };
+export const MAGNETS: Record<string, number> = { rally: 55, gt: 44, formula: 30 };
+
+/**
+ * Slot cars are not scale models of the road cars, and should not drive like
+ * them. The magnet above and these multipliers make them quick and pointy: they
+ * leap off the line, run out to a much higher top speed, and carry more through
+ * a corner than any of the drawn-line classes.
+ *
+ * Raising `maxSpeed` alone would only stretch the straights -- corner speed
+ * comes from the grip budget -- so the magnet goes up with it. That lifts the
+ * whole lap rather than just the bits between corners, which is what "the cars
+ * should all be able to go faster" actually asks for.
+ */
+export const SLOT_TOP = 1.12;
+export const SLOT_ACCEL = 1.85;
+
+/** A car class, tuned for the slot. */
+export function slotSpec(car: CarClass): CarClass {
+  return {
+    ...car,
+    maxSpeed: car.maxSpeed * SLOT_TOP,
+    accel: car.accel * SLOT_ACCEL,
+  };
+}
 
 /** Over-budget seconds that pull the pin out of the slot. */
 const DESLOT_DEBT = 0.34;
@@ -43,7 +66,7 @@ const DEBT_DECAY = 1.2;
  */
 const HARD_DESLOT = 1.35;
 /** Braking when the trigger is released, as a fraction of full braking. */
-export const COAST_BRAKE = 0.55;
+export const COAST_BRAKE = 0.72;
 /** Rolling and aero drag, m/s^2 at max speed. */
 export const DRAG = 2.4;
 
@@ -74,10 +97,29 @@ const OUTLOOK_HORIZON = 320;
  * rather than the convenient one.
  */
 const REACTION = 0.55;
-/** Where the tail starts to step out, as a fraction of the budget. */
-const TAIL_START = 0.3;
-/** How far it is thrown at the point the pin lets go, radians. */
-const TAIL_MAX = 0.62;
+/**
+ * Where the DANGER part of the tail-out starts, as a fraction of the budget.
+ *
+ * High on purpose, so the two terms do not overlap. The base says "this car is
+ * cornering" and covers the whole safe range; the danger term says "and it is
+ * nearly gone" and only exists at the top. Starting it at 0.3 meant both were
+ * growing together through every ordinary corner, and a clean lap reached 29
+ * deg against 34 for one that came off -- barely a distinction, on the one
+ * reading the player is supposed to steer by.
+ */
+const TAIL_START = 0.7;
+/** How far the danger part throws it at the point the pin lets go, radians. */
+const TAIL_MAX = 0.66;
+/**
+ * Tail-out present in any corner at all, at full load, radians.
+ *
+ * The squared danger term alone meant a car taken well within its limits sat
+ * dead straight, and the back only appeared at the edge. A real slot car has
+ * its tail out the whole way round a bend -- that is what the back wheels do
+ * when the pin is dragging the nose through an arc -- so there is a plain
+ * linear component underneath, and the squared one on top of it for the edge.
+ */
+const TAIL_BASE = 0.2;
 /** Aim to arrive at a corner a little under its limit, not exactly on it. */
 const CORNER_SAFE = 0.9;
 
@@ -96,6 +138,32 @@ export interface SlotTelemetry {
   lift: boolean;
   /** Lifting no longer saves it. */
   tooLate: boolean;
+}
+
+/**
+ * The one place the grip budget is computed.
+ *
+ * It has now been got wrong three times in this file's short life by being
+ * written out twice -- planner and physics disagreeing about curvature, then
+ * about braking, then about this. Each time the symptom was a car being
+ * punished for following a plan that was never achievable. There is no version
+ * of this where two copies stay in step, so there is one.
+ *
+ * The magnet is most of the budget, and it is what makes a slot car quick:
+ * corner speed comes from grip, so a bigger magnet lifts the WHOLE lap rather
+ * than just the straights. Measured on Harbour, going from 12 to 44 took a lap
+ * from 39 s to 28. Raising top speed instead made laps SLOWER at every magnet
+ * setting -- more speed to shed means more of the lap spent lifting -- which is
+ * why `SLOT_TOP` is modest.
+ *
+ * Not fully surface-independent, though a real magnet pulling on steel rails
+ * would be. At full strength on ice it swamped the tyres and every surface
+ * drove the same, so it is scaled back where the grip is low and the circuits
+ * keep their character.
+ */
+export function gripBudgetFor(car: CarClass, surfaceGrip: number): number {
+  const magnet = (MAGNETS[car.id] ?? 30) * (0.6 + 0.4 * surfaceGrip);
+  return car.grip * surfaceGrip * G + magnet;
 }
 
 export class SlotCar {
@@ -129,6 +197,10 @@ export class SlotCar {
   private cue = false;
   private cueTick = 0;
   private lastLook = { urgency: 0, ahead: 0 };
+  /** Latest urgency reading, so an AI can drive off the same number the HUD shows. */
+  get cueUrgency(): number {
+    return this.deslotted ? 0 : this.lastLook.urgency;
+  }
 
   telemetry: SlotTelemetry = {
     speed: 0, load: 0, danger: 0, lateral: 0, deslotted: false,
@@ -147,9 +219,9 @@ export class SlotCar {
   }
 
   /** Total lateral acceleration the slot and tyres can hold, m/s^2. */
+  /** Total lateral acceleration the slot and tyres can hold, m/s^2. */
   get gripBudget(): number {
-    const surf = this.track.surface;
-    return this.car.grip * surf.grip * G + (MAGNETS[this.car.id] ?? 5);
+    return gripBudgetFor(this.car, this.track.surface.grip);
   }
 
   /**
@@ -230,6 +302,16 @@ export class SlotCar {
       // into the corner. It also made the cue react non-monotonically to the
       // reaction budget, which is how the discontinuity gave itself away --
       // allowing MORE reaction time made the game less survivable.
+      // Nothing to decide about a corner you are already slow enough for. This
+      // guard is load-bearing, not tidiness: without it a STOPPED car still
+      // read urgency above 1, because accelerating for the reaction window
+      // would put it over the limit for something just ahead -- so a driver
+      // obeying the cue strictly would never take the throttle, and never move.
+      // One AI sat motionless 358 m into Grand Circuit for two and a half
+      // minutes, and because the race waits for every car, the race never
+      // ended. A cue about when to LIFT cannot be allowed to say "not yet" to a
+      // car that is stationary.
+      if (v * v <= vreq2 * 0.5) continue;
       const vh = Math.min(this.car.maxSpeed, v + drive * REACTION);
       const dh = (v + vh) * 0.5 * REACTION;
       // The fastest you could be going right now and still arrive at that
@@ -331,14 +413,20 @@ export class SlotCar {
     // zoom this game plays at was a couple of pixels -- information nobody could
     // read. It now spans from a gentle lean well before the limit to a genuinely
     // alarming angle at the point the pin lets go.
+    // Saturates early. Letting the base keep growing with load ate the
+    // instrument's range: a clean lap reached 21 deg against 25 for one that
+    // came off, so "leaning through a bend" and "about to lose it" looked alike
+    // again. The base's job is to show that the car IS cornering; everything
+    // above that is the danger term's to say.
+    const base = clamp(load / 0.55, 0, 1) * TAIL_BASE;
     const edge = clamp((load - TAIL_START) / (HARD_DESLOT - TAIL_START), 0, 1);
     // Squared, so the tail stays calm through the range where nothing is going
     // to happen and only gets dramatic near the edge. Linear was measurably a
     // bad instrument: a lap that was never in trouble peaked at 19 deg against
     // 23 deg for one that actually came off, so "thrown right out" and "fine"
     // looked the same. The point of the pose is the difference between them.
-    const target = -Math.sign(k || 1) * edge * edge * TAIL_MAX;
-    this.slip += (target - this.slip) * Math.min(1, dt * 7);
+    const target = -Math.sign(k || 1) * (base + edge * edge * TAIL_MAX);
+    this.slip += (target - this.slip) * Math.min(1, dt * 10);
 
     // The outlook scan is the most expensive thing here and a person cannot
     // react faster than this anyway, so it runs at 30 Hz rather than 120.

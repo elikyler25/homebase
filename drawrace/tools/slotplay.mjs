@@ -61,6 +61,9 @@ const read = () =>
       deslots: p.deslotCount,
       laps: p.laps,
       state: g.race.state,
+      raceTime: +g.race.time.toFixed(1),
+      dist: Math.round(p.distance),
+      laneLen: Math.round(p.lane.length),
       lift: p.telemetry.lift,
       meter: document.getElementById("grip-fill").style.width,
       pos: document.getElementById("v-pos").textContent,
@@ -79,7 +82,10 @@ await page.waitForTimeout(3200); // countdown
 const samples = [];
 let held = false;
 let shot = false;
-const deadline = Date.now() + 90000;
+// Generous, because this runs in real time and the slowest cue-following lap
+// across the thirty is Grand Circuit at 84.5 s. A 90 s budget was cutting it
+// off mid-lap and reporting a failure the game had not committed.
+const deadline = Date.now() + 150000;
 while (Date.now() < deadline) {
   const t = await read();
   if (!t) break;
@@ -110,7 +116,7 @@ const movedMeter = new Set(samples.map((s) => s.meter)).size;
 const last = samples.at(-1) ?? {};
 console.log(
   `peak ${peakSpeed} km/h, meter took ${movedMeter} distinct widths, ` +
-    `${last.deslots} deslots, state ${last.state}`,
+    `${last.deslots} deslots, state ${last.state}, lap ${last.laps}, ${last.dist}/${last.laneLen} m, race clock ${last.raceTime}s`,
 );
 
 await page.waitForTimeout(900);
@@ -124,6 +130,13 @@ const result = await page.evaluate(() => ({
   note: document.getElementById("r-note").textContent,
 }));
 console.log(JSON.stringify(result, null, 2));
+const field = await page.evaluate(() => (window.__slot.race?.entrants ?? []).map((e) => ({
+  name: e.opts.name, lane: e.cara.lane.index, laps: e.cara.laps,
+  done: e.cara.finished, kmh: Math.round(e.cara.speed * 3.6),
+  dist: Math.round(e.cara.distance), need: Math.round(e.cara.lane.length),
+  urgency: +e.cara.cueUrgency.toFixed(2), throttle: e.cara.throttle, deslots: e.cara.deslotCount,
+})));
+console.log("field:", JSON.stringify(field, null, 1));
 
 const problems = [...errors];
 if (last.state !== "finished") problems.push(`race never finished (state ${last.state})`);
