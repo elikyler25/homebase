@@ -89,6 +89,36 @@ The camera was the other half. It sat centred on the car and axis-aligned, so
 half a tall phone screen showed road already driven. It now turns with the car —
 up is where you are going — which is what makes a portrait screen into lookahead.
 
+## It moved in clicks
+
+Reported next: "the car moves like little clicks instead of smooth motion."
+
+`Track.sampleAt` floors to a sample index, and the samples are one metre apart.
+That is invisible when you ask the track about surface or curvature, and very
+visible when you ask it WHERE SOMETHING IS. The drawn-line car never noticed
+because it integrates its own position and only queries the track for
+properties; the slot car takes its position from the track, so it inherited the
+quantisation directly. Measured: **42% of frames the car did not move at all**,
+and then it jumped a whole metre. `Track.lerpAt` interpolates between the two
+nearest samples, and that goes to 0% stationary frames with the frame-to-frame
+roughness dropping from 1.03 to 0.01.
+
+## Show the layout, do not make them learn it
+
+The other half of "difficult to drive", and the fix came from the game this one
+is chasing. Groove Racer used a **fixed view with deliberately blocky cars** --
+which its Pocket Gamer review credits with "making the tight track action easier
+to follow" -- rather than any kind of warning indicator. That is the structural
+answer. With no steering, every decision is about a corner you have not reached
+yet, so put the corner on screen instead of captioning it.
+
+The camera went through three shapes before landing there: a close chase cam
+(4.0 s of track visible ahead), then a rotating one (5.0 s), then this -- fixed
+orientation, framing the whole circuit where it fits and the widest readable
+view where it does not. **7.2 s** on Harbour, 9.5 s on Grand Circuit. The LIFT
+cue stays, but it is now confirming something already on screen rather than
+substituting for it.
+
 ## What was tried and removed
 
 **Reaction lag as a skill knob.** The obvious second dial after planning margin,

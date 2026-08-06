@@ -323,16 +323,39 @@ export class SlotGame {
     r.beginFrame();
     if (this.phase === "race" && this.race) {
       const me = this.player.cara;
-      // Up is where you are going. Biasing the centre along the heading was the
-      // first attempt and it wasted the screen: on a portrait phone, shifting
-      // the view sideways when the car happens to be travelling west buys no
-      // lookahead at all and leaves two thirds of the display on empty grass.
-      // Turning the world instead makes every frame the same shape -- road
-      // ahead, up -- and a tall screen becomes lookahead.
-      r.camera.targetCenter = me.pos;
-      r.camera.targetRotation = me.heading;
-      r.camera.anchorY = 0.72;
-      r.camera.targetScale = clamp(3.4 - me.speed * 0.03, 1.5, 3.4);
+      // Show the layout, do not make them learn it a corner at a time.
+      //
+      // This started as a close chase camera, then a rotating one. Both are
+      // wrong for a car on rails. Groove Racer -- the slot game this is chasing
+      // -- used a fixed view and blocky cars precisely so the tight stuff was
+      // easy to follow, and that is the structural answer: with no steering,
+      // every decision is about a corner you have not reached, so the fix is to
+      // put that corner on screen rather than to caption it.
+      //
+      // Fixed orientation, wide enough that several corners are in frame at
+      // once, and biased along the direction of travel so the road ahead gets
+      // the space rather than the road behind.
+      const bounds = this.track.bounds;
+      const w = bounds.max.x - bounds.min.x;
+      const h = bounds.max.y - bounds.min.y;
+      const whole = Math.min(
+        this.renderer.cssWidth / (w + 60),
+        this.renderer.cssHeight / (h + 60),
+      );
+      // Small circuits get framed entirely, the way a slot layout sits on a
+      // table. Big ones get the widest view that still leaves the car readable.
+      const scale = clamp(whole, 0.95, 2.0);
+      const framedWhole = whole >= 0.95;
+      const lead = framedWhole ? 0 : clamp(me.speed * 1.6, 0, 90);
+      r.camera.targetCenter = framedWhole
+        ? { x: (bounds.min.x + bounds.max.x) / 2, y: (bounds.min.y + bounds.max.y) / 2 }
+        : {
+            x: me.pos.x + Math.cos(me.heading) * lead,
+            y: me.pos.y + Math.sin(me.heading) * lead,
+          };
+      r.camera.targetRotation = 0;
+      r.camera.anchorY = 0.5;
+      r.camera.targetScale = scale;
       r.camera.update(dt, this.race.time < 0.05);
       r.drawTrackLayer();
       r.stepParticles(dt);

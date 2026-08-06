@@ -2,18 +2,7 @@
 // length, plus a spatial grid so "where am I on the track?" is O(1) per query
 // (the physics step asks that for every car, every tick).
 
-import {
-  Vec2,
-  catmullRom,
-  clamp,
-  vadd,
-  vdist2,
-  vlen,
-  vnorm,
-  vperp,
-  vscale,
-  vsub,
-} from "./math";
+import { Vec2, catmullRom, clamp, vadd, vdist2, vlen, vlerp, vnorm, vperp, vscale, vsub } from "./math";
 
 export type SurfaceId = "asphalt" | "gravel" | "ice";
 
@@ -318,6 +307,34 @@ export class Track {
     if (s < 0) s += this.length;
     if (s >= this.length) s -= this.length;
     return { index: i, s, lateral, onTrack: Math.abs(lateral) <= this.halfWidth };
+  }
+
+  /**
+   * Like `sampleAt`, but interpolated between the two nearest samples.
+   *
+   * `sampleAt` floors to a sample index and the samples are a metre apart, which
+   * is invisible when you are asking about surface or curvature and very
+   * visible when you are asking WHERE SOMETHING IS. The drawn-line car never
+   * noticed because it integrates its own position and only queries the track
+   * for properties; the slot car takes its position from the track, so it
+   * inherited the quantisation directly -- 42% of frames it did not move at all
+   * and then it jumped a whole metre, which is what "moves like little clicks"
+   * looks like from the outside.
+   */
+  lerpAt(s: number): TrackSample {
+    const n = this.samples.length;
+    const u = ((((s % this.length) + this.length) % this.length) / this.length) * n;
+    const i = Math.floor(u);
+    const f = u - i;
+    const a = this.samples[i % n];
+    const b = this.samples[(i + 1) % n];
+    return {
+      pos: vlerp(a.pos, b.pos, f),
+      tan: vnorm(vlerp(a.tan, b.tan, f)),
+      nor: vnorm(vlerp(a.nor, b.nor, f)),
+      s,
+      curv: a.curv + (b.curv - a.curv) * f,
+    };
   }
 
   sampleAt(s: number): TrackSample {

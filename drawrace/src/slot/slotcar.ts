@@ -135,7 +135,7 @@ export class SlotCar {
     startS: number,
   ) {
     this.s = startS;
-    const smp = track.sampleAt(startS);
+    const smp = track.lerpAt(startS);
     this.heading = Math.atan2(smp.tan.y, smp.tan.x);
   }
 
@@ -187,7 +187,7 @@ export class SlotCar {
     let urgency = 0;
     let ahead = 0;
     for (let d = 4; d <= OUTLOOK_HORIZON; d += 4) {
-      const k = Math.abs(laneCurv(this.track.sampleAt(this.s + d), this.lane.offset));
+      const k = Math.abs(laneCurv(this.track.lerpAt(this.s + d), this.lane.offset));
       if (k < 1e-5) continue;
       ahead = Math.max(ahead, (v * v * k) / budget);
       // The speed that corner can be taken at, with a little in hand.
@@ -246,7 +246,7 @@ export class SlotCar {
 
   /** The fastest this lane can be taken at `s`, ignoring what comes next. */
   limitSpeedAt(s: number): number {
-    const k = Math.abs(laneCurv(this.track.sampleAt(s), this.lane.offset));
+    const k = Math.abs(laneCurv(this.track.lerpAt(s), this.lane.offset));
     if (k < 1e-5) return this.car.maxSpeed;
     return Math.min(this.car.maxSpeed, Math.sqrt(this.gripBudget / k));
   }
@@ -257,7 +257,7 @@ export class SlotCar {
       return;
     }
 
-    const smp = this.track.sampleAt(this.s);
+    const smp = this.track.lerpAt(this.s);
     const k = laneCurv(smp, this.lane.offset);
     const budget = this.gripBudget;
 
@@ -310,7 +310,7 @@ export class SlotCar {
     this.distance += laneStep;
     if (this.distance >= (this.laps + 1) * this.lane.length) this.laps++;
 
-    const tan = this.track.sampleAt(this.s).tan;
+    const tan = this.track.lerpAt(this.s).tan;
     this.heading = Math.atan2(tan.y, tan.x);
     // The tail steps out as the budget runs down. Same number as the danger
     // meter, so what the car looks like and what the HUD says cannot disagree.
@@ -385,7 +385,7 @@ export class SlotCar {
       this.speed = 0;
       this.slip = 0;
       this.debt = 0;
-      const tan = this.track.sampleAt(this.s).tan;
+      const tan = this.track.lerpAt(this.s).tan;
       this.heading = Math.atan2(tan.y, tan.x);
     }
   }
@@ -393,7 +393,7 @@ export class SlotCar {
   /** Where to draw it. */
   get pos(): { x: number; y: number } {
     if (this.deslotted) return this.freePos;
-    const smp = this.track.sampleAt(this.s);
+    const smp = this.track.lerpAt(this.s);
     return {
       x: smp.pos.x + smp.nor.x * this.lane.offset,
       y: smp.pos.y + smp.nor.y * this.lane.offset,
