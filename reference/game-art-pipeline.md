@@ -134,7 +134,79 @@ taste is L3. These are the rules a tired human stops enforcing at 1am:
 Homebase already has the hook machinery (`hooks/hooks.json` + standalone stdlib scripts).
 These gates are the same shape as `secret-scan.py` and fail-safe the same way.
 
-## 3. The honest ceiling
+## 3. Store & marketing art (banners, capsules, key art)
+
+Distinct enough from §2 to deserve its own treatment: banners are **composition, not
+illustration**, and they are judged under conditions in-game assets never face. DESLOT is the
+live case — `homebase-design.md` lists it as a Steam product with brand + showcase, which
+means the capsule set is a real deliverable, not a hypothetical.
+
+Three things make store art different:
+
+1. **Hard external constraints.** Exact pixel dimensions, per-asset file format, size caps,
+   and platform content rules. All machine-checkable — ideal gate material, and the most
+   common source of a rejected store page.
+2. **Thumbnail-first.** Steam auto-derives 184×69 and 120×45 from the small capsule. Your art
+   must survive an ~8× downscale in a crowded storefront. This is the silhouette test from
+   §2 L3, harsher: if the logo is not readable at 120×45, the asset has failed regardless of
+   how it looks at full size.
+3. **Logo legibility is the job.** Valve's own guidance is that the logo should *nearly fill*
+   the small capsule. Scene beauty is secondary to the half-second read.
+
+### Steam — required assets
+
+Per [Steamworks store asset docs](https://partner.steamgames.com/doc/store/assets/standard).
+Treat these as authoritative and re-check at ship time; Valve changes them.
+
+| Asset | Size | Format | Where it appears |
+|---|---|---|---|
+| Header capsule | 920 × 430 | JPG | Store page top, Big Picture, "Recommended For You" |
+| Small capsule | 462 × 174 | PNG | Search, top sellers, new releases (auto-derives 184×69, 120×45) |
+| Main capsule | 1232 × 706 | JPG | Store home page carousel |
+| Vertical capsule | 748 × 896 | JPG | Seasonal sales, promo pages |
+| Library capsule | 600 × 900 | JPG | In-library grid |
+| Page background *(optional)* | 1438 × 810 | JPG | Ambient page backdrop |
+| Bundle header *(if bundling)* | 707 × 232 | JPG | Bundle detail page |
+| Screenshots | ≥ 1920 × 1080, 16:9 | — | Store page, minimum 5 |
+
+**Content rules that cause rejections:** no marketing copy, review quotes, awards, or
+discount badges baked into capsules — title/logo only. Screenshots must show actual gameplay,
+not concept art or pre-rendered cinematic stills.
+
+### itch.io
+
+| Asset | Size | Notes |
+|---|---|---|
+| Cover image | 630 × 500 recommended | min 315 × 250, max 3840 × 2160, ≤ 3 MB |
+| Page banner | 960 × 300 (or × 400) | 960px max display width; **replaces the page title**, so the title must be in the art |
+
+### How this runs
+
+The division of labor is unusually clean here, and it plays to Claude's actual strengths:
+
+```
+key art        ← generated or commissioned ONCE, high-res, per the Art Bible
+   ↓
+composition    ← Claude scripts it: crop, safe areas, logo placement, per-format framing
+   ↓
+derive all     ← one master → every size, deterministically (PIL / ImageMagick)
+   ↓
+critique loop  ← view each at ACTUAL display size, incl. the 120×45 derive
+   ↓
+gates          ← dims, format, file size, logo-area threshold, text-free check
+```
+
+Claude cannot paint the key art. It *can* do every other step, because they are layout,
+scripting, and verification. Two rules that carry most of the value:
+
+- **Never design at full size and hope.** Compose the small capsule *first*, at 120×45, and
+  scale the concept up. A design that works at thumbnail almost always works large; the
+  reverse is very often false.
+- **Review at display size, not asset size.** Rendering a 1232×706 capsule at full width in
+  review is flattering and misleading. The contact sheet for store art is every capsule at
+  the pixel size a player actually sees it, on the storefront's real background.
+
+## 4. The honest ceiling
 
 Worth stating plainly rather than discovering at month three.
 
@@ -152,7 +224,7 @@ Also true: buying a coherent CC0 pack (Kenney, Quaternius) and restyling it to t
 frequently beats generating from scratch, and does so on day one. Generation is not the
 prestige move it looks like.
 
-## 4. Proposal — what to build in homebase
+## 5. Proposal — what to build in homebase
 
 A `game-art` skill, shipped in this plugin, in build order:
 
@@ -164,14 +236,21 @@ A `game-art` skill, shipped in this plugin, in build order:
    *(This is the quality jump.)*
 3. **Gate hooks** — palette, grid, alpha, silhouette, 3D norms. Stdlib, fail-safe, wired into
    `hooks.json` alongside the existing four.
-4. **Generator routing** — thin adapters per L2 tool, MCP where one exists (PixelLab, Blender),
-   REST otherwise. Deliberately last: routing is worthless without 1–3, and every added
+4. **Store-art kit** (§3) — one master key art in, every Steam + itch size out, plus the
+   spec gates (dimensions, format, file size, logo-area threshold, baked-text check) and a
+   display-size contact sheet down to 120×45. Pure stdlib-plus-Pillow scripting, no network.
+   *(Immediately useful for DESLOT, and the most objectively verifiable piece here — the
+   requirements are published numbers, so "correct" is not a matter of taste.)*
+5. **Generator routing** — thin adapters per L2 tool, MCP where one exists (PixelLab, Blender),
+   REST otherwise. Deliberately last: routing is worthless without 1–4, and every added
    integration is a dependency a stranger has to trust.
 
-Sequencing note: 1 → 2 → 3 → 4 is also decreasing confidence and increasing external
-dependency. Steps 1–3 need no third-party account and no network. Step 4 does.
+Sequencing note: 1 → 5 is also decreasing confidence and increasing external dependency.
+Steps 1–4 need no third-party account and no network. Step 5 does. If only one thing gets
+built, build 1; if only two, build 1 and 4 — the Art Bible makes everything else coherent,
+and the store kit has a hard, checkable definition of done.
 
-## 5. Sources
+## 6. Sources
 
 - [Blender MCP](https://blender-mcp.com/) · [Claude + Blender MCP setup](https://blendermcp.org/setup/claude) · [real-world performance & limits](https://www.mindstudio.ai/blog/claude-blender-mcp-real-world-performance)
 - [PixelLab MCP](https://www.pixellab.ai/mcp) · [pixellab-code/pixellab-mcp](https://github.com/pixellab-code/pixellab-mcp)
@@ -179,3 +258,4 @@ dependency. Steps 1–3 need no third-party account and no network. Step 4 does.
 - [AI 3D generator comparison — Tripo / Meshy / Rodin](https://www.strayspark.studio/blog/generative-3d-tools-comparison-meshy-rodin-tripo-csm-2026) · [2026 roundup](https://medium.com/ideas-with-wings/best-ai-3d-model-generators-in-2026-tripo-ai-vs-meshy-rodin-kaedim-and-more-7eea7b05eb11)
 - [AI sprite generators compared](https://sprixen.com/blog/best-ai-sprite-generators-2026) · [pixel art generators tested](https://www.sprite-ai.art/blog/best-pixel-art-generators-2026)
 - [Art direction over raw technology](https://pixune.com/blog/stylized-art-style/) · [game art styles & readability](https://www.argentics.io/understanding-game-art-styles)
+- Store art — [Steamworks store graphical assets](https://partner.steamgames.com/doc/store/assets/standard) (authoritative) · [capsule size guide](https://www.steampageanalyzer.com/blog/steam-capsule-sizes) · [itch.io image sizes](https://itch.io/t/474870/whats-up-with-the-recommended-cover-image-resolutions)
