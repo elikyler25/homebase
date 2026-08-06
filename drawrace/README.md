@@ -44,6 +44,15 @@ rule instead of by tap, since one screen cannot take a tap for four cars. Nothin
 the career; a shared-device race would otherwise credit whoever owns the phone with a lap
 somebody else drew.
 
+**The game explains itself now.** A how-to card on the first run, then two pieces of coaching
+that both fall out of the physics rather than being written alongside it. While you draw, any
+stretch of line asking for more grip than the tyres own gets a red halo — the same
+*v²k > grip* comparison the vehicle makes every tick, evaluated on the whole stroke before the
+lights go out. After the race, the results screen draws your lap and highlights the twelfth of
+the circuit where the car actually spent the most time past its budget, measured tick by tick
+during the race rather than predicted. A time tells you that you were slow; that map tells you
+*where*, which is the only actionable thing about a lap you drew in one gesture.
+
 **Skill events** are the other mode: no opponents, one lap, and a course strewn with balloons
 placed deliberately *off* the racing line. The fast line stops being automatically the right
 answer, because every detour has to be paid back somewhere else.
@@ -138,6 +147,7 @@ cut the slip-angle visual — at its old coefficient an understeering car plough
 | `src/track.ts` | closed spline, arc-length resampling, surfaces, spatial-grid projection |
 | `src/tracks.ts` | the thirty circuits |
 | `src/ghost.ts` | saving and replaying your best stroke |
+| `src/coach.ts` | over-the-limit warnings, and where the lap was lost |
 | `src/carart.ts` | per-class car sprites, baked offscreen |
 | `src/line.ts` | pointer input → arc-length path with a speed at every node |
 | `src/vehicle.ts` | the physics: friction circle, tyre falloff, path following, turbo |

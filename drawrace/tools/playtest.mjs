@@ -10,7 +10,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CHROME, traceLap } from "./stroke.mjs";
+import { CHROME, dismissHowTo, traceLap } from "./stroke.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const shots = join(root, "shots", process.argv[2] ? process.argv[2] : "harbour");
@@ -79,6 +79,7 @@ if (pick.locked) {
 }
 console.log(`circuit: ${pick.name}`);
 await page.locator("#track-list .track-card").nth(pick.index).click();
+await dismissHowTo(page);
 await page.waitForSelector("#screen-draw:not(.hidden)", { timeout: 5000 });
 await page.waitForTimeout(400);
 await page.screenshot({ path: join(shots, "2-draw-empty.png") });

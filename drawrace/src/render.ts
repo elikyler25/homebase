@@ -6,6 +6,7 @@
 // track surface (kerbs, edge lines, surface grain).
 
 import { SPRITE_L, SPRITE_W, carSprite } from "./carart";
+import { OverLimitSpan } from "./coach";
 import { RacingLine } from "./line";
 import { Vec2, clamp, damp, lerp, vadd, vscale } from "./math";
 import { Entrant } from "./race";
@@ -588,6 +589,37 @@ export class Renderer {
       ctx.lineTo(a.pos.x - na.x * wa, a.pos.y - na.y * wa);
       ctx.closePath();
       ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Mark the stretches of the stroke that are over the grip budget.
+   *
+   * Drawn *under* the line rather than over it, as a soft halo, so it reads as
+   * a warning around the corner rather than as another line competing with the
+   * speed colouring the player is supposed to be learning to read.
+   */
+  drawOverLimit(line: RacingLine, spans: OverLimitSpan[], pulse: number): void {
+    if (!spans.length) return;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    for (const span of spans) {
+      // Kept a halo rather than a solid stroke: the speed colouring underneath
+      // is the thing the player is learning to read, and a warning that hides
+      // it teaches nothing.
+      const heat = clamp((span.peak - 1) * 1.4, 0.25, 1);
+      ctx.strokeStyle = `rgba(255,64,52,${(0.13 + heat * 0.17 + pulse * 0.07).toFixed(3)})`;
+      ctx.lineWidth = 6 + heat * 4;
+      ctx.beginPath();
+      for (let i = span.fromIndex; i <= span.toIndex && i < line.nodes.length; i++) {
+        const p = line.nodes[i].pos;
+        if (i === span.fromIndex) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
     }
     ctx.restore();
   }

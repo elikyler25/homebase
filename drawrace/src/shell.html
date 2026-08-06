@@ -127,6 +127,40 @@
   }
   .hs-chip.on { color: #fff; background: var(--accent); border-color: transparent; }
 
+  /* ---------------------------------------------------------- tutorial */
+  #screen-howto { align-items: center; justify-content: center; }
+  .howto-card { max-width: 340px; width: 100%; }
+  .howto-card h2 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .howto-step { display: flex; gap: 12px; align-items: flex-start; margin-top: 18px; }
+  .howto-num {
+    flex: none; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: 13px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .howto-text { font-size: 13.5px; line-height: 1.5; color: #cbd4dd; }
+  .howto-text b { color: var(--text); font-weight: 700; }
+  .howto-swatch {
+    display: flex; height: 8px; border-radius: 4px; overflow: hidden;
+    margin: 12px 0 2px;
+    background: linear-gradient(90deg, #e2f0fc, #ffc247, #ff3b30);
+  }
+  .howto-legend {
+    display: flex; justify-content: space-between;
+    font-size: 10.5px; color: var(--dim); letter-spacing: 0.05em; text-transform: uppercase;
+  }
+
+  /* ----------------------------------------------------------- results */
+  #result-map {
+    width: 100%; height: 168px; display: block;
+    margin: 4px 0 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--line);
+  }
+  #result-coach { font-size: 12.5px; color: var(--dim); line-height: 1.45; margin: 0 0 14px; }
+  #result-coach b { color: #ff8a80; font-weight: 650; }
+
   #screen-handover { align-items: center; justify-content: center; text-align: center; }
   .ho-who { font-size: 40px; font-weight: 900; letter-spacing: -0.03em; }
   .ho-dot {
@@ -211,7 +245,7 @@
   }
   #draw-pct { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
 
-  .draw-bottom { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  .draw-bottom { display: flex; justify-content: center; gap: 7px; flex-wrap: wrap; }
 
   .class-row { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
   .class-chip {
@@ -355,7 +389,10 @@
     </div>
     <div id="track-list"></div>
     <div class="spacer"></div>
-    <p class="sub" style="margin-top:22px;opacity:0.7">
+    <div class="btn-row" style="margin-top:22px">
+      <button id="btn-howto" class="btn ghost">How to race</button>
+    </div>
+    <p class="sub" style="margin-top:14px;opacity:0.7">
       Tap anywhere during a race to deploy turbo. It charges while you brake &mdash;
       and spends grip you might need for the corner.
     </p>
@@ -372,9 +409,46 @@
       <div id="class-row" class="class-row hidden"></div>
     </div>
     <div class="draw-bottom">
-      <button id="btn-clear" class="btn small ghost">Clear line</button>
+      <button id="btn-clear" class="btn small ghost">Clear</button>
+      <button id="btn-coach" class="btn small ghost">Coach on</button>
       <button id="btn-sound" class="btn small ghost">Sound on</button>
       <button id="btn-menu" class="btn small ghost">Tracks</button>
+    </div>
+  </div>
+
+  <!-- -------------------------------------------------------- tutorial -->
+  <div id="screen-howto" class="screen hidden">
+    <div class="howto-card">
+      <h2>How to race</h2>
+      <p class="sub" style="margin-bottom:0">You get one gesture. Make it count.</p>
+
+      <div class="howto-step">
+        <div class="howto-num">1</div>
+        <div class="howto-text">
+          Put your finger on the <b>grid</b> and trace the whole lap without lifting it.
+        </div>
+      </div>
+      <div class="howto-step">
+        <div class="howto-num">2</div>
+        <div class="howto-text">
+          <b>How fast you draw is how fast the car goes.</b> Slow your finger through the
+          corners. Hurry down the straights.
+        </div>
+      </div>
+      <div class="howto-step">
+        <div class="howto-num">3</div>
+        <div class="howto-text">
+          Ask for more grip than the tyres own and the car <b>cannot make the corner</b> —
+          it runs wide onto the grass. A red glow on your line means exactly that.
+        </div>
+      </div>
+
+      <div class="howto-swatch"></div>
+      <div class="howto-legend"><span>slow</span><span>flat out</span></div>
+
+      <div class="btn-row">
+        <button id="btn-howto-done" class="btn primary">Got it</button>
+      </div>
     </div>
   </div>
 
@@ -440,6 +514,9 @@
       <span id="result-medal" class="medal big none"></span>
       <span id="result-medal-label">No medal</span>
     </div>
+
+    <canvas id="result-map"></canvas>
+    <p id="result-coach"></p>
 
     <div id="result-table"></div>
 

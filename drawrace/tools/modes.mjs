@@ -11,7 +11,7 @@ import { chromium } from "playwright";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CHROME, traceLap } from "./stroke.mjs";
+import { CHROME, dismissHowTo, traceLap } from "./stroke.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -44,6 +44,7 @@ await page.waitForSelector("#track-list .track-card");
 
 /** Draw a lap and jump to the end of the race. */
 async function runRace() {
+  await dismissHowTo(page);
   await page.waitForSelector("#screen-draw:not(.hidden)");
   await page.waitForTimeout(300);
   await traceLap(page, { totalMs: 1600 });
@@ -69,10 +70,31 @@ async function runRace() {
   return { ...res, ghostVisible, turboVisible };
 }
 
-// ------------------------------------------------------------------- ghost
-console.log("Ghost");
+// ---------------------------------------------------------------- coaching
+console.log("Coaching");
 await page.locator("#track-list .track-card").first().click();
+check(
+  "the how-to card appears on a first run",
+  await page.evaluate(
+    () => !document.getElementById("screen-howto").classList.contains("hidden"),
+  ),
+);
+
+// ------------------------------------------------------------------- ghost
+console.log("\nGhost");
 const first = await runRace();
+check(
+  "the results screen names the corner that cost the lap",
+  /\S/.test(await page.evaluate(() => document.getElementById("result-coach").textContent)),
+  await page.evaluate(() => document.getElementById("result-coach").textContent.slice(0, 72)),
+);
+check(
+  "the results map is drawn",
+  await page.evaluate(() => {
+    const cv = document.getElementById("result-map");
+    return cv.width > 0 && cv.height > 0;
+  }),
+);
 check("a first run has no ghost to race", !first.ghostVisible);
 check(
   "a first run is a personal best",
@@ -88,6 +110,12 @@ check(
 );
 
 await page.click("#btn-retry");
+check(
+  "the how-to card does not come back",
+  await page.evaluate(
+    () => document.getElementById("screen-howto").classList.contains("hidden"),
+  ),
+);
 const second = await runRace();
 check("the second run races a ghost", second.ghostVisible);
 check(
@@ -104,6 +132,7 @@ await page.waitForSelector("#screen-menu:not(.hidden)");
 await page.locator("#hs-opts .hs-chip", { hasText: "2" }).first().click();
 await page.locator("#track-list .track-card").first().click();
 
+await dismissHowTo(page);
 await page.waitForSelector("#screen-draw:not(.hidden)");
 await page.waitForTimeout(300);
 await traceLap(page, { totalMs: 1600 });

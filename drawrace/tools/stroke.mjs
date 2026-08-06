@@ -69,3 +69,23 @@ export async function traceLap(page, { totalMs = 3000, onProgress } = {}) {
   await page.mouse.up();
   return { drawMs, points: stroke.pts.length };
 }
+
+/**
+ * Dismiss the first-run how-to card if it is showing. Returns whether it was.
+ * Both harnesses need this and the assertion "it appears exactly once" is worth
+ * owning in one place.
+ */
+export async function dismissHowTo(page) {
+  const showing = await page.evaluate(
+    () => !document.getElementById("screen-howto").classList.contains("hidden"),
+  );
+  if (showing) {
+    await page.click("#btn-howto-done");
+    // Not waitForSelector: a `.hidden` screen is display:none, so it can never
+    // become "visible" and the default wait would hang for the full timeout.
+    await page.waitForFunction(() =>
+      document.getElementById("screen-howto").classList.contains("hidden"),
+    );
+  }
+  return showing;
+}

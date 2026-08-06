@@ -2,6 +2,7 @@
 
 import { DRIVER_POOL } from "./ai";
 import { GameAudio } from "./audio";
+import { SECTORS, OverLimitSpan, overLimitSpans, worstSector } from "./coach";
 import { GhostData, decodeGhost, encodeGhost } from "./ghost";
 import { RacingLine, RawSample } from "./line";
 import { Vec2, clamp, formatGap, formatTime, lerp, vdist } from "./math";
@@ -12,7 +13,7 @@ import { Track } from "./track";
 import { TRACKS } from "./tracks";
 import { CAR_CLASSES, CarClass } from "./vehicle";
 
-type Phase = "menu" | "draw" | "handover" | "race" | "results";
+type Phase = "menu" | "howto" | "draw" | "handover" | "race" | "results";
 
 /**
  * Hot seat: everyone plays on one device, so the players take turns drawing and
@@ -50,6 +51,10 @@ interface Progress {
   /** The stroke behind each personal best, replayed as a ghost. */
   ghosts?: Record<string, GhostData>;
   muted?: boolean;
+  /** The over-the-limit warning while drawing. On until switched off. */
+  coachOff?: boolean;
+  /** Set once the how-to-race card has been seen. */
+  taught?: boolean;
 }
 
 const STORE_KEY = "drawrace.progress.v2";
@@ -119,6 +124,11 @@ export class Game {
   /** Last countdown integer announced, so pips fire once each. */
   private lastPip = 99;
 
+  /** Stretches of the current stroke that are over the grip budget. */
+  private overLimit: OverLimitSpan[] = [];
+  /** Seconds the player spent past the budget, per twelfth of the circuit. */
+  private sectorSlide: number[] = new Array(SECTORS).fill(0);
+
   /** 0 when hot seat is off, otherwise how many people are sharing the device. */
   private seats = 0;
   /** Strokes banked so far this hot-seat round, one per seat that has drawn. */
@@ -145,6 +155,7 @@ export class Game {
     });
     this.audio.setEnabled(!this.progress.muted);
     this.syncSoundButton();
+    this.syncCoachButton();
     this.buildTrackMenu();
     this.setPhase("menu");
     requestAnimationFrame(this.frame);
@@ -159,6 +170,15 @@ export class Game {
     }
     $("btn-clear").addEventListener("click", () => this.resetStroke());
     $("btn-handover").addEventListener("click", () => this.startDraw());
+    $("btn-coach").addEventListener("click", () => this.toggleCoach());
+    $("btn-howto").addEventListener("click", () => this.setPhase("howto"));
+    $("btn-howto-done").addEventListener("click", () => {
+      this.progress.taught = true;
+      saveProgress(this.progress);
+      // Reached from the menu button as well as from a first run, so go back to
+      // whatever was underneath rather than always into a draw.
+      this.setPhase(this.track ? "draw" : "menu");
+    });
     $("btn-handover-quit").addEventListener("click", () => this.setPhase("menu"));
     $("btn-sound").addEventListener("click", () => this.toggleSound());
     $("btn-skip").addEventListener("click", () => this.finishRaceFast());
@@ -211,6 +231,22 @@ export class Game {
   private isUnlocked(tier: number): boolean {
     const c = CHAMPIONSHIPS.find((x) => x.tier === tier);
     return !c || this.medalCount >= c.needs;
+  }
+
+  private get coaching(): boolean {
+    return !this.progress.coachOff;
+  }
+
+  private toggleCoach(): void {
+    this.progress.coachOff = this.coaching;
+    saveProgress(this.progress);
+    this.syncCoachButton();
+    this.updateDrawProgress();
+  }
+
+  private syncCoachButton(): void {
+    $("btn-coach").textContent = this.coaching ? "Coach on" : "Coach off";
+    $("btn-coach").classList.toggle("muted", !this.coaching);
   }
 
   private toggleSound(): void {
@@ -347,6 +383,11 @@ export class Game {
     return this.seats > 0 && !this.skill;
   }
 
+  /** Peak lateral acceleration available here, in this car, on this surface. */
+  private get gripBudget(): number {
+    return this.carClass.grip * this.track.surface.grip * 9.81;
+  }
+
   private selectTrack(id: string, classId?: string): void {
     this.skill = null;
     this.balloons = [];
@@ -388,7 +429,7 @@ export class Game {
 
   private setPhase(p: Phase): void {
     this.phase = p;
-    for (const id of ["menu", "draw", "handover", "race", "results"]) {
+    for (const id of ["menu", "howto", "draw", "handover", "race", "results"]) {
       $(`screen-${id}`).classList.add("hidden");
     }
     $(`screen-${p}`).classList.remove("hidden");
@@ -407,6 +448,11 @@ export class Game {
     this.resetStroke();
     this.renderer.clearMarks();
     this.race = null;
+    if (!this.progress.taught) {
+      this.setPhase("howto");
+      this.fitCamera(true);
+      return;
+    }
     this.setPhase("draw");
     this.fitCamera(true);
     const hint = $("draw-hint");
@@ -435,6 +481,7 @@ export class Game {
   private resetStroke(): void {
     this.raw = [];
     this.previewLine = null;
+    this.overLimit = [];
     this.lapCovered = 0;
     this.strokeStarted = false;
     this.drawing = false;
@@ -482,6 +529,7 @@ export class Game {
       autoTurbo: this.hotSeat,
     });
     this.renderer.clearMarks();
+    this.sectorSlide = new Array(SECTORS).fill(0);
     this.setPhase("race");
     this.previewLine = playerLine;
     this.lastPip = 99;
@@ -581,6 +629,7 @@ export class Game {
         </div>`;
     }
     table.innerHTML = html;
+    this.drawResultMap();
 
     this.audio.stopRace();
     this.audio.cue("finish");
@@ -605,6 +654,7 @@ export class Game {
     medalEl.title = "Winner";
     $("result-medal-label").textContent = "Winner";
 
+    this.drawResultMap();
     $("result-table").innerHTML = rows
       .map(
         (r) => `
@@ -661,6 +711,7 @@ export class Game {
     $("result-medal-label").textContent = medal
       ? medal[0].toUpperCase() + medal.slice(1)
       : "No medal";
+    this.drawResultMap();
     $("result-table").innerHTML = `
       <div class="row me">
         <span class="pos">·</span>
@@ -673,6 +724,98 @@ export class Game {
     this.audio.stopRace();
     this.audio.cue("finish");
     this.setPhase("results");
+  }
+
+  /**
+   * The results minimap: the circuit, your line on it, and the corner that
+   * actually cost you.
+   *
+   * A time and a gap tell you that you were slow. They do not tell you *where*,
+   * and "where" is the only actionable thing about a lap you drew in one
+   * gesture. The highlighted stretch is measured, not guessed — it is the
+   * twelfth of the circuit in which the car spent the most time past its grip
+   * budget, banked tick by tick while the race was running.
+   */
+  private drawResultMap(): void {
+    const cv = $("result-map") as HTMLCanvasElement;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = cv.clientWidth || 320;
+    const h = cv.clientHeight || 168;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    const c = cv.getContext("2d");
+    if (!c) return;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, w, h);
+
+    const b = this.track.bounds;
+    const pad = 14;
+    const scale = Math.min(
+      (w - pad * 2) / Math.max(1, b.max.x - b.min.x),
+      (h - pad * 2) / Math.max(1, b.max.y - b.min.y),
+    );
+    const cx = (b.min.x + b.max.x) / 2;
+    const cy = (b.min.y + b.max.y) / 2;
+    const X = (x: number) => (x - cx) * scale + w / 2;
+    const Y = (y: number) => (y - cy) * scale + h / 2;
+
+    const ribbon = (from: number, to: number) => {
+      c.beginPath();
+      for (let i = from; i <= to; i++) {
+        const p = this.track.samples[i % this.track.samples.length].pos;
+        if (i === from) c.moveTo(X(p.x), Y(p.y));
+        else c.lineTo(X(p.x), Y(p.y));
+      }
+    };
+
+    const n = this.track.samples.length;
+    c.lineJoin = "round";
+    c.lineCap = "round";
+    c.strokeStyle = "rgba(255,255,255,0.13)";
+    c.lineWidth = Math.max(5, this.track.halfWidth * 2 * scale);
+    ribbon(0, n);
+    c.stroke();
+
+    const worst = worstSector(this.sectorSlide);
+    // Under a quarter-second in the worst twelfth is a clean lap, and painting
+    // a red corner on one would be inventing a mistake that did not happen.
+    const blame = worst.seconds >= 0.25;
+    if (blame) {
+      c.strokeStyle = "rgba(255,70,60,0.5)";
+      ribbon(
+        Math.floor((worst.index / SECTORS) * n),
+        Math.floor(((worst.index + 1) / SECTORS) * n),
+      );
+      c.stroke();
+    }
+
+    const line = this.previewLine;
+    if (line && line.nodes.length > 2) {
+      c.strokeStyle = "rgba(255,255,255,0.85)";
+      c.lineWidth = 1.6;
+      c.beginPath();
+      line.nodes.forEach((nd, i) => {
+        if (i === 0) c.moveTo(X(nd.pos.x), Y(nd.pos.y));
+        else c.lineTo(X(nd.pos.x), Y(nd.pos.y));
+      });
+      c.stroke();
+    }
+
+    // Start line, so the map has an orientation.
+    const s0 = this.track.samples[0];
+    c.fillStyle = "#7ee787";
+    c.beginPath();
+    c.arc(X(s0.pos.x), Y(s0.pos.y), 3.2, 0, Math.PI * 2);
+    c.fill();
+
+    const total = this.sectorSlide.reduce((a, v) => a + v, 0);
+    $("result-coach").innerHTML = blame
+      ? `Most of your lap was spent over the grip budget <b>here</b> &mdash; ` +
+        `${worst.seconds.toFixed(1)}s of ${total.toFixed(1)}s sliding. ` +
+        `Slow your finger a little earlier into that corner.`
+      : total > 0.2
+        ? `Clean lap &mdash; only ${total.toFixed(1)}s over the limit, spread thinly.`
+        : `Nothing over the limit anywhere. You could afford to draw faster.`;
   }
 
   private warn(msg: string): void {
@@ -763,6 +906,9 @@ export class Game {
         this.carClass.brake,
         false,
       );
+      this.overLimit = this.coaching
+        ? overLimitSpans(this.previewLine, this.gripBudget)
+        : [];
     }
     this.updateDrawProgress();
 
@@ -882,11 +1028,21 @@ export class Game {
       this.renderer.stepParticles(dt);
       const pv = this.race.player.vehicle;
       if (this.skill) this.popBalloons(pv.pos);
+      // Bank where the car was actually over its budget, so the results screen
+      // can point at the corner rather than just report the loss.
+      if (this.race.state === "running" && pv.telemetry.understeer > 0.08 * this.gripBudget) {
+        const k = clamp(
+          Math.floor((pv.trackS / this.track.length) * SECTORS),
+          0,
+          SECTORS - 1,
+        );
+        this.sectorSlide[k] += dt;
+      }
       this.audio.update({
         speed: pv.telemetry.speed,
         maxSpeed: this.carClass.maxSpeed,
         understeer: pv.telemetry.understeer,
-        gripBudget: this.carClass.grip * this.track.surface.grip * 9.81,
+        gripBudget: this.gripBudget,
         onTrack: pv.telemetry.onTrack,
         turbo: pv.turboTimer > 0,
       });
@@ -918,7 +1074,10 @@ export class Game {
     if (this.skill) r.drawBalloons(this.balloons, BALLOON_RADIUS, this.pulse);
 
     if (this.phase === "draw") {
-      if (this.previewLine) r.drawLine(this.previewLine, { alpha: 0.95 });
+      if (this.previewLine) {
+        r.drawOverLimit(this.previewLine, this.overLimit, this.pulse);
+        r.drawLine(this.previewLine, { alpha: 0.95 });
+      }
       this.drawStartArrow();
     } else if (this.phase === "race" || this.phase === "results") {
       if (this.previewLine) {

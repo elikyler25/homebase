@@ -12,6 +12,7 @@
 //   4. AI skill levels are monotonic and land either side of a human line.
 
 import { DRIVER_POOL, buildAiLine, buildReferenceLine, speedProfile, optimiseLine } from "../src/ai";
+import { overLimitSpans } from "../src/coach";
 import { decodeGhost, encodeGhost } from "../src/ghost";
 import { DRAW_SPEED_GAIN, RacingLine, RawSample } from "../src/line";
 import { Vec2, vadd, vdist, vscale } from "../src/math";
@@ -425,6 +426,46 @@ console.log("Ghost and hot seat");
     "a sharper stroke beats a laggier one in the hot seat",
     at("P4") < at("P3") && at("P3") < at("P2"),
     table.map((r) => r.name).join(" > "),
+  );
+}
+
+// The coach draws its warning from the same expression the vehicle uses, so the
+// property to pin is that it agrees with what then happens: it must light up on
+// a line that will slide and stay quiet on one that will not.
+console.log("Coaching");
+{
+  const track = new Track(TRACKS[0]);
+  const car = CAR_CLASSES.gt;
+  const budget = car.grip * track.surface.grip * 9.81;
+
+  const ref = buildReferenceLine(track, car);
+  const refSpans = overLimitSpans(ref, budget);
+  const refRace = race(track, car, ref, 2);
+  check(
+    "a planned line draws no warning",
+    refSpans.length === 0,
+    `${refSpans.length} spans, ${f(refRace.slideTime)}s sliding`,
+  );
+
+  // Flat out everywhere: the line every new player draws on their first go.
+  const flatPts = track.samples.map((smp) => smp.pos);
+  flatPts.push(flatPts[0]);
+  const flat = RacingLine.fromNodes(
+    flatPts,
+    flatPts.map(() => car.maxSpeed),
+    true,
+  );
+  const flatSpans = overLimitSpans(flat, budget);
+  const flatRace = race(track, car, flat, 2);
+  check(
+    "a flat-out line is warned about",
+    flatSpans.length > 0,
+    `${flatSpans.length} spans, worst ${f(Math.max(...flatSpans.map((s) => s.peak)) * 100, 0)}% of grip`,
+  );
+  check(
+    "the warning agrees with what actually happens",
+    flatSpans.length > 0 && flatRace.slideTime > refRace.slideTime + 3,
+    `warned ${flatSpans.length} vs ${refSpans.length} spans; slid ${f(flatRace.slideTime)}s vs ${f(refRace.slideTime)}s`,
   );
 }
 
