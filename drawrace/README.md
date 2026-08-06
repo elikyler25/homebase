@@ -358,6 +358,15 @@ account; the short version is that four physics bugs and one dead design knob
 were found by measuring rather than playing, including a planner and a car that
 disagreed about how tight a corner was, and a brake the car did not have.
 
+Then it shipped and played terribly, for one measurable reason: **0.02 s**
+between the grip meter showing trouble and the car coming off. A meter that
+reads the load you are under is useless in a game with no steering, because by
+the time a corner is loading the car the decision is already made. It now reads
+the corner *ahead* — the fastest you could be going and still arrive under
+control — which gives 1.4 s of warning, and the harness asserts that obeying
+that cue and nothing else gets you round all thirty circuits clean. The camera
+turns with the car too, so a tall phone screen is lookahead rather than scenery.
+
     npm run slottune    headless physics harness, all thirty circuits
     npm run slotplay    drives the built page in Chromium at phone size
 

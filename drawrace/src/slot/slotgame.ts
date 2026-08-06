@@ -22,13 +22,18 @@ import {
 
 const $ = (id: string): HTMLElement => document.getElementById(id)!;
 
+// Skill is planning margin, and 0.93 is very nearly the fastest lap the circuit
+// has. A field that all but matches the reference means a first-timer races
+// nobody -- they watch three cars leave. Pulled back so the top car is beatable
+// by someone driving well rather than perfectly.
 const RIVALS = [
-  { name: "Aalto", colour: "#4fc3f7", skill: 0.93 },
-  { name: "Bergman", colour: "#ffd23f", skill: 0.78 },
-  { name: "Costa", colour: "#9ccc65", skill: 0.62 },
+  { name: "Aalto", colour: "#4fc3f7", skill: 0.84 },
+  { name: "Bergman", colour: "#ffd23f", skill: 0.72 },
+  { name: "Costa", colour: "#9ccc65", skill: 0.58 },
 ];
 
-const LAPS = 3;
+/** Two, not three. Long enough to recover from a deslot, short enough to retry. */
+const LAPS = 2;
 
 interface Progress {
   best: Record<string, number>;
@@ -212,14 +217,29 @@ export class SlotGame {
     $("v-time").textContent = formatTime(race.time);
     $("v-speed").textContent = String(Math.round(me.speed * 3.6));
 
-    // The meter: cornering load against the budget, with the deslot warning
-    // taking over the colour as the debt builds.
+    // The meter: what the corner is taking now (the fill) and what the corner
+    // ahead will take if the thumb stays down (the amber marker).
     const load = clamp(me.telemetry.load, 0, 1.25);
     const fill = $("grip-fill");
     fill.style.width = `${Math.min(100, load * 88)}%`;
     const danger = me.telemetry.danger;
     fill.style.background =
       danger > 0.05 ? "var(--accent)" : load > 0.82 ? "var(--amber)" : "var(--green)";
+
+    const look = me.outlook();
+    $("grip-ahead").style.width = `${clamp(look.ahead * 88, 0, 100)}%`;
+    // Amber: hold this and you will not make it. Red: you already will not,
+    // whatever you do now — which is worth showing separately, because it is
+    // the difference between "lift" and "brace".
+    const lift = me.telemetry.lift;
+    const late = me.telemetry.tooLate && !me.deslotted;
+    const t = $("throttle");
+    t.classList.toggle("lift", lift && !late);
+    t.classList.toggle("late", late);
+    const word = $("lift-word");
+    word.classList.toggle("on", lift);
+    word.classList.toggle("late", late);
+    word.textContent = late ? "TOO FAST" : "LIFT";
 
     const off = me.deslotted;
     $("deslot-msg").classList.toggle("on", off);
@@ -303,8 +323,16 @@ export class SlotGame {
     r.beginFrame();
     if (this.phase === "race" && this.race) {
       const me = this.player.cara;
+      // Up is where you are going. Biasing the centre along the heading was the
+      // first attempt and it wasted the screen: on a portrait phone, shifting
+      // the view sideways when the car happens to be travelling west buys no
+      // lookahead at all and leaves two thirds of the display on empty grass.
+      // Turning the world instead makes every frame the same shape -- road
+      // ahead, up -- and a tall screen becomes lookahead.
       r.camera.targetCenter = me.pos;
-      r.camera.targetScale = clamp(3.4 - me.speed * 0.02, 1.5, 3.4);
+      r.camera.targetRotation = me.heading;
+      r.camera.anchorY = 0.72;
+      r.camera.targetScale = clamp(3.4 - me.speed * 0.03, 1.5, 3.4);
       r.camera.update(dt, this.race.time < 0.05);
       r.drawTrackLayer();
       r.stepParticles(dt);

@@ -8,7 +8,7 @@
 import { SPRITE_L, SPRITE_W, carSprite } from "./carart";
 import { OverLimitSpan } from "./coach";
 import { RacingLine } from "./line";
-import { Vec2, clamp, damp, lerp, vadd, vscale } from "./math";
+import { Vec2, angleDiff, clamp, damp, lerp, vadd, vscale } from "./math";
 import { Entrant } from "./race";
 import { Track } from "./track";
 import { Vehicle } from "./vehicle";
@@ -101,11 +101,26 @@ export class Camera {
   scale = 2;
   targetCenter: Vec2 = { x: 0, y: 0 };
   targetScale = 2;
+  /**
+   * World angle that should point UP the screen. Zero leaves the camera
+   * axis-aligned, which is what the drawn-line game wants -- you are looking at
+   * a whole circuit and reading its shape, so a rotating map would be a
+   * disorienting way to show a stroke you drew on a still one.
+   *
+   * The slot game is the opposite case: the car is on rails and cannot steer,
+   * so the only thing that matters is what is coming, and "up is where you are
+   * going" turns a tall phone screen into lookahead instead of scenery.
+   */
+  rotation = 0;
+  targetRotation = 0;
+  /** Where the focus sits vertically, 0 = top. Below centre buys lookahead. */
+  anchorY = 0.5;
 
   update(dt: number, snap = false): void {
     if (snap) {
       this.center = { ...this.targetCenter };
       this.scale = this.targetScale;
+      this.rotation = this.targetRotation;
       return;
     }
     this.center = {
@@ -113,11 +128,16 @@ export class Camera {
       y: damp(this.center.y, this.targetCenter.y, 7, dt),
     };
     this.scale = damp(this.scale, this.targetScale, 4.5, dt);
+    // Through the shortest arc, or the view spins the long way round every time
+    // the car crosses due west.
+    const d = angleDiff(this.rotation, this.targetRotation);
+    this.rotation = damp(this.rotation, this.rotation + d, 6, dt);
   }
 
   apply(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-    ctx.translate(w / 2, h / 2);
+    ctx.translate(w / 2, h * this.anchorY);
     ctx.scale(this.scale, this.scale);
+    if (this.rotation) ctx.rotate(-this.rotation - Math.PI / 2);
     ctx.translate(-this.center.x, -this.center.y);
   }
 

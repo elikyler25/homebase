@@ -103,6 +103,29 @@
   }
   #throttle.held { background: rgba(255, 59, 48, 0.55); transform: scale(0.94); }
   #throttle .hint { display: block; font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.7); letter-spacing: 0.04em; }
+  /* The lift cue lives ON the button, because that is where the thumb and the
+     eyes already are. A warning at the top of the screen is a warning you read
+     after the corner. */
+  #throttle.lift { background: rgba(255, 194, 71, 0.30); border-color: var(--amber); }
+  #throttle.lift.held { background: rgba(255, 194, 71, 0.62); }
+  #throttle.late { background: rgba(255, 59, 48, 0.30); border-color: var(--accent); animation: pulse 0.28s infinite alternate; }
+  #throttle.late.held { background: rgba(255, 59, 48, 0.7); }
+  @keyframes pulse { from { box-shadow: 0 0 0 0 rgba(255,59,48,0.0); } to { box-shadow: 0 0 0 12px rgba(255,59,48,0.28); } }
+
+  /* A second fill on the grip bar: not what the corner is taking now, but what
+     the corner ahead is going to take if you keep the trigger down. */
+  #grip-ahead {
+    position: absolute; top: 0; bottom: 0; width: 0%;
+    border-right: 2px solid var(--amber); pointer-events: none;
+  }
+  #lift-word {
+    position: absolute; left: 0; right: 0; top: calc(112px + var(--safe-t));
+    text-align: center; font-size: 22px; font-weight: 800; letter-spacing: 0.16em;
+    color: var(--amber); text-shadow: 0 3px 18px rgba(0,0,0,0.75); opacity: 0;
+    transition: opacity 80ms linear;
+  }
+  #lift-word.on { opacity: 1; }
+  #lift-word.late { color: var(--accent); }
 
   #centre-msg {
     position: absolute; inset: 0; display: grid; place-items: center;
@@ -143,8 +166,12 @@
     </p>
     <div class="card">
       <h2>How to be quick</h2>
-      <p>The bar across the top is how much of the tyres' grip the corner is using.
-      Keep it high and it never goes red — that is a fast lap.</p>
+      <p>The bar across the top is how much grip the corner is using. The amber
+      marker on it is what the corner <b>ahead</b> will use if you keep your
+      thumb down — when it runs past the end, <b>LIFT</b>.</p>
+      <p>You cannot see far enough down the road to guess, and by the time a
+      corner is loading the car it is too late to fix. The cue is the game:
+      lift when it lights, get back on the moment it clears.</p>
       <p>Push past the line and the guide pin pops out of the slot: you are off,
       and a marshal takes <b>2.4 seconds</b> to put you back. One deslot costs more
       than a whole lap of being careful.</p>
@@ -158,8 +185,9 @@
     <div class="pill" id="p-lap"><div class="k">Lap</div><div class="v" id="v-lap">1/2</div></div>
     <div class="pill" id="p-time"><div class="k">Time</div><div class="v" id="v-time">0:00.0</div></div>
     <div class="pill" id="p-speed"><div class="k">km/h</div><div class="v" id="v-speed">0</div></div>
-    <div id="grip"><div id="grip-fill"></div><div id="grip-mark"></div></div>
+    <div id="grip"><div id="grip-fill"></div><div id="grip-ahead"></div><div id="grip-mark"></div></div>
     <div id="grip-label">Grip</div>
+    <div id="lift-word">LIFT</div>
     <div id="deslot-msg">DESLOTTED<small id="v-marshal">marshal on the way</small></div>
     <div id="centre-msg"></div>
     <button id="throttle">GO<span class="hint">hold</span></button>

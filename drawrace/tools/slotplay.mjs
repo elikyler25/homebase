@@ -61,6 +61,7 @@ const read = () =>
       deslots: p.deslotCount,
       laps: p.laps,
       state: g.race.state,
+      lift: p.telemetry.lift,
       meter: document.getElementById("grip-fill").style.width,
       pos: document.getElementById("v-pos").textContent,
     };
@@ -84,7 +85,9 @@ while (Date.now() < deadline) {
   if (!t) break;
   samples.push(t);
   if (t.state === "finished") break;
-  const want = t.load < 0.82;
+  // Play it the way the game tells you to: lift when the cue lights, back
+  // on when it clears. Nothing else.
+  const want = !t.lift;
   if (want !== held) {
     held = want;
     if (held) {
@@ -125,6 +128,7 @@ console.log(JSON.stringify(result, null, 2));
 const problems = [...errors];
 if (last.state !== "finished") problems.push(`race never finished (state ${last.state})`);
 if (peakSpeed < 40) problems.push(`car barely moved: peak ${peakSpeed} km/h`);
+if (last.deslots > 0) problems.push(`obeying the cue still deslotted ${last.deslots}x`);
 if (movedMeter < 8) problems.push(`grip meter is not live: ${movedMeter} distinct widths`);
 if (!result.shown) problems.push("results screen never appeared");
 if (!result.rows.length) problems.push("results table is empty");

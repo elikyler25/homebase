@@ -244,6 +244,9 @@ export function simulateSlot(
   let loadSum = 0;
   let loadPeak = 0;
   let loaded = 0;
+  let warned = 0;
+  let episodes = 0;
+  let wasLit = false;
   let n = 0;
   while (t < limit) {
     c.throttle = policy(c, t);
@@ -256,6 +259,9 @@ export function simulateSlot(
     loadSum += c.telemetry.load;
     loadPeak = Math.max(loadPeak, c.telemetry.load);
     if (c.telemetry.load > 0.6) loaded++;
+    if (c.telemetry.lift) warned++;
+    if (c.telemetry.lift && !wasLit) episodes++;
+    wasLit = c.telemetry.lift;
     if (c.laps >= laps) break;
   }
   const done = c.laps >= laps;
@@ -270,6 +276,8 @@ export function simulateSlot(
     load: loadSum / d,
     loadPeak,
     loadedFraction: loaded / d,
+    warnedFraction: warned / d,
+    cueEpisodes: episodes,
   };
 }
 
@@ -291,6 +299,17 @@ export interface SlotRun {
    * having a dead grip meter when what they have is a long straight.
    */
   loadedFraction: number;
+  /** Share of the lap the "lift" cue was showing. */
+  warnedFraction: number;
+  /**
+   * How many separate times the cue lit. The failure that matters is a LATCHED
+   * cue -- one that comes on and stays on -- and the share of the lap is a poor
+   * proxy for it: across the thirty that share runs unbroken from 38% to 51%,
+   * so any line drawn through it splits circuits that differ only in how many
+   * corners they have. Counting episodes asks the real question, which is
+   * whether the thing is still a per-corner signal.
+   */
+  cueEpisodes: number;
 }
 
 /**

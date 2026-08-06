@@ -47,6 +47,36 @@ export const COAST_BRAKE = 0.55;
 /** Rolling and aero drag, m/s^2 at max speed. */
 export const DRAG = 2.4;
 
+/**
+ * Where the lift cue fires, as a fraction of the budget. Below 1 on purpose --
+ * see `outlook`.
+ */
+const CUE_MARGIN = 1.0;
+/**
+ * ...and where it clears again. The gap is hysteresis, and it is doing two
+ * jobs. For the player, a cue that flickers on and off many times a second at
+ * the boundary is unreadable. For the car, a policy that follows a chattering
+ * cue chatters with it, and on ice -- where the budget is a quarter of
+ * asphalt's, so `ahead` swings hard for small changes in speed -- that
+ * overshoot was still deslotting a driver who did exactly as they were told.
+ */
+const CUE_CLEAR = 0.78;
+/** How far down the road to look for a corner, metres. */
+const OUTLOOK_HORIZON = 320;
+/**
+ * How long the trigger stays down after the cue lights: thumb plus cue tick.
+ *
+ * 0.4 s was enough for a policy reacting on the physics tick and not enough for
+ * one going through a real browser, where the cue tick, the frame and the input
+ * path stack up -- the in-browser test still came off once on Grand Circuit
+ * while doing exactly what it was told. A simple human reaction is ~250 ms
+ * before any decision is made, so budgeting half a second is the honest number
+ * rather than the convenient one.
+ */
+const REACTION = 0.55;
+/** Aim to arrive at a corner a little under its limit, not exactly on it. */
+const CORNER_SAFE = 0.9;
+
 /** Seconds a deslotted car spends off before a marshal puts it back. */
 export const MARSHAL_DELAY = 2.4;
 
@@ -58,6 +88,10 @@ export interface SlotTelemetry {
   danger: number;
   lateral: number;
   deslotted: boolean;
+  /** Lift now. The cue the whole game is played off. */
+  lift: boolean;
+  /** Lifting no longer saves it. */
+  tooLate: boolean;
 }
 
 export class SlotCar {
@@ -84,9 +118,14 @@ export class SlotCar {
   /** Tail-out angle. Cosmetic, but driven by the same load as the deslot. */
   slip = 0;
   private debt = 0;
+  /** Latched cue state, so it cannot flicker. Updated on a slow tick. */
+  private cue = false;
+  private cueTick = 0;
+  private lastLook = { urgency: 0, ahead: 0 };
 
   telemetry: SlotTelemetry = {
     speed: 0, load: 0, danger: 0, lateral: 0, deslotted: false,
+    lift: false, tooLate: false,
   };
 
   constructor(
@@ -104,6 +143,105 @@ export class SlotCar {
   get gripBudget(): number {
     const surf = this.track.surface;
     return this.car.grip * surf.grip * G + (MAGNETS[this.car.id] ?? 5);
+  }
+
+  /**
+   * What the road AHEAD is about to ask for, as a fraction of the budget.
+   *
+   * This is the number the game turns on, and the first version did not have
+   * it. The meter showed the load the car was under *now* -- honest, and
+   * useless, because lateral load only climbs once you are already in the
+   * corner and already committed. Measured on a real device: 0.02 s, a single
+   * frame, between the meter passing 95% and the pin leaving the slot. The
+   * player was being told about the mistake one frame after it stopped being
+   * fixable.
+   *
+   * With no steering, anticipation is the entire game, so the readback has to
+   * be about the corner arriving rather than the corner you are in.
+   *
+   *   `ahead`      what it will demand if you hold the trigger.
+   *   `committed`  what it will demand if you release it right now. Above 1.0
+   *                the corner is already lost, and no input can save it.
+   *   `lift`       the cue itself. Fires a little BEFORE the true limit, and
+   *                that margin is not decoration: a player -- and the harness
+   *                policy that stands in for one -- follows the cue by lifting
+   *                when it lights and getting back on when it clears, which
+   *                parks the car exactly on the cue's boundary. If the cue sits
+   *                on 100% of the budget, hovering there means hovering at the
+   *                limit, and on Glacier Pass, where ice leaves a quarter of
+   *                the grip, that tipped over into deslots for a player doing
+   *                exactly as they were told.
+   *   `tooLate`    lifting no longer saves it. Worth showing separately: it is
+   *                the difference between "lift" and "brace".
+   */
+  outlook(): {
+    urgency: number;
+    ahead: number;
+    lift: boolean;
+    tooLate: boolean;
+  } {
+    const budget = this.gripBudget;
+    const v = this.speed;
+    const coast = Math.min(this.car.brake * COAST_BRAKE, budget);
+    const drive = this.car.accel * Math.max(0, 1 - (v / this.car.maxSpeed) ** 2);
+    let urgency = 0;
+    let ahead = 0;
+    for (let d = 4; d <= OUTLOOK_HORIZON; d += 4) {
+      const k = Math.abs(laneCurv(this.track.sampleAt(this.s + d), this.lane.offset));
+      if (k < 1e-5) continue;
+      ahead = Math.max(ahead, (v * v * k) / budget);
+      // The speed that corner can be taken at, with a little in hand.
+      const vreq2 = (budget * CORNER_SAFE) / k;
+      // Deceleration needed to arrive at it, against the deceleration available.
+      // Scale-free, so it does not care how far away the corner is or how fast
+      // the car is going -- which is the whole point. An earlier version took a
+      // max over a window whose LENGTH moved with speed, so corners popped in
+      // and out of it as the car breathed and the cue chattered on and off
+      // every 0.1 s. Hysteresis cannot fix a signal that swings 0.65 to 1.32
+      // between ticks.
+      //
+      // Crucially this is measured from where the car will be after REACTION
+      // seconds of still holding the trigger, not from where it is now. A
+      // player -- and the harness policy that stands in for one -- holds the
+      // trigger flat until told otherwise, so they are still accelerating while
+      // the cue is deciding. Predicting from the current speed told three
+      // circuits' worth of drivers to lift at a point that was already too late
+      // for the speed they would actually be doing by the time they did.
+      // Distance needed to deal with this corner, over distance available.
+      // Above 1 you cannot make it: react, then brake, and you are still past
+      // the entry. Scale-free, continuous, and with no special case for a
+      // corner that is already close -- a near corner simply has `d` smaller
+      // than the reaction distance, so the ratio goes above 1 on its own.
+      //
+      // Two earlier shapes of this were wrong in ways that only measurement
+      // showed. Taking a max of `v^2 k / budget` over a horizon whose LENGTH
+      // moved with speed made corners pop in and out of view, and the cue
+      // chattered on and off every 0.1 s. Splitting near and far corners into
+      // two formulas put a discontinuity exactly at the reaction distance:
+      // urgency spiked to 5.7 and collapsed to 0.06 between ticks as a hairpin
+      // crossed it, the cue cleared, and the car went back to full throttle
+      // into the corner. It also made the cue react non-monotonically to the
+      // reaction budget, which is how the discontinuity gave itself away --
+      // allowing MORE reaction time made the game less survivable.
+      const vh = Math.min(this.car.maxSpeed, v + drive * REACTION);
+      const dh = (v + vh) * 0.5 * REACTION;
+      // The fastest you could be going right now and still arrive at that
+      // corner under control: its own limit, plus whatever the coasting motor
+      // can shed over the road left after the reaction is spent. Urgency is how
+      // far past that you are.
+      //
+      // Expressed as a distance sum instead -- reaction distance plus braking
+      // distance, over distance available -- it had a floor: a corner 4 m away
+      // reported urgency above 1 whenever the reaction distance exceeded 4 m,
+      // which is always. The cue latched on and never cleared, the car coasted
+      // to walking pace, and laps came in at 372 s instead of 28. As a ratio of
+      // speeds it goes to zero when the car is slow enough, which is the whole
+      // point of the signal.
+      const allowed2 = vreq2 + 2 * coast * Math.max(0, d - dh);
+      urgency = Math.max(urgency, (vh * vh) / allowed2);
+    }
+    const lift = this.cue;
+    return { urgency, ahead, lift, tooLate: urgency > 1.5 };
   }
 
   /** The fastest this lane can be taken at `s`, ignoring what comes next. */
@@ -180,12 +318,23 @@ export class SlotCar {
     this.slip += (target - this.slip) * Math.min(1, dt * 9);
     this.heading += this.slip;
 
+    // The outlook scan is the most expensive thing here and a person cannot
+    // react faster than this anyway, so it runs at 30 Hz rather than 120.
+    if (--this.cueTick <= 0) {
+      this.cueTick = 4;
+      const look = this.outlook();
+      this.lastLook = look;
+      this.cue = this.cue ? look.urgency > CUE_CLEAR : look.urgency > CUE_MARGIN;
+    }
+
     this.telemetry = {
       speed: this.speed,
       load,
       danger: clamp(this.debt / DESLOT_DEBT, 0, 1),
       lateral,
       deslotted: false,
+      lift: this.cue,
+      tooLate: this.lastLook.urgency > 1.5,
     };
     void now;
   }
@@ -204,8 +353,10 @@ export class SlotCar {
       x: smp.tan.x * this.speed + smp.nor.x * outward * this.speed * 0.42,
       y: smp.tan.y * this.speed + smp.nor.y * outward * this.speed * 0.42,
     };
+    this.cue = false;
     this.telemetry = {
       speed: this.speed, load: 1, danger: 1, lateral: 0, deslotted: true,
+      lift: false, tooLate: false,
     };
   }
 
@@ -225,6 +376,7 @@ export class SlotCar {
     this.speed = sp;
     this.telemetry = {
       speed: sp, load: 0, danger: 1, lateral: 0, deslotted: true,
+      lift: false, tooLate: false,
     };
     if (this.deslotTimer <= 0) {
       // Re-slotted where it came off, stationary. The lost time is the penalty;

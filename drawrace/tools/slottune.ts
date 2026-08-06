@@ -140,6 +140,27 @@ for (const def of sweep) {
     `${f(greedy.time)}s vs ${f(clean.time)}s`,
   );
 
+  // --- 5b. the cue has to be sufficient on its own ----------------------
+  // The strongest thing that can be said about a readback: a player who does
+  // exactly what it says, and nothing else, gets round. If obeying the cue
+  // still deslots you then the cue is lying, and no amount of skill can fix a
+  // lying instrument. Nothing here plans, remembers the circuit or looks at the
+  // road -- it lifts when told and gets back on when told.
+  const cueOnly = simulateSlot(track, car, mid, (c) => !c.telemetry.lift, 1);
+  check(
+    "obeying the lift cue alone gets you round clean",
+    cueOnly.finished && cueOnly.deslots === 0,
+    `${f(cueOnly.time)}s, ${cueOnly.deslots} deslots, cue on ${f(cueOnly.warnedFraction * 100, 0)}% of the lap`,
+  );
+  // And it must not be a permanent red light. A cue that is always on is not a
+  // cue, it is a decoration, and the player learns to ignore it.
+  check(
+    "the cue stays a per-corner signal rather than latching on",
+    cueOnly.cueEpisodes >= 4,
+    `lit ${cueOnly.cueEpisodes} separate times over the lap, ` +
+      `${f(cueOnly.warnedFraction * 100, 0)}% of it in total`,
+  );
+
   // --- 6. medals are reachable ------------------------------------------
   const medals = slotMedals(ref);
   check(
