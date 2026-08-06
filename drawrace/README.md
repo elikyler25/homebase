@@ -174,8 +174,19 @@ speed by the same factor, so the mapping holds on a phone and a desktop alike.
 
 ## Laying out a circuit
 
-Thirty of them exist now and the same three mistakes accounted for nearly every failure, so they
-are worth writing down.
+Thirty of them exist now, they grow across the championships — roughly 490 m in the Rookie Cup
+(run over three laps), 600 in the National Series, 690 in the World League — and they get
+proportionally wider as they grow. That widening is not decoration. **Scaling a layout up does
+not scale its difficulty evenly**: corner radius grows linearly with size while braking distance
+grows with the square of speed, so a feature that is a corner at 500 m is a wall at 900 m. Every
+attempt at a 1.45x World League ended with the *reference* line sliding off the road.
+
+Five of the thirty are pure geometric shapes — an oval, a triangle, a rounded rectangle, a long
+oval and a long rectangle — generated as true circular arcs rather than placed by eye. The other
+twenty-five are organic loops, and they are more alike than they should be. See "What thirty
+circuits taught me" below for why that is harder to fix than it sounds.
+
+Beyond size, the same mistakes accounted for nearly every failure:
 
 **A pinch entered off the fastest part of the lap is a wall, not a corner.** The stroke arrives
 far too fast and grinds almost to a halt; `where` shows it as three seconds lost in one twelfth
@@ -190,7 +201,37 @@ of the wrong shape makes it the right one.
 
 **Opening a corner up can make it worse.** Counterintuitive until you see why: a wobbly stroke
 demands lateral acceleration proportional to *v²*, so a faster corner punishes finger wobble
-harder than a slower one does. Twice the fix was to tighten, not loosen.
+harder than a slower one does. Repeatedly, the fix was to tighten rather than loosen.
+
+**Corner-poor circuits compress the AI field.** Top speed is capped for everybody, so a driver's
+skill only expresses itself in corners — give a circuit three of them and the whole field lands
+within a couple of seconds, the ordering goes with the noise, and a decent human stroke has
+nothing to beat. Both the oval and the triangle failed on exactly this, and both were fixed by
+*tightening* their corners until skill had somewhere to show.
+
+## What thirty circuits taught me
+
+`npm run atlas` renders every layout's outline into one grid, and it is the most brutal review in
+the project. Thirty circuits can each pass `npm run tune`, each be individually defensible, and
+still be the same circuit thirty times — which is what the first atlas showed: five distinct
+shapes and twenty-five variations on "circle with a bite out of it". No amount of reading
+coordinates would have told me that.
+
+Fixing it turned out to be much harder than drawing new outlines, and the reason is worth
+recording. **This engine wants continuously-varying curvature.** Three separate attempts at
+sharp-cornered geometric silhouettes — diamonds, crosses, octagons, Z-shapes, chevrons — failed:
+
+| attempt | result |
+|---|---|
+| polygons with 2-point corner cuts | 29 of 30 failed; the spline kinked far tighter than the radius asked for |
+| true circular arcs, radius ~2x road half-width | 26 failed; the planner braked for corners the racing line could not fit through |
+| circular arcs, radius ~4x half-width | 26 failed; a constant-radius arc sits at the limit along its *whole* length, so finger wobble is over the limit for the entire corner |
+| quadratic-Bezier fillets (varying curvature) | 31 failed; the tighter apex made it worse again |
+
+The five geometric shapes that survived are the ones whose corners are either very large (the
+ovals) or few and slow (the triangle). The remaining twenty-five are organic loops because organic
+loops are what a hand-drawn stroke can actually drive — and making them read as distinct is a
+genuine open problem here, not a matter of picking prettier outlines.
 
 ## Not yet built
 

@@ -16,10 +16,12 @@ import { Vec2 } from "./math";
 
 /**
  * Nodes are 1.5 m apart, which is far finer than a ghost needs. Keeping every
- * fourth puts a 550 m lap at ~90 points — around 1.5 kB of JSON — and
- * localStorage has to hold one per circuit-and-class the player has raced.
+ * third puts a 550 m lap at ~120 points — around 2 kB of JSON — and localStorage
+ * has to hold one per circuit-and-class the player has raced. Every fourth was
+ * cheaper still, but on the shorter circuits the replayed lap drifted 2-3% from
+ * the time printed beside it, which is enough to make the ghost untrustworthy.
  */
-const DECIMATE = 4;
+const DECIMATE = 3;
 
 export interface GhostData {
   /** Flat [x, y, speed, ...], one decimal place. */
