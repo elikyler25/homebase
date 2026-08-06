@@ -11,6 +11,7 @@
     "modes": "node build.mjs && node tools/modes.mjs",
     "diag": "esbuild tools/diag.ts --bundle --platform=node --format=esm --outfile=.tmp/diag.mjs --log-level=warning && node .tmp/diag.mjs",
     "atlas": "node build.mjs && node tools/atlas.mjs",
+    "circuit": "node build.mjs && node tools/circuit.mjs",
     "where": "esbuild tools/where.ts --bundle --platform=node --format=esm --outfile=.tmp/where.mjs --log-level=warning && node .tmp/where.mjs"
   },
   "keywords": [],

@@ -212,9 +212,10 @@ nothing to beat. Both the oval and the triangle failed on exactly this, and both
 ## Folded kart circuits
 
 The circuits are kart layouts now: an outer loop with the road folded back into
-the infield once, twice or three times, the way a real kart track packs a long
-lap into a small field. Laps run 1000-1960 m over a single lap, and the returns
-are genuine concave corners — the only places the car turns the other way.
+the infield anywhere from once to four times, the way a real kart track packs a
+long lap into a small field. Laps run 960-2900 m over a single lap, and the
+returns are genuine concave corners — the only places the car turns the other
+way.
 
 Getting there needed an engine fix, and the failure had been silent rather than
 obvious. `Track.project` found the globally nearest centreline sample, so a car
@@ -243,11 +244,14 @@ grip, which on a corner-dense circuit is slow enough that a *sliding* flat-out
 lap beat it. Separating `REF_MARGIN` from `PLAN_MARGIN` sharpens the yardstick
 without also making the five cars you are racing faster.
 
-**Grip is up 4%,** which is the whole point of folding the circuits. On a ring,
-more grip makes a flat-out stroke viable and the game evaporates; a 2% rise used
-to break six circuits. On a layout where hairpins make flat-out impossible
-*geometrically*, the grip budget stops being the only thing holding greed back,
-and there is finally headroom.
+**Grip is up 18%** (`GRIP_SCALE` 1.82 → 2.15), which is the whole point of
+folding the circuits. On a ring, more grip makes a flat-out stroke viable and the
+game evaporates; a 2% rise used to break six circuits. On a layout where hairpins
+make flat-out impossible *geometrically*, the grip budget stops being the only
+thing holding greed back, and there is finally headroom. The ceiling is real and
+the harness finds it: at 2.40 a flat-out lap of Timber Trail stops being punished
+at all, so 2.15 is where it sits. Across the thirty, a realistic stroke now
+spends 15.9% of the race past the limit instead of 20.2%.
 
 The remaining tuning was per-circuit and mostly width: a wide road lets a
 sliding car stay on it, so the circuits where a flat-out stroke was not being
@@ -259,6 +263,24 @@ single corner — so they took the shape of the one ice layout that does work.
 `tools/kart_layouts.py` generates them. Its `min_self_gap` check is the one that
 matters: two folds must stay further apart than the road is wide, or the circuit
 is ambiguous however good the projection is.
+
+That check was wrong for a while, and wrong in the direction that hides itself.
+It separated two points by counting *samples* between them — but `arcpoly` puts
+about eight samples in a corner and one every 30 m on a straight, so a fixed skip
+of 14 meant 300 m of straight and 35 m of corner. Every circuit with tight outer
+corners reported a fold conflict against its own kerb: two points consecutive on
+the racing line, "35 m apart". Aurora was rejected four times over it, and the
+fitter kept inflating circuits to clear a gap that was never real. Separation is
+now measured along the track, which is the quantity that was always meant.
+
+There is a second gap between what this file emits and what the game builds: a
+polyline versus a spline through it. A fold narrow enough for the smoothing to
+round off would disappear with nothing complaining — the lap still closes, the
+physics still pass, and the circuit in the game is simply not the one in the
+layout file. `npm run tune` now asserts every authored point lands within half a
+road width of the road that gets built (worst case across the thirty: 0.5 m), and
+`npm run circuit -- <id>` draws the two on top of each other when a single
+circuit needs looking at.
 
 ## Circuits that fill the screen
 
@@ -298,9 +320,30 @@ sharp-cornered geometric silhouettes — diamonds, crosses, octagons, Z-shapes, 
 | quadratic-Bezier fillets (varying curvature) | 31 failed; the tighter apex made it worse again |
 
 The five geometric shapes that survived are the ones whose corners are either very large (the
-ovals) or few and slow (the triangle). The remaining twenty-five are organic loops because organic
-loops are what a hand-drawn stroke can actually drive — and making them read as distinct is a
-genuine open problem here, not a matter of picking prettier outlines.
+ovals) or few and slow (the triangle). The remaining twenty-five were organic loops because
+organic loops are what a hand-drawn stroke can actually drive.
+
+**The way out was folding, not drawing.** Sharp silhouettes fail because a hand-drawn stroke
+cannot hold a tight constant-radius corner. A *fold* — the road turned back into the infield
+through a wide hairpin — makes a circuit read as busy and distinct while every individual corner
+stays generous. Once circuits were folded, the second atlas showed the same problem in a new
+costume: thirty folded circuits that were all "portrait rectangle with the folds cut into the
+right-hand flank". Same silhouette, thirty times, for the mundane reason that the generator only
+knew one topology.
+
+So `circuit()` now takes returns on all four edges, and the box itself gets warped: `taper` for a
+trapezoid, `shear` for a parallelogram, `rot` to put the whole circuit on the diagonal. Reading
+down that column is how the table is meant to be checked. The levers that actually change what
+you see on the track-select screen, roughly in order:
+
+1. the outer shape — rectangle, trapezoid, parallelogram, diagonal
+2. aspect — portrait, landscape, square
+3. which edges fold in, and whether opposite folds interlock like a comb
+4. fold depth — a stub off one edge versus a spear driven across the infield
+5. count — one fold reads as a lap with a kink, four reads as a maze
+
+The lesson underneath all of it: **the atlas is the review, not the tune harness.** Thirty
+circuits passed every physics assertion in both of the versions it rejected.
 
 ## Not yet built
 

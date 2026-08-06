@@ -88,11 +88,13 @@ function realisticStroke(
   opts: { lag: number; wobble: number; pace: number },
 ): { pts: Vec2[]; speeds: number[] } {
   const n = track.samples.length;
-  // Deliberately NOT derived from the car's actual grip. A person draws the
-  // stroke that has felt right to them; they do not silently recalibrate their
-  // finger when the tyres get better. Deriving this from the live grip value
-  // would make the model drive at the limit no matter what the limit is, and
-  // any grip change would appear to do nothing.
+  // Derived from the car's real grip, at a fixed fraction of it. The model is a
+  // player who has learned roughly what this car can do and draws to about 62%
+  // of it — not one who draws the same absolute speeds whatever they are
+  // driving. So a grip change does NOT show up here as the stroke suddenly
+  // being conservative; it shows up as the same stroke having more margin for
+  // the lag error, which is the effect worth measuring. (An earlier comment
+  // here claimed the opposite of what this line does.)
   const aRef = car.grip * track.surface.grip * 9.81 * 0.62;
   const pts: Vec2[] = [];
   const speeds: number[] = [];
@@ -158,12 +160,41 @@ const f = (x: number, d = 2) => (isFinite(x) ? x.toFixed(d) : "DNF");
 
 console.log("\n=== DrawRace physics harness ===\n");
 
-for (const def of TRACKS) {
+// `npm run tune -- aurora lakeside` narrows the circuit sweep while keeping the
+// whole-game checks below. Thirty circuits is four minutes a run, which is the
+// wrong loop length for chasing one track's balance.
+const only = process.argv.slice(2).filter((a) => !a.startsWith("-"));
+const sweep = only.length
+  ? TRACKS.filter((t) => only.some((o) => t.id.includes(o)))
+  : TRACKS;
+
+for (const def of sweep) {
   const track = new Track(def);
   const car = CAR_CLASSES[def.classes[0]];
   console.log(
     `${def.name}  [${def.surface}, ${car.name}]  lap ${track.length.toFixed(0)} m, ` +
       `width ${def.width} m, ${def.laps} laps`,
+  );
+
+  // --- 0. the circuit the game builds is the one that was authored ------
+  // `tools/kart_layouts.py` emits a polyline; `Track` runs a spline through it
+  // and resamples. A fold narrow enough for the spline to round off disappears
+  // silently -- the lap still closes, the physics still pass, and the circuit
+  // in the game is simply not the one in the layout file. Every authored point
+  // has to end up within half a road width of the road that gets built.
+  let maxDev = 0;
+  for (const [px, py] of def.points) {
+    let best = Infinity;
+    for (const s of track.samples) {
+      const d = (s.pos.x - px) ** 2 + (s.pos.y - py) ** 2;
+      if (d < best) best = d;
+    }
+    maxDev = Math.max(maxDev, Math.sqrt(best));
+  }
+  check(
+    "the built circuit follows the authored layout",
+    maxDev <= track.halfWidth,
+    `worst authored point is ${f(maxDev, 1)} m off the road (half width ${f(track.halfWidth, 1)} m)`,
   );
 
   // --- 1. reference line is drivable -----------------------------------
@@ -396,12 +427,16 @@ console.log("Ghost and hot seat");
   );
 
   // Hot seat: four drawn cars, no AI, everyone home. Only the lag varies —
-  // how late each "player" notices the corner they are arriving at. The spread
-  // is in metres of track, so it has to widen as circuits get longer — because
-  // that is the one stroke parameter where better is unambiguous. (Pace is not:
-  // drawing closer to the theoretical limit makes you slower, which is the
-  // lesson the whole game is built on.)
-  const rivals = [34, 16, 2].map((lag, i) => {
+  // how late each "player" notices the corner they are arriving at. That is the
+  // one stroke parameter where better is unambiguous. (Pace is not: drawing
+  // closer to the theoretical limit makes you slower, which is the lesson the
+  // whole game is built on.)
+  //
+  // The spread has to widen as circuits get longer AND as the cars get more
+  // grip, for the same reason: lag costs seconds, and both of those make a
+  // given lag cost fewer of them. Seats closer together than the noise floor
+  // do not make the ordering claim stricter, only flakier.
+  const rivals = [60, 28, 2].map((lag, i) => {
     const s = realisticStroke(track, car, { lag, wobble: 1.2, pace: 0.92 });
     return {
       line: RacingLine.fromInput(synthDraw(s.pts, s.speeds), car.maxSpeed, car.brake),

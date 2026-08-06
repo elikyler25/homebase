@@ -33,7 +33,7 @@ const G = 9.81;
  * grip, so its skill levels were lowered to compensate and the field still has
  * to be beaten on merit.
  */
-const GRIP_SCALE = 1.82;
+const GRIP_SCALE = 2.15;
 
 export interface CarClass {
   id: string;

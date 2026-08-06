@@ -9,19 +9,27 @@
 # neighbouring fold. Before that fix a flat-out lap posted 20 s on a 1086 m
 # circuit by teleporting across the folds.
 #
-# What is NOT done is the balance. Folded circuits need a different AI
-# configuration from ring circuits — the planner's margin costs it far more when
-# most of the lap is corners — and the two do not share one setting. With the AI
-# retuned for folds (skills up, path jitter down from 0.45 to 0.12 of half-width,
-# which is what stopped the field's finishing order being chaotic) 21 of these 30
-# passed `npm run tune`; the rest failed on greed not being punished enough, or
-# on a realistic stroke finishing last. Both are tuning, not blockers.
+# All thirty pass `npm run tune`, `npm run modes` and `npm run playtest`, at 18%
+# more grip than the ring circuits could carry (GRIP_SCALE 1.82 -> 2.15). Folds
+# are what bought that: on a ring, grip and greed-punishment are the same dial,
+# so making the car stick makes a flat-out stroke viable. On a folded circuit the
+# hairpins punish greed geometrically instead, and the tyres are free to grip.
 #
 # `min_self_gap` is the safety check that matters: two folds must stay further
 # apart than the road is wide, or the circuit is ambiguous no matter how good
-# the projection is.
+# the projection is. Run this file to see every layout's lap and worst gap; a
+# layout that does not clear is listed at the end with the two points that clash.
+#
+# The other check lives in `npm run tune` ("the built circuit follows the
+# authored layout"), because what this file emits is a polyline and what the game
+# builds is a spline through it. A fold too narrow to survive the smoothing would
+# vanish with nothing here complaining.
 
 import math, re
+
+# When set, min_self_gap returns (gap, i, j) so a fit failure can name the two
+# places on the circuit that are too close instead of just the number.
+_WHERE = False
 
 
 def arcpoly(verts, radius, per_arc=7, edge_every=30):
@@ -76,14 +84,30 @@ def arcpoly(verts, radius, per_arc=7, edge_every=30):
 def length(pts):
     return sum(math.hypot(pts[(i+1)%len(pts)][0]-pts[i][0], pts[(i+1)%len(pts)][1]-pts[i][1]) for i in range(len(pts)))
 
-def min_self_gap(pts, skip=14):
-    """Closest approach between non-adjacent parts of the centreline."""
-    n=len(pts); best=1e9
+def min_self_gap(pts, apart=120.0):
+    """Closest approach between two parts of the centreline that are far apart
+    ALONG the track.
+
+    Separation used to be counted in samples, which is wrong: `arcpoly` puts ~8
+    samples in a corner and one every 30 m on a straight, so a fixed index skip
+    means 300 m of straight but only 35 m of corner. Every circuit with tight
+    outer corners reported a fold conflict against its own kerb, two points that
+    are consecutive on the racing line. Aurora failed to fit for exactly this
+    reason. Distance along the track is the quantity that was always meant.
+    """
+    n=len(pts)
+    seg=[math.hypot(pts[(i+1)%n][0]-pts[i][0], pts[(i+1)%n][1]-pts[i][1]) for i in range(n)]
+    s=[0.0]*n
+    for i in range(1,n): s[i]=s[i-1]+seg[i-1]
+    total=s[-1]+seg[-1]
+    best=(1e9,0,0)
     for i in range(n):
-        for j in range(i+skip, n-(skip if i==0 else 0)):
+        for j in range(i+1, n):
+            ds=s[j]-s[i]
+            if min(ds, total-ds) < apart: continue
             d=math.hypot(pts[i][0]-pts[j][0], pts[i][1]-pts[j][1])
-            if d<best: best=d
-    return best
+            if d<best[0]: best=(d,i,j)
+    return best[0] if not _WHERE else best
 
 def report(name, pts):
     xs=[p[0] for p in pts]; ys=[p[1] for p in pts]
@@ -109,60 +133,193 @@ def set_circuit(path, cid, pts, width=None, laps=None, comment=None, classes=Non
 
 def mirror(V): return [(-x, y) for x, y in V][::-1]
 def flip(V):   return [(x, -y) for x, y in V][::-1]
+def swap(V):   return [(y, x) for x, y in V][::-1]
 
-def one(w, h, a, b, inset=-28):
-    """Outer loop with a single infield return between y=a and y=b."""
-    return [(-w,-h),(w,-h),(w,a),(inset,a),(inset,b),(w,b),(w,h),(-w,h)]
+def circuit(W, H, right=(), left=(), top=(), bottom=()):
+    """Compose a circuit from an outer loop with returns cut into any edge.
 
-def two(w, h, ys, inset=-30):
-    V=[(-w,-h),(w,-h)]
-    for k in range(0,len(ys),2): V += [(w,ys[k]),(inset,ys[k]),(inset,ys[k+1]),(w,ys[k+1])]
-    V += [(w,h),(-w,h)]
+    The first version of this could only cut returns into the RIGHT edge of a
+    portrait rectangle, so all thirty circuits came out as the same silhouette
+    with the folds in slightly different places -- which is exactly what they
+    looked like. Returns now enter from all four edges, swapping W/H gives
+    landscape, and `warp` (below) bends the outer box off square.
+
+    Each return is (from, to, depth) in the coordinate that runs ALONG its edge,
+    ordered the way the lap travels that edge -- clockwise from the top-left, so
+    top runs left-to-right, right runs top-to-bottom, bottom right-to-left and
+    left bottom-to-top. `depth` is how far into the infield the U reaches.
+    """
+    V = [(-W, -H)]
+    for a, b, d in top:    V += [(a, -H), (a, d), (b, d), (b, -H)]
+    V += [(W, -H)]
+    for a, b, d in right:  V += [(W, a), (d, a), (d, b), (W, b)]
+    V += [(W, H)]
+    for a, b, d in bottom: V += [(a, H), (a, d), (b, d), (b, H)]
+    V += [(-W, H)]
+    for a, b, d in left:   V += [(-W, a), (d, a), (d, b), (-W, b)]
     return V
 
-def three(w, h, ys, inset=-32):
-    return two(w, h, ys, inset)
+# --- outer-shape warps -----------------------------------------------------
+# Topology alone does not read as variety from the track-select screen: two
+# circuits with different folds inside the same rectangle still share one
+# silhouette. These bend the box itself. They are applied after the corner radii
+# are chosen (which key off the untouched W/H), and they only move vertices, so
+# the fold spacing the fitter checks is still measured on the real geometry.
 
-def radii(V, outer, ret):
-    """Big radii on the four outer corners, the given radius on every return."""
-    return [outer if i < 2 or i >= len(V)-2 else ret for i in range(len(V))]
+def taper(t):
+    """Trapezoid: the top edge narrows to (1-t) of the bottom."""
+    return lambda V: [(x * (1 + t * y / max(abs(v[1]) for v in V)), y) for x, y in V]
+
+def shear(t):
+    """Parallelogram: each row slides sideways with height."""
+    return lambda V: [(x + t * y, y) for x, y in V]
+
+def rot(deg):
+    """Turn the whole circuit on the diagonal."""
+    a = math.radians(deg); c, s = math.cos(a), math.sin(a)
+    return lambda V: [(x * c - y * s, x * s + y * c) for x, y in V]
+
+def chain(*fs):
+    def go(V):
+        for f in fs: V = f(V)
+        return V
+    return go
+
+def radii_for(V, W, H, outer, ret):
+    """Big radius on the outer box corners, tighter on the infield returns."""
+    return [outer if (abs(abs(x) - W) < 1e-6 and abs(abs(y) - H) < 1e-6) else ret
+            for x, y in V]
 
 L = {}
-def add(cid, V, outer, ret, w, laps, cls=None):
-    L[cid] = (V, radii(V, outer, ret), w, laps, cls)
+BAD = []
 
-# ---- Rookie Cup: one infield return -----------------------------------------
-add('harbour',    one(92,150,-40,26),      52, 34, 17, 1)
-add('gravelpit',  one(90,146,-34,30),      50, 34, 18, 1)
-add('riverside',  one(94,152,-16,48),      54, 35, 17, 1)
-add('marina',     one(96,156,-30,34),       54, 44, 20, 1)
-add('lakeside',   one(94,150,-28,38),      54, 35, 18, 1)
-add('fairground', one(86,138,-30,26),      48, 34, 17, 1)
-add('coast',      mirror(one(98,158,-26,38)), 54, 44, 21, 1, ['gt','rally'])
-add('sandhills',  flip(one(90,144,-38,22)),   50, 34, 18, 1)
-add('frostring',  one(100,162,-44,20),      66, 60, 21, 1)
-add('snowfield',  one(96,156,-40,22),      64, 58, 21, 1)
+def add(cid, spec, W, H, outer, ret, w, laps, cls=None, warp=None, note=None):
+    """Grow the circuit until its folds are comfortably further apart than the
+    road is wide.
 
-# ---- National Series: two infield returns -----------------------------------
-add('vantaa',     two(98,168,[-92,-34,28,88]),   56, 35, 21, 1)
-add('dustbowl',   two(96,164,[-88,-32,26,84]),   54, 35, 20, 1)
-add('nordic',     two(102,176,[-98,-38,32,94]),  58, 36, 21, 1)
-add('ridgeway',   two(100,172,[-94,-36,30,90]),  56, 36, 20, 1)
-add('timber',     two(94,160,[-86,-30,24,82]),   54, 35, 20, 1)
-add('coppermine', mirror(two(96,162,[-88,-32,26,84])), 54, 35, 20, 1)
-add('highlands',  flip(two(94,158,[-84,-30,24,80])),   54, 35, 19, 1)
-add('autodrome',  two(98,186,[-108,-44,38,102]), 60, 38, 21, 1)
-add('glacier',    two(104,184,[-104,-38,34,100]), 76, 70, 21, 1)
-add('fjord',      one(100,174,-36,38),     70, 64, 23, 1)
+    Hand-picking coordinates that clear is a losing game -- a return that is fine
+    at one size is ambiguous at another, and `min_self_gap` is the only check
+    that actually matters. So the layout is authored in proportions and the
+    builder scales it up until it passes, which also means a circuit can be
+    given more returns without re-deriving every number by hand.
+    """
+    need = w + 12
+    # Capped deliberately. Scaling always clears a gap eventually -- the gap
+    # grows with the circuit while the road does not -- so an uncapped fitter
+    # silently turns a badly-spaced layout into a 4 km one. Past 1.2x the
+    # spacing is wrong at the source and should be fixed there.
+    for step in range(5):
+        k = 1 + step * 0.05
+        V = spec(k)
+        R = radii_for(V, W * k, H * k, outer, ret)
+        if warp: V = warp(V)
+        pts = arcpoly(V, R)
+        if min_self_gap(pts) >= need:
+            L[cid] = (V, R, w, laps, cls, note)
+            return
+    # Collect rather than abort. Thirty layouts get authored in one sitting and
+    # dying on the first one hides the other twenty-nine, which turns a batch of
+    # coordinate fixes into thirty round trips.
+    global _WHERE
+    _WHERE = True
+    g, i, j = min_self_gap(pts)
+    _WHERE = False
+    BAD.append("%-11s gap %3.0f (need %d) between %s and %s"
+               % (cid, g, need, tuple(round(c) for c in pts[i]), tuple(round(c) for c in pts[j])))
+    L[cid] = (V, R, w, laps, cls, note)
 
-# ---- World League: two returns, bigger and faster ---------------------------
-add('oldtown',    two(102,196,[-120,-64,-30,26,60,116]), 58, 36, 20, 1)
-add('quarry',     two(106,192,[-110,-44,38,104]), 58, 48, 21, 1)
-add('cathedral',  two(110,208,[-130,-70,-34,30,66,126]), 64, 41, 23, 1)
-add('blackrock',  mirror(two(104,188,[-106,-42,36,100])), 58, 48, 20, 1)
-add('spire',      two(112,214,[-134,-72,-36,32,68,130]), 66, 43, 24, 1)
-add('grand',      two(114,218,[-138,-74,-36,32,70,134]), 68, 44, 25, 1)
-add('crucible',   two(100,188,[-110,-44,38,104], -34), 56, 46, 21, 1)
-add('aurora',     one(114,198,-40,44),     80, 74, 28, 1)
-add('whiteout',   two(102,180,[-100,-36,32,96]),  62, 52, 20, 1)
-add('midnight',   flip(one(106,190,-32,44)), 74, 68, 25, 1)
+# ============================================================================
+# The thirty. Read down the `warp` column and the edge keywords: no two share a
+# silhouette. That is the point of this table -- the previous version put every
+# return into the right-hand flank of a portrait rectangle, and thirty circuits
+# came out looking like one circuit drawn thirty times.
+#
+# The levers, roughly in order of how much they change what you see on the
+# track-select screen:
+#   1. the outer shape      -- rectangle / trapezoid / parallelogram / diagonal
+#   2. aspect               -- portrait, landscape, square
+#   3. which edges fold in  -- and whether opposite folds interlock like a comb
+#   4. how deep the folds go -- a stub off one edge vs a spear across the infield
+#   5. count                -- one fold reads as a lap with a kink; four reads as a maze
+
+# =============================================================== Rookie Cup
+# One fold, one idea each. Short enough to learn in a single stroke.
+add('harbour',   lambda k: circuit(92*k,158*k, right=[(-66*k,64*k,-26*k)]),
+    92,158, 54,46, 17,1)                                     # portrait, one wide right U
+add('gravelpit', lambda k: circuit(96*k,150*k, left=[(60*k,-60*k,28*k)]),
+    96,150, 54,46, 18,1, warp=taper(0.34))                   # trapezoid, folds from the left
+add('frostring', lambda k: circuit(120*k,120*k, top=[(-40*k,40*k,60*k)]),
+    120,120, 60,44, 20,1)                                    # square, one spear down the middle
+add('riverside', lambda k: circuit(92*k,152*k, bottom=[(46*k,-46*k,32*k)]),
+    92,152, 54,46, 17,1, warp=shear(0.30))                   # leaning parallelogram
+add('marina',    lambda k: circuit(154*k,92*k, right=[(-44*k,44*k,54*k)]),
+    154,92, 52,44, 19,1)                                     # landscape, deep right pocket
+add('coast',     lambda k: circuit(150*k,90*k, top=[(-62*k,62*k,-16*k)]),
+    150,90, 52,44, 20,1, ['gt','rally'], warp=rot(-18))      # a long diagonal sweep
+add('sandhills', lambda k: circuit(88*k,150*k, right=[(-100*k,26*k,-20*k)]),
+    88,150, 50,42, 18,1, warp=taper(0.52))                                     # portrait, fold pushed to the top
+add('lakeside',  lambda k: circuit(94*k,146*k, left=[(100*k,-26*k,22*k)]),
+    94,146, 52,58, 19,1, warp=taper(-0.30))                  # trapezoid the other way up
+add('snowfield', lambda k: circuit(128*k,128*k, bottom=[(62*k,-62*k,-58*k)]),
+    128,128, 60,44, 20,1)                                    # square, spear up from the bottom
+add('fairground',lambda k: circuit(146*k,88*k, top=[(-96*k,-20*k,10*k)], bottom=[(96*k,20*k,-10*k)]),
+    146,88, 50,42, 17,1)                                     # landscape S: two folds passing
+
+# ========================================================== National Series
+# Two or three folds. Now the shape of the infield matters as much as the outline.
+add('vantaa',    lambda k: circuit(98*k,190*k, right=[(-140*k,-14*k,-24*k)], bottom=[(40*k,-40*k,150*k)]),
+    98,190, 56,46, 19,1)                                     # right U over a bottom stub
+add('dustbowl',  lambda k: circuit(150*k,150*k, top=[(-80*k,-24*k,44*k)], bottom=[(80*k,24*k,-44*k)]),
+    150,150, 66,46, 20,1)                                    # square, two spears interlocking
+add('nordic',    lambda k: circuit(102*k,208*k, right=[(-158*k,-28*k,-22*k),(28*k,158*k,-22*k)]),
+    102,208, 58,48, 21,1)                                    # the classic double hairpin
+add('ridgeway',  lambda k: circuit(106*k,204*k, right=[(-166*k,-36*k,-24*k)], left=[(166*k,36*k,24*k)]),
+    106,204, 58,62, 24,1, warp=rot(-14))                                    # folds facing each other, offset
+add('timber',    lambda k: circuit(190*k,96*k, top=[(-142*k,-12*k,-18*k)], bottom=[(142*k,12*k,18*k)]),
+    190,96, 54,44, 20,1, warp=shear(-0.26))                  # sheared landscape comb
+add('coppermine',lambda k: circuit(196*k,100*k, top=[(-150*k,-84*k,-14*k),(-16*k,50*k,-14*k)], bottom=[(150*k,84*k,14*k)]),
+    196,100, 56,44, 20,1)                                    # three teeth along a wide box
+add('autodrome', lambda k: circuit(96*k,196*k, top=[(-34*k,34*k,-104*k)], right=[(20*k,150*k,-20*k)]),
+    96,196, 60,50, 21,1)                                     # long straight down one spear
+add('glacier',   lambda k: circuit(186*k,102*k, right=[(-50*k,50*k,58*k)], top=[(-144*k,-74*k,-24*k)]),
+    186,102, 64,56, 22,1, warp=taper(0.26))                  # wide trapezoid, deep right pocket
+add('fjord',     lambda k: circuit(98*k,192*k, bottom=[(38*k,-38*k,104*k)], left=[(-20*k,-150*k,22*k)]),
+    98,192, 60,52, 22,1, warp=taper(-0.28))                                     # mirror of autodrome's idea
+add('highlands', lambda k: circuit(160*k,160*k, bottom=[(56*k,-56*k,40*k)], right=[(-120*k,-24*k,-30*k)]),
+    160,160, 68,48, 19,1, warp=rot(22))                      # square turned on the diagonal
+
+# ============================================================= World League
+# Three and four folds, the largest boxes, the busiest silhouettes in the game.
+add('oldtown',   lambda k: circuit(200*k,110*k, bottom=[(150*k,80*k,-40*k),(-30*k,-100*k,-40*k)]),
+    200,110, 60,46, 20,1, warp=taper(0.22))                  # double hairpin in a wedge
+add('quarry',    lambda k: circuit(112*k,240*k, right=[(-190*k,-120*k,-24*k),(-40*k,40*k,-24*k),(120*k,190*k,-24*k)]),
+    112,240, 58,48, 21,1)                                    # triple hairpin, one flank
+add('aurora',    lambda k: circuit(232*k,124*k, top=[(-160*k,-74*k,-16*k)], bottom=[(160*k,74*k,16*k),(36*k,-36*k,-20*k)]),
+    232,124, 74,48, 26,1)                                    # the widest box in the game
+add('whiteout',  lambda k: circuit(210*k,106*k, right=[(-54*k,54*k,56*k)], top=[(-162*k,-88*k,-24*k)]),
+    210,106, 66,58, 24,1, warp=rot(-12))                      # tilted landscape, deep pocket
+add('cathedral', lambda k: circuit(150*k,220*k, top=[(-110*k,-50*k,140*k)], bottom=[(110*k,50*k,-140*k)]),
+    150,220, 64,48, 23,1, warp=rot(8))                       # two nave-length spears, interlocking
+add('blackrock', lambda k: circuit(112*k,228*k, left=[(180*k,54*k,22*k),(-54*k,-180*k,22*k)], right=[(-16*k,16*k,-34*k)]),
+    112,228, 58,48, 24,1, warp=shear(0.22))                   # cathedral's mirror, leaning
+add('midnight',  lambda k: circuit(170*k,170*k, top=[(-24*k,24*k,90*k)], bottom=[(124*k,64*k,-96*k)], left=[(120*k,-120*k,-80*k)]),
+    170,170, 70,50, 24,1)                                     # square, three spears from three sides
+add('spire',     lambda k: circuit(124*k,250*k, right=[(-200*k,-70*k,0),(70*k,200*k,0)], bottom=[(-40*k,-88*k,-120*k)]),
+    124,250, 64,54, 24,1, warp=shear(0.20))                                     # the tallest box in the game
+add('crucible',  lambda k: circuit(120*k,232*k, right=[(-198*k,-128*k,-30*k),(12*k,82*k,-30*k)], left=[(196*k,146*k,30*k),(-24*k,-94*k,30*k)]),
+    120,232, 60,44, 21,1)                                     # four folds, alternating flanks
+add('grand',     lambda k: circuit(180*k,180*k, right=[(-140*k,-40*k,14*k),(40*k,140*k,14*k)], top=[(-120*k,-60*k,100*k)]),
+    180,180, 74,52, 25,1, warp=rot(-30))                      # everything, on the diagonal
+
+if __name__ == "__main__":
+    for cid, (V, R, w, laps, cls, note) in L.items():
+        report(cid, arcpoly(V, R))
+    if BAD:
+        print("\n%d layouts do not fit:" % len(BAD))
+        for b in BAD: print("  " + b)
+
+# In-game blurbs. Kept beside the layouts so a circuit's description and its
+# shape cannot drift apart.
+NOTES = {'harbour': 'A kart circuit at its simplest: an outer loop with the road folded back\ninto the infield once. That return is the only place on the lap the car turns\nthe other way, and the only place a greedy stroke has to admit it.', 'gravelpit': 'The paddock end is narrower than the pit end, so the circuit runs as a wedge.\nThe single return comes in from the left, which puts the slow corner on the\ninside of the long sweep rather than opposite it.', 'frostring': 'Square, and split down the middle by a spear of road that runs almost the full\nheight of the circuit before turning back. Two long straights for the price of\none very committed hairpin.', 'riverside': 'The whole circuit leans. Nothing here is square to anything else, which makes\nthe braking points hard to read off the shape and easy to read off the kerbs.', 'marina': 'Wide and shallow, with one deep pocket cut into the seaward flank. The lap is\nmostly full throttle; the pocket is where it is decided.', 'coast': 'A long diagonal sweep along the shoreline with a shallow scallop at the top.\nThe fastest lap barely uses the brakes -- which is exactly why the scallop\ncatches people out.', 'sandhills': 'The return sits high on the flank instead of centred, so the circuit is\nlopsided: a long open bottom half, then a sudden switchback before the line.', 'lakeside': "Gravelpit's wedge stood on its head, folding in from the left low down. The\nlap opens out as it goes, so the last corner is the fastest one.", 'snowfield': 'Square, with a spear driven up from the bottom edge nearly to the top. Two\nfull-length straights either side of one very slow turn.', 'fairground': 'Two shallow returns from opposite edges, passing each other in the middle.\nThe road crosses back on itself twice without ever touching.', 'vantaa': 'A tight return high on the right flank, then a long stub up from the bottom\nedge. The two halves of the lap ask for opposite things.', 'dustbowl': 'Two spears reaching past the centreline from opposite edges, offset so they\ninterlock instead of meeting. The infield is a single long corridor.', 'nordic': 'The classic double hairpin: two returns stacked down one flank with a short\nchute between them. Get the first one wrong and the second one is gone too.', 'ridgeway': 'Returns from both flanks, offset up the circuit so they never face each other.\nThe road weaves rather than folds.', 'timber': 'A sheared landscape box with long teeth from top and bottom. Everything is\nparallel and nothing is square.', 'coppermine': 'Three teeth along a wide box -- two down from the top, one up from the bottom.\nThe rhythm changes every corner and never repeats.', 'autodrome': 'The longest straight in the National Series runs down one side of a spear that\nreaches almost the full height of the circuit, then a hairpin off the flank.', 'glacier': 'A wide trapezoid with a deep pocket cut into the right flank and a shallow\nreturn off the top. The lap is fast, wide and unforgiving of a late brake.', 'fjord': "Autodrome's idea inverted: the spear climbs from the bottom edge and the flank\nreturn sits above it rather than below.", 'highlands': 'A square circuit turned onto the diagonal, with folds from the bottom and the\nright. Nothing on this lap lines up with the screen.', 'oldtown': 'A double hairpin inside a wedge, so the two returns are different widths even\nthough they are the same shape. The upper one is the one that bites.', 'quarry': 'Three hairpins stacked down one flank -- a full switchback. The corners\noutnumber the straights, which is what stops a flat-out stroke and gives a\nbetter driver somewhere to be better.', 'aurora': 'The widest circuit in the game, with long shallow returns from the top and\nbottom edges set at opposite ends. Enormous speeds, and a very long way round\nif you miss the entry.', 'whiteout': 'A tilted landscape box with a deep pocket in the flank and a return off the\ntop. The horizon is never where you expect it.', 'cathedral': 'Two spears the length of the nave, reaching past each other from opposite ends\nof the circuit. Four straights, four hairpins and nothing in between.', 'blackrock': "Two hairpins off the left flank with a spear from the right threading the gap\nbetween them, and the whole circuit leaning as it goes.", 'midnight': 'Three spears from three different edges of a square, none of them meeting. The\nbusiest infield in the game and the hardest lap to hold in your head.', 'spire': 'The tallest circuit in the game. Two hairpins down the right flank and a spear\nrunning nearly its full height up the left-hand channel.', 'crucible': 'Four folds alternating between the flanks, interleaved so the road weaves all\nthe way up the circuit. Almost no straight is longer than the one before it.', 'grand': 'Everything, on the diagonal: two deep hairpins off one flank and a long spear\ndown the other, inside a square turned thirty degrees. The championship\ndecider.'}
+for _c, _n in NOTES.items():
+    L[_c] = L[_c][:5] + (_n,)
