@@ -209,6 +209,49 @@ within a couple of seconds, the ordering goes with the noise, and a decent human
 nothing to beat. Both the oval and the triangle failed on exactly this, and both were fixed by
 *tightening* their corners until skill had somewhere to show.
 
+## Why the cars cannot have more grip
+
+Asked for more traction, I raised the grip budget — and broke six circuits immediately, at a 2%
+increase. Raised further it broke fourteen. The failure is always the same assertion: *a flat-out
+line is not faster than a planned one*. That property is the game. With enough grip a ring circuit
+can simply be driven flat out, and every reason to modulate the stroke evaporates.
+
+Softening the other levers does the same thing, because in this design **sliding and the
+punishment for greed are the same mechanism**. Easing the post-limit tyre falloff from 0.45 to
+0.40 broke two circuits; to 0.43, one. Reducing the speed scrubbed by a sliding tyre broke six.
+There is no headroom in the physics at all.
+
+What *is* free is the part that only changes how it looks: body slip is down about a third, so an
+understeering car reads as understeering rather than as a drift. The car does not slide less —
+it looks less like it is sliding, which was a good part of the complaint.
+
+Real extra traction needs the circuits to stop being rings. On a folded kart layout, hairpins make
+flat-out impossible geometrically rather than through grip, and a prototype confirmed it — a
+806 m folded circuit passed "flat out is punished" at a grip level that broke fourteen rings. It
+is not shipped because folded layouts break two engine assumptions at once: the car's line
+re-acquisition and the lap counter both assume the centreline never comes near itself, so a car
+that misses a hairpin jumps to the adjacent fold. A flat-out lap posted 20 s on a 1086 m circuit
+by teleporting across the folds. Fixing that means making projection and lap counting
+locality-aware, which is the real next piece of work.
+
+## Circuits that fill the screen
+
+They were too small, and the reason was not lap length — it was aspect ratio. A roughly square
+circuit on a 390x844 phone fits by width and leaves 45% of the screen empty. Every layout is now
+cut across its middle and pulled apart vertically, with the two halves joined by straights: laps
+grew about 60% (750-1050 m), the footprints became portrait, and **every corner radius is
+unchanged**, because only straight sections were inserted. On a phone the circuit went from
+368x368 px to 362x686.
+
+Four circuits could not take it and kept their original geometry: an oval with longer straights
+is just more flat-out-able, and three others put the extra speed straight into a corner that
+could not absorb it.
+
+That change also surfaced a genuine bug. The draw screen has a panel across the top, and once
+circuits were tall enough to reach it, the start/finish line ended up *behind* it — where a finger
+press never reaches the canvas. The circuit was untraceable. The camera now fits the visible band
+between the overlays rather than the whole viewport.
+
 ## What thirty circuits taught me
 
 `npm run atlas` renders every layout's outline into one grid, and it is the most brutal review in

@@ -375,8 +375,8 @@ export class Vehicle {
     // different, wilder machine. It is the same machine; it was just being asked
     // for more than it had, and then drawn as though it were sliding sideways.
     const slipTarget =
-      clamp(understeer / Math.max(aMax, 1), 0, 1.2) * Math.sign(latDemand || 1) * 0.24 +
-      clamp(-latAcc / Math.max(aMax, 1), -1, 1) * surf.slide * 0.26;
+      clamp(understeer / Math.max(aMax, 1), 0, 1.2) * Math.sign(latDemand || 1) * 0.16 +
+      clamp(-latAcc / Math.max(aMax, 1), -1, 1) * surf.slide * 0.18;
     this.slipAngle = damp(this.slipAngle, slipTarget, 6 + (1 - surf.slide) * 8, dt);
 
     const velAngle = Math.atan2(this.vel.y, this.vel.x);

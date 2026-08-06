@@ -954,9 +954,27 @@ export class Game {
     const pad = 6;
     const w = max.x - min.x + pad * 2;
     const h = max.y - min.y + pad * 2;
-    const scale = Math.min(this.renderer.cssWidth / w, this.renderer.cssHeight / h);
-    this.fitScale = scale;
-    this.renderer.camera.targetCenter = { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2 };
+    // Race framing works off the unrestricted fit, so it is unaffected by the
+    // draw overlay.
+    this.fitScale = Math.min(this.renderer.cssWidth / w, this.renderer.cssHeight / h);
+
+    // The draw overlay puts a panel across the top and a button row across the
+    // bottom, and fitting to the whole viewport puts the circuit underneath
+    // them. That is not cosmetic: the stroke has to START on the grid, and once
+    // the circuits grew tall enough to reach the top of the screen the start
+    // line ended up behind the panel, where a finger press never reaches the
+    // canvas at all. The circuit became literally untraceable.
+    const drawing = this.phase === "draw" || this.phase === "howto";
+    const top = drawing ? 126 : 0;
+    const bottom = drawing ? 62 : 0;
+    const availH = Math.max(120, this.renderer.cssHeight - top - bottom);
+    const scale = Math.min(this.renderer.cssWidth / w, availH / h);
+
+    this.renderer.camera.targetCenter = {
+      x: (min.x + max.x) / 2,
+      // Centre in the visible band rather than on the screen.
+      y: (min.y + max.y) / 2 - (top - bottom) / 2 / scale,
+    };
     this.renderer.camera.targetScale = scale;
     this.renderer.camera.update(0, snap);
   }

@@ -395,11 +395,12 @@ console.log("Ghost and hot seat");
   );
 
   // Hot seat: four drawn cars, no AI, everyone home. Only the lag varies —
-  // how late each "player" notices the corner they are arriving at — because
+  // how late each "player" notices the corner they are arriving at. The spread
+  // is in metres of track, so it has to widen as circuits get longer — because
   // that is the one stroke parameter where better is unambiguous. (Pace is not:
   // drawing closer to the theoretical limit makes you slower, which is the
   // lesson the whole game is built on.)
-  const rivals = [12, 7, 2].map((lag, i) => {
+  const rivals = [18, 9, 2].map((lag, i) => {
     const s = realisticStroke(track, car, { lag, wobble: 1.2, pace: 0.92 });
     return {
       line: RacingLine.fromInput(synthDraw(s.pts, s.speeds), car.maxSpeed, car.brake),
