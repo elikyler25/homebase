@@ -108,10 +108,17 @@ export function optimiseLine(
 function containLine(track: Track, pts: Vec2[], margin: number): Vec2[] {
   const limit = Math.max(0.4, track.halfWidth - margin);
   const out = pts.map((p) => ({ ...p }));
+  // Point i started life as an offset from centreline sample i, so we know
+  // roughly where it belongs. On a folded circuit that hint is essential: the
+  // globally nearest sample to a point on one straight can easily be on the
+  // neighbouring fold, and clamping against *that* pushes the racing line
+  // through the grass and onto another part of the track entirely.
+  const hintS = (i: number) =>
+    track.samples[Math.min(track.samples.length - 1, Math.round((i / out.length) * track.samples.length))].s;
   for (let pass = 0; pass < 3; pass++) {
     let moved = false;
     for (let i = 0; i < out.length; i++) {
-      const proj = track.project(out[i]);
+      const proj = track.project(out[i], hintS(i), 60);
       if (Math.abs(proj.lateral) <= limit) continue;
       const smp = track.samples[proj.index];
       const clamped = clamp(proj.lateral, -limit, limit);
@@ -135,7 +142,7 @@ function containLine(track: Track, pts: Vec2[], margin: number): Vec2[] {
   }
   // Final hard clamp — smoothing must not be the last word on legality.
   for (let i = 0; i < out.length; i++) {
-    const proj = track.project(out[i]);
+    const proj = track.project(out[i], hintS(i), 60);
     if (Math.abs(proj.lateral) > limit) {
       const smp = track.samples[proj.index];
       out[i] = vadd(smp.pos, vscale(smp.nor, clamp(proj.lateral, -limit, limit)));
@@ -234,6 +241,51 @@ export function speedProfile(
 }
 
 /** Build a complete, race-ready line for one opponent. */
+/** Rough lap time for a path and its speed profile: sum of ds / v. */
+function estimateTime(pts: Vec2[], speeds: number[]): number {
+  let t = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    const v = Math.max(1, (speeds[i] + speeds[(i + 1) % pts.length]) / 2);
+    t += Math.hypot(b.x - a.x, b.y - a.y) / v;
+  }
+  return t;
+}
+
+/**
+ * Optimise, but never end up worse than simply driving down the middle.
+ *
+ * The relaxation minimises curvature inside the corridor, which is right on an
+ * open circuit and can misfire on a tight one: pulling each point toward the
+ * midpoint of its neighbours fights the containment clamp through every tight
+ * corner, and the line that falls out can be *slower* than the centreline it
+ * started from. Measured on a folded circuit: an 84 s reference where flat-out
+ * down the middle took 73 s. The centreline is always available and always
+ * legal, so take whichever actually wins.
+ */
+function bestLine(
+  track: Track,
+  car: CarClass,
+  margin: number,
+  iterations: number,
+  seed: number,
+  jitter: number,
+  skill: number,
+): { pts: Vec2[]; speeds: number[] } {
+  const opt = optimiseLine(track, margin, iterations, seed, jitter);
+  const optSpeeds = speedProfile(opt, car, track.surface.grip, skill);
+  const mid = track.samples.map((s) => ({ ...s.pos }));
+  const midSpeeds = speedProfile(mid, car, track.surface.grip, skill);
+  // The estimate ignores acceleration limits, so it is only trustworthy about
+  // large differences. Fall back only when the centreline is *clearly* better,
+  // or the guard flips on noise and costs a tenth on circuits it should leave
+  // alone.
+  return estimateTime(mid, midSpeeds) < estimateTime(opt, optSpeeds) * 0.94
+    ? { pts: mid, speeds: midSpeeds }
+    : { pts: opt, speeds: optSpeeds };
+}
+
 export function buildAiLine(
   track: Track,
   car: CarClass,
@@ -241,8 +293,7 @@ export function buildAiLine(
   seed: number,
 ): RacingLine {
   const jitter = (1 - skill) * track.halfWidth * 0.45;
-  const pts = optimiseLine(track, car.radius + 2.0, 900, seed, jitter);
-  const speeds = speedProfile(pts, car, track.surface.grip, skill);
+  const { pts, speeds } = bestLine(track, car, car.radius + 2.0, 900, seed, jitter, skill);
   return RacingLine.fromNodes(pts, speeds, true);
 }
 
@@ -252,10 +303,9 @@ export function buildAiLine(
  * the medals with it.
  */
 export function buildReferenceLine(track: Track, car: CarClass): RacingLine {
-  const pts = optimiseLine(track, car.radius + 2.0, 1200, 0, 0);
   // Plan at slightly under the limit. A line planned at exactly 100% of grip
   // leaves the path-follower no margin for its own tracking error, so the
   // "ideal" car spends the lap understeering and sets a poor reference.
-  const speeds = speedProfile(pts, car, track.surface.grip, 0.95);
+  const { pts, speeds } = bestLine(track, car, car.radius + 2.0, 1200, 0, 0, 0.95);
   return RacingLine.fromNodes(pts, speeds, true);
 }

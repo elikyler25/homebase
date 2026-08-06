@@ -209,6 +209,35 @@ within a couple of seconds, the ordering goes with the noise, and a decent human
 nothing to beat. Both the oval and the triangle failed on exactly this, and both were fixed by
 *tightening* their corners until skill had somewhere to show.
 
+## Folded circuits: the engine limit, and the fix
+
+Real kart circuits fold the road back into the infield, which is how a small
+footprint holds a very long lap. This engine could not represent one, and the
+failure was silent rather than obvious: `Track.project` found the globally
+nearest centreline sample, so a car that ran wide at a hairpin snapped onto the
+*next fold over* — 60 m away in space, but hundreds of metres away along the
+track. Its lap position jumped, the lap counter fired, and a flat-out stroke
+posted **20 s on a 1086 m circuit** by teleporting across the folds.
+
+That is now fixed. Projection and line re-acquisition are hinted by where the
+car already was, so two folds metres apart in space stay hundreds of metres
+apart along the track and can never be confused. `containLine` is hinted the
+same way, because the racing-line optimiser had the identical bug — it clamped
+points against the wrong fold and pushed the line through the grass. And
+`bestLine` will not accept an optimised line that is slower than simply driving
+down the middle, which the relaxation could produce on a tight circuit (an 84 s
+reference against a 73 s flat-out lap).
+
+`tools/kart_layouts.py` generates thirty folded layouts on top of that, and they
+are not shipped yet. The remaining work is balance, not capability: folded
+circuits want a different AI configuration from rings, because the planner's
+safety margin costs it far more when most of the lap is corners. With the AI
+retuned for folds — and with path jitter cut from 0.45 to 0.12 of half-width,
+which is what stopped the finishing order being chaotic — 21 of the 30 passed
+`npm run tune`. The rest failed on greed not being punished hard enough, or on a
+realistic stroke finishing last. Both are tuning problems with a working engine
+underneath them now.
+
 ## Why the cars cannot have more grip
 
 Asked for more traction, I raised the grip budget — and broke six circuits immediately, at a 2%

@@ -322,7 +322,8 @@ console.log("Line mechanics");
   let prev = 0;
   let maxJump = 0;
   const veh = new Vehicle(car, line, track, track.startPos, Math.atan2(track.startTan.y, track.startTan.x));
-  for (let i = 0; i < 90 / PHYS_DT; i++) {
+  // Budget scaled to the circuit: laps are 1000-2000 m now, not 500.
+  for (let i = 0; i < 260 / PHYS_DT; i++) {
     veh.step(PHYS_DT);
     let d = veh.lineS - prev;
     if (d < -line.length / 2) d += line.length; // wrapped forward past the seam

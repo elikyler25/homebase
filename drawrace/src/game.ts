@@ -893,7 +893,7 @@ export class Game {
       if (last && vdist(p, last.p) < 0.35) continue;
       this.raw.push({ p, t: ev.timeStamp });
 
-      const s = this.track.project(p).s;
+      const s = this.track.project(p, this.lastProjS, 70).s;
       const d = this.track.wrapDelta(this.lastProjS, s);
       if (Math.abs(d) < this.track.length * 0.2) this.lapCovered += d;
       this.lastProjS = s;

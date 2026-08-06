@@ -189,7 +189,10 @@ export class Vehicle {
     const speed = this.speed;
 
     // --- Where am I, and what am I standing on? -------------------------
-    const proj = this.track.project(this.pos);
+    // Hinted by where we were last tick. A car moves at most half a metre per
+    // step, so a window this wide is generous — and on a folded circuit an
+    // unhinted query is what lets a car jump to the neighbouring straight.
+    const proj = this.track.project(this.pos, this.trackS, clamp(speed * 0.6 + 20, 24, 70));
     const onTrack = proj.onTrack;
     const surf = onTrack ? this.track.surface : OFFTRACK;
 
@@ -206,9 +209,13 @@ export class Vehicle {
     // a global nearest-point query would teleport the car onto the wrong branch.
     // But a bounded window also means a car thrown a long way off can never find
     // its way home, so past a large error, re-acquire globally.
+    // A car thrown a long way off needs a wider window to find its line again,
+    // but NOT an unbounded one: on a folded circuit the globally nearest point
+    // is frequently on the next fold over, and re-acquiring there skips half
+    // the lap.
     const lost = Math.abs(this.lastCrossErr) > this.track.halfWidth * 3 + 12;
     this.lineS = lost
-      ? this.line.nearestS(this.pos, this.lineS, this.line.length, this.line.length)
+      ? this.line.nearestS(this.pos, this.lineS, 90, 40)
       : this.line.nearestS(this.pos, this.lineS, clamp(speed * 0.4 + 6, 8, 26), 6);
 
     // Lookahead has to stay short relative to corner radius. Long lookahead

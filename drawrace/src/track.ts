@@ -239,7 +239,29 @@ export class Track {
    * Nearest centreline sample to `p`. Searches expanding rings of grid cells
    * and falls back to a linear scan if the point is far outside the track.
    */
-  nearestIndex(p: Vec2): number {
+  nearestIndex(p: Vec2, hintIndex = -1, span = 0): number {
+    // Hinted search: only look at samples near where the caller already knows
+    // it was. This is what makes a folded circuit possible at all. On a layout
+    // that switches back on itself, two stretches of centreline can be 60 m
+    // apart, and a global nearest-point query will happily snap a car that has
+    // run wide in a hairpin onto the *next* fold — at which point its track
+    // position jumps hundreds of metres, the lap counter fires, and a flat-out
+    // lap posts an impossible time by teleporting across the folds. Measured:
+    // 20 s on a 1086 m circuit.
+    if (hintIndex >= 0 && span > 0) {
+      const n = this.samples.length;
+      let best = -1;
+      let bestD = Infinity;
+      for (let k = -span; k <= span; k++) {
+        const i = ((hintIndex + k) % n + n) % n;
+        const d = vdist2(this.samples[i].pos, p);
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      if (best >= 0) return best;
+    }
     const cx = Math.floor((p.x - this.gridOrigin.x) / GRID_CELL);
     const cy = Math.floor((p.y - this.gridOrigin.y) / GRID_CELL);
     let best = -1;
@@ -277,8 +299,17 @@ export class Track {
    * Project a world point onto the centreline.
    * `lateral` is signed: positive to the left of the direction of travel.
    */
-  project(p: Vec2): { index: number; s: number; lateral: number; onTrack: boolean } {
-    const i = this.nearestIndex(p);
+  project(
+    p: Vec2,
+    hintS = -1,
+    spanMetres = 0,
+  ): { index: number; s: number; lateral: number; onTrack: boolean } {
+    const n = this.samples.length;
+    const step = this.length / n;
+    const hintIndex =
+      hintS >= 0 ? ((Math.round(hintS / step) % n) + n) % n : -1;
+    const span = spanMetres > 0 ? Math.max(3, Math.round(spanMetres / step)) : 0;
+    const i = this.nearestIndex(p, hintIndex, span);
     const smp = this.samples[i];
     const d = vsub(p, smp.pos);
     const along = d.x * smp.tan.x + d.y * smp.tan.y;
