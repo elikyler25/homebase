@@ -264,8 +264,26 @@ export class Vehicle {
       (this.pos.x - here.pos.x) * nHere.x + (this.pos.y - here.pos.y) * nHere.y;
     const crossRate = this.vel.x * nHere.x + this.vel.y * nHere.y;
     const authority = clamp(speed / 9, 0, 1);
+    // And it has to ease off when the corner has already spent the grip. A
+    // driver whose front tyres are washing out cannot *also* steer back toward
+    // the line — there is not much left to steer with. Without this the two
+    // demands stack: an over-fast stroke runs wide, the recovery term pulls
+    // harder the wider it gets, and that extra demand lands in `understeer`,
+    // which is what sets the drift pose and the skid and smoke intensity.
+    // Measured on a stroke drawn past the limit, the recovery term reached 14x
+    // its normal value while the car's speed was unchanged — reported by a
+    // player as the car spinning as though it were going far faster than it is.
+    //
+    // Floored at 0.65 rather than 0, which is a measured limit and not a taste:
+    // removing the recovery authority entirely stops the hot-seat field ordering
+    // by stroke quality, because keeping a car near its line is how a sharper
+    // stroke expresses itself. 0.45 also fails. Keyed to latPursuit, not
+    // latDemand, so it cannot become a feedback loop on itself.
+    const headroom = clamp(1.15 - Math.abs(latPursuit) / Math.max(aPeak, 0.01), 0.65, 1);
     const latCorrect =
-      clamp(-3.2 * crossErr - 2.6 * crossRate, -aPeak * 0.55, aPeak * 0.55) * authority;
+      clamp(-3.2 * crossErr - 2.6 * crossRate, -aPeak * 0.55, aPeak * 0.55) *
+      authority *
+      headroom;
 
     this.lastCrossErr = crossErr;
     this.debug = { latPursuit, latCorrect, aPeak, wanted: desiredSpeed, crossErr };
@@ -282,9 +300,19 @@ export class Vehicle {
     //
     // Bounded, for the same reason as above: unbounded falloff is a cliff where
     // any small over-ask compounds to a spin, which punishes the *fastest* lines
-    // hardest and inverts the skill ordering. And it is driven by the cornering
-    // demand only — the recovery controller pulling hard to get back on line is
-    // not the driver overcooking a corner, and must not be charged as if it were.
+    // hardest and inverts the skill ordering.
+    //
+    // And it is driven by the cornering demand only — the recovery controller
+    // pulling hard to get back on line is not the driver overcooking a corner,
+    // and must not be charged as if it were.
+    //
+    // Tried and reverted: measuring the over-ask against the LINE's own
+    // curvature (`speed^2 * here.curv`) instead of the pursuit demand. It is the
+    // more honest question, and it does stop the falloff being fed by tracking
+    // error — but the compounding is load-bearing. With it gone a flat-out
+    // stroke lapped Harbour in 24.8 s against a planned stroke's 26.2 s, which
+    // is the whole game inverted. The wide-running IS the punishment; see
+    // `npm run drawspeed`.
     const overAsk = Math.max(0, Math.abs(latPursuit) / Math.max(aPeak, 0.01) - 1);
     const aMax = aPeak * (1 - 0.45 * clamp(overAsk, 0, 1));
 
@@ -372,8 +400,6 @@ export class Vehicle {
     // --- Attitude ---------------------------------------------------------
     // Slip angle is cosmetic-but-honest: the nose points into the corner more
     // than the velocity vector does, and the excess is how sideways you are.
-    // Slip angle is cosmetic-but-honest: the nose points into the corner more
-    // than the velocity vector does, and the excess is how sideways you are.
     //
     // The understeer coefficient used to be 0.5, which put the car at ~29 deg of
     // body slip for being 100% over budget and peaked at 35 deg — a full
@@ -381,6 +407,14 @@ export class Vehicle {
     // wide. Against the AI's steady 2-4 deg it read as the player's car being a
     // different, wilder machine. It is the same machine; it was just being asked
     // for more than it had, and then drawn as though it were sliding sideways.
+    //
+    // Both terms divide by aMax, and that is deliberate even though the falloff
+    // has already cut aMax for this same over-ask. Tried dividing by aPeak on
+    // the theory that it double-counts: it made the pose WORSE (peak 8.1 -> 9.4
+    // deg). The two terms carry opposite signs — understeer pushes the nose one
+    // way, lateral load leans it the other — and it is the second term
+    // saturating its own clamp against aMax that caps the whole pose. Measured
+    // with `npm run drawspeed`.
     const slipTarget =
       clamp(understeer / Math.max(aMax, 1), 0, 1.2) * Math.sign(latDemand || 1) * 0.16 +
       clamp(-latAcc / Math.max(aMax, 1), -1, 1) * surf.slide * 0.18;
