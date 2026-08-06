@@ -139,6 +139,7 @@ export class Renderer {
   private skidCtx: CanvasRenderingContext2D | null = null;
   private layerOrigin: Vec2 = { x: 0, y: 0 };
   private palette: Palette = PALETTES.asphalt;
+  private slotOffsets: number[] = [];
 
   cssWidth = 0;
   cssHeight = 0;
@@ -160,8 +161,15 @@ export class Renderer {
     this.canvas.height = Math.round(this.cssHeight * this.dpr);
   }
 
-  /** Bake the static track. Called once per track load. */
-  setTrack(track: Track): void {
+  /**
+   * Bake the static track. Called once per track load.
+   *
+   * `slots` routes the slot-racing game through the same bake: the grooves are
+   * part of the track, not something drawn over it every frame, so they cost
+   * nothing per frame and sit correctly under the kerbs and edge lines.
+   */
+  setTrack(track: Track, slots: number[] = []): void {
+    this.slotOffsets = slots;
     this.palette = PALETTES[track.def.surface] ?? PALETTES.asphalt;
     const { min, max } = track.bounds;
     this.layerOrigin = { x: min.x - BAKE_PAD, y: min.y - BAKE_PAD };
@@ -300,6 +308,32 @@ export class Renderer {
     c.closePath();
     c.stroke();
     c.restore();
+
+    // The slots themselves: a groove routed into the road, with a highlight on
+    // the far lip so it reads as cut in rather than painted on.
+    for (const off of this.slotOffsets) {
+      const path = (): void => {
+        c.beginPath();
+        track.samples.forEach((smp, i) => {
+          const q = this.toLayer(vadd(smp.pos, vscale(smp.nor, off)));
+          if (i === 0) c.moveTo(q.x, q.y);
+          else c.lineTo(q.x, q.y);
+        });
+        c.closePath();
+      };
+      c.save();
+      c.lineCap = "round";
+      c.lineJoin = "round";
+      c.strokeStyle = "rgba(0,0,0,0.55)";
+      c.lineWidth = 0.9 * BAKE_PPM;
+      path();
+      c.stroke();
+      c.strokeStyle = "rgba(255,255,255,0.10)";
+      c.lineWidth = 0.22 * BAKE_PPM;
+      path();
+      c.stroke();
+      c.restore();
+    }
 
     // Kerbs on the inside and outside of meaningful corners only — a kerb on a
     // straight is noise, and their absence is a legibility cue for the player.
@@ -683,6 +717,47 @@ export class Renderer {
       ctx.fill();
     }
     ctx.restore();
+  }
+
+  /**
+   * A car in a slot. Deliberately not `drawCar`: that one takes an `Entrant`
+   * wrapping a `Vehicle`, and a slot car is neither -- it has no steering, no
+   * turbo and no racing line, so threading it through the drawn-line game's
+   * types would mean inventing three things that do not exist to satisfy a
+   * signature.
+   */
+  drawSlotCar(
+    pos: Vec2,
+    heading: number,
+    colour: string,
+    car: { id: string },
+    opts: { isPlayer?: boolean; faded?: boolean } = {},
+  ): void {
+    const ctx = this.ctx;
+    const spr = carSprite(car.id, colour);
+    ctx.save();
+    ctx.globalAlpha = opts.faded ? 0.42 : 0.36;
+    ctx.translate(pos.x + 0.5, pos.y + 0.72);
+    ctx.rotate(heading);
+    ctx.drawImage(spr.shadow, -SPRITE_L / 2, -SPRITE_W / 2, SPRITE_L, SPRITE_W);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = opts.faded ? 0.6 : 1;
+    ctx.translate(pos.x, pos.y);
+    ctx.rotate(heading);
+    ctx.drawImage(spr.body, -SPRITE_L / 2, -SPRITE_W / 2, SPRITE_L, SPRITE_W);
+    ctx.restore();
+
+    if (opts.isPlayer) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.55)";
+      ctx.lineWidth = 0.22;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, SPRITE_L * 0.62, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   drawCar(e: Entrant, isLeader: boolean): void {

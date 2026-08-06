@@ -345,6 +345,22 @@ you see on the track-select screen, roughly in order:
 The lesson underneath all of it: **the atlas is the review, not the tune harness.** Thirty
 circuits passed every physics assertion in both of the versions it rejected.
 
+## Slot Racer — a second game on the same bones
+
+`dist/slot.html`, built from the same source tree. The thirty circuits get four
+slots routed into them, the car is pinned in one, and the only input is a
+button: hold for power, release and the motor brakes. No steering, so the only
+decision is when to lift, and the only failure is deslotting.
+
+It reuses `Track`, `Renderer`, the car art, the audio and the circuits, and
+replaces the drawn line with a throttle. `src/slot/README.md` has the full
+account; the short version is that four physics bugs and one dead design knob
+were found by measuring rather than playing, including a planner and a car that
+disagreed about how tight a corner was, and a brake the car did not have.
+
+    npm run slottune    headless physics harness, all thirty circuits
+    npm run slotplay    drives the built page in Chromium at phone size
+
 ## Not yet built
 
 The original shipped 180 challenges across its 30 tracks. This has the thirty, six balloon skill

@@ -1,0 +1,181 @@
+<style>
+  :root {
+    --bg: #0b0e12;
+    --panel: rgba(17, 21, 27, 0.92);
+    --panel-solid: #12161c;
+    --line: rgba(255, 255, 255, 0.09);
+    --text: #e9eef4;
+    --dim: #8d99a6;
+    --accent: #ff3b30;
+    --amber: #ffc247;
+    --green: #4ccf7a;
+    --gold: #ffd24a;
+    --silver: #cdd6de;
+    --bronze: #cd8544;
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: ui-sans-serif, -apple-system, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    overscroll-behavior: none; -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #app { position: fixed; inset: 0; overflow: hidden; }
+  canvas#stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+  .screen {
+    position: absolute; inset: 0; display: none; flex-direction: column;
+    padding: calc(14px + var(--safe-t)) 14px calc(14px + var(--safe-b));
+    background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  .screen.on { display: flex; }
+
+  h1 { font-size: 26px; margin: 4px 0 2px; letter-spacing: -0.5px; }
+  h1 .sub { color: var(--accent); }
+  .lede { color: var(--dim); font-size: 13px; line-height: 1.5; margin: 0 0 14px; max-width: 46ch; }
+
+  .card {
+    background: var(--panel-solid); border: 1px solid var(--line); border-radius: 14px;
+    padding: 12px 14px; margin-bottom: 10px;
+  }
+  .card h2 { font-size: 13px; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+  .card p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text); }
+  .card p + p { margin-top: 6px; }
+  .card b { color: var(--amber); }
+
+  #track-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .track-card {
+    background: var(--panel-solid); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px; text-align: left; color: var(--text); font: inherit; cursor: pointer;
+  }
+  .track-card:disabled { opacity: 0.38; cursor: default; }
+  .track-card .name { font-size: 14px; font-weight: 600; }
+  .track-card .meta { font-size: 11px; color: var(--dim); margin-top: 2px; }
+  .track-card .best { font-size: 11px; color: var(--amber); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .tier { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin: 14px 0 6px; }
+
+  button.big {
+    appearance: none; border: 1px solid var(--line); background: var(--panel-solid);
+    color: var(--text); font: inherit; font-weight: 600; border-radius: 12px;
+    padding: 12px 18px; cursor: pointer;
+  }
+  button.big.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ---- race HUD ---- */
+  #hud { position: absolute; inset: 0; pointer-events: none; display: none; }
+  #hud.on { display: block; }
+  .pill {
+    position: absolute; top: calc(10px + var(--safe-t)); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 12px; padding: 7px 11px;
+    backdrop-filter: blur(8px);
+  }
+  .pill .k { font-size: 9px; letter-spacing: 0.1em; color: var(--dim); text-transform: uppercase; }
+  .pill .v { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  #p-pos { left: 10px; }
+  #p-lap { left: 84px; }
+  #p-time { left: 158px; }
+  #p-speed { right: 10px; text-align: right; }
+
+  /* The grip meter. This is the readback the whole game turns on, so it is the
+     largest thing on screen after the track. */
+  #grip {
+    position: absolute; left: 10px; right: 10px; top: calc(76px + var(--safe-t));
+    height: 10px; border-radius: 6px; background: rgba(255,255,255,0.08);
+    border: 1px solid var(--line); overflow: hidden;
+  }
+  #grip-fill { height: 100%; width: 0%; background: var(--green); transition: background 90ms linear; }
+  #grip-mark { position: absolute; top: -3px; bottom: -3px; left: 88%; width: 2px; background: rgba(255,255,255,0.5); }
+  #grip-label {
+    position: absolute; left: 10px; top: calc(90px + var(--safe-t));
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim);
+  }
+
+  #throttle {
+    position: absolute; right: 16px; bottom: calc(20px + var(--safe-b));
+    width: 132px; height: 132px; border-radius: 50%; pointer-events: auto;
+    background: rgba(255, 59, 48, 0.18); border: 2px solid rgba(255, 59, 48, 0.55);
+    color: #fff; font: inherit; font-weight: 700; font-size: 15px; letter-spacing: 0.06em;
+    display: grid; place-items: center; cursor: pointer; touch-action: none;
+    transition: transform 60ms ease, background 60ms linear;
+  }
+  #throttle.held { background: rgba(255, 59, 48, 0.55); transform: scale(0.94); }
+  #throttle .hint { display: block; font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.7); letter-spacing: 0.04em; }
+
+  #centre-msg {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-size: 58px; font-weight: 800; text-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  }
+  #deslot-msg {
+    position: absolute; left: 0; right: 0; top: 44%; text-align: center;
+    font-size: 24px; font-weight: 800; color: var(--accent); letter-spacing: 0.04em;
+    text-shadow: 0 3px 18px rgba(0,0,0,0.7); display: none;
+  }
+  #deslot-msg.on { display: block; }
+  #deslot-msg small { display: block; font-size: 12px; font-weight: 500; color: var(--dim); letter-spacing: 0.08em; margin-top: 4px; }
+
+  #btn-quit { position: absolute; left: 10px; bottom: calc(16px + var(--safe-b)); pointer-events: auto;
+    background: var(--panel); border: 1px solid var(--line); color: var(--dim);
+    font: inherit; font-size: 13px; border-radius: 10px; padding: 8px 14px; cursor: pointer; }
+
+  /* ---- results ---- */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td { padding: 7px 4px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  td.pos { width: 26px; color: var(--dim); }
+  td.gap { text-align: right; color: var(--dim); }
+  tr.you td { color: var(--amber); font-weight: 600; }
+  .medal { font-size: 15px; font-weight: 700; margin: 8px 0 2px; }
+  .medal.gold { color: var(--gold); } .medal.silver { color: var(--silver); } .medal.bronze { color: var(--bronze); }
+  .medal.none { color: var(--dim); }
+</style>
+
+<div id="app">
+  <canvas id="stage"></canvas>
+
+  <!-- menu -->
+  <div id="s-menu" class="screen on">
+    <h1>Slot <span class="sub">Racer</span></h1>
+    <p class="lede">
+      Your car is pinned in a groove, so there is no steering. One button: hold it
+      for power, let go and the motor brakes. Everything is in when you lift.
+    </p>
+    <div class="card">
+      <h2>How to be quick</h2>
+      <p>The bar across the top is how much of the tyres' grip the corner is using.
+      Keep it high and it never goes red — that is a fast lap.</p>
+      <p>Push past the line and the guide pin pops out of the slot: you are off,
+      and a marshal takes <b>2.4 seconds</b> to put you back. One deslot costs more
+      than a whole lap of being careful.</p>
+    </div>
+    <div id="track-list"></div>
+  </div>
+
+  <!-- race HUD -->
+  <div id="hud">
+    <div class="pill" id="p-pos"><div class="k">Pos</div><div class="v" id="v-pos">1/4</div></div>
+    <div class="pill" id="p-lap"><div class="k">Lap</div><div class="v" id="v-lap">1/2</div></div>
+    <div class="pill" id="p-time"><div class="k">Time</div><div class="v" id="v-time">0:00.0</div></div>
+    <div class="pill" id="p-speed"><div class="k">km/h</div><div class="v" id="v-speed">0</div></div>
+    <div id="grip"><div id="grip-fill"></div><div id="grip-mark"></div></div>
+    <div id="grip-label">Grip</div>
+    <div id="deslot-msg">DESLOTTED<small id="v-marshal">marshal on the way</small></div>
+    <div id="centre-msg"></div>
+    <button id="throttle">GO<span class="hint">hold</span></button>
+    <button id="btn-quit">Quit</button>
+  </div>
+
+  <!-- results -->
+  <div id="s-result" class="screen">
+    <h1 id="r-title">Finished</h1>
+    <div class="medal none" id="r-medal">No medal</div>
+    <p class="lede" id="r-sub"></p>
+    <div class="card"><table><tbody id="r-rows"></tbody></table></div>
+    <div class="card" id="r-notes"><h2>Your lap</h2><p id="r-note"></p></div>
+    <div class="row">
+      <button class="big primary" id="r-again">Race again</button>
+      <button class="big" id="r-menu">Tracks</button>
+    </div>
+  </div>
+</div>

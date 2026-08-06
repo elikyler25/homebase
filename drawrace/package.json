@@ -12,6 +12,8 @@
     "diag": "esbuild tools/diag.ts --bundle --platform=node --format=esm --outfile=.tmp/diag.mjs --log-level=warning && node .tmp/diag.mjs",
     "atlas": "node build.mjs && node tools/atlas.mjs",
     "circuit": "node build.mjs && node tools/circuit.mjs",
+    "slotplay": "node build.mjs && node tools/slotplay.mjs",
+    "slottune": "esbuild tools/slottune.ts --bundle --platform=node --format=esm --outfile=.tmp/slottune.mjs --log-level=warning && node .tmp/slottune.mjs",
     "drawspeed": "esbuild tools/drawspeed.ts --bundle --platform=node --format=esm --outfile=.tmp/drawspeed.mjs --log-level=warning && node .tmp/drawspeed.mjs",
     "where": "esbuild tools/where.ts --bundle --platform=node --format=esm --outfile=.tmp/where.mjs --log-level=warning && node .tmp/where.mjs"
   },
