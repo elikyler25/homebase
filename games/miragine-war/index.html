@@ -568,6 +568,11 @@ function applyBattleSize() {
   // role had quietly become single-target. Sight, the crystal's own guns and the
   // shrine's capture circle were all frozen the same way.
   SIGHT = Math.round(560 * c.size);
+  // Shot speeds are world units per second. Left flat, a siege round took 0.52s
+  // to land at NORMAL and 2.84s at MAELSTROM - most of the 4s before a shot
+  // expires - so ranged fire visibly crawled at exactly the sizes it matters.
+  SHOT_SPD = c.size;
+  FXS = c.size;      // particles are world-sized too, or they vanish when zoomed out
   CRYSTAL_GUN = Math.round(381 * c.size);
   SHRINE_R = Math.round(251 * c.size);
   ALL_UNITS.forEach(u => {
@@ -773,8 +778,11 @@ function paintBackground() {
   c.fillStyle=vg; c.fillRect(0,0,W,H);
 }
 
-const TOP = () => 144;
-const BOT = () => G.H - 34;                  // the strip that used to sit here is gone
+// The playfield margins are screen-relative. As world units they were frozen at
+// 144 and 34 while the world grew, so the top margin fell from 80 css pixels at
+// NORMAL to 3 at MAELSTROM and troops fought underneath the HUD strip.
+const TOP = () => 80 / VIEW;
+const BOT = () => G.H - 20 / VIEW;
 const crystalX = t => (t === 0 ? 116 : G.W - 116);
 const crystalY = () => (TOP()+BOT())/2;
 // fake depth: things lower on the field are nearer the camera
@@ -967,7 +975,7 @@ function nearby(x, y, r, fn) {
   }
 }
 
-let SIGHT = 560;
+let SIGHT = 560, SHOT_SPD = 1, FXS = 1;
 const PIERCE_MAX = 14;   // one bolt may not delete a whole column
 let shotId = 0;
 /* Nearest enemy, searched as rings of cells expanding outwards instead of one
@@ -1317,7 +1325,7 @@ function step(dt) {
       } else if (a.u.kind === "ranged") {
         sfxBow();
         G.shots.push({ x:a.x, y:a.y-7, tx:a.tgt.x, ty:a.tgt.y-7, src:a, tgt:a.tgt,
-                       sp:a.u.splash?611:a.u.pierce?1500:930, splash:a.u.splash||0,
+                       sp:(a.u.splash?611:a.u.pierce?1500:930)*SHOT_SPD, splash:a.u.splash||0,
                        pierce:a.u.pierce||0, ox:a.x, oy:a.y-7, reach:a.u.rng, id:++shotId,
                        team:a.team, t:0,
                        col:a.u.pierce ? "#bfe8ff" : a.u.splash ? "#e08fff" : "#f5e6b0" });
@@ -1348,7 +1356,7 @@ function step(dt) {
     if (best) {
       p.cool = .75;
       G.shots.push({ x:crystalX(p.team), y:crystalY()-22, tx:best.x, ty:best.y, tgt:best,
-                     src:null, crystal:true, sp:871, splash:0, team:p.team, t:0, col:"#cff4ff" });
+                     src:null, crystal:true, sp:871*SHOT_SPD, splash:0, team:p.team, t:0, col:"#cff4ff" });
     }
   }
 
@@ -1485,15 +1493,15 @@ let FX_CAP = FX_MAX;
 function spark(x, y) {
   if (G.fx.length > FX_CAP) return;
   for (let i=0;i<(G.crowd?1:3);i++)
-    G.fx.push({ t:"p", x, y, vx:(Math.random()-.5)*90, vy:-Math.random()*70,
-                life:.26, max:.26, c:"#ffd0a0", r:1.4+Math.random()*1.4 });
+    G.fx.push({ t:"p", x, y, vx:(Math.random()-.5)*90*FXS, vy:-Math.random()*70*FXS,
+                life:.26, max:.26, c:"#ffd0a0", r:(1.4+Math.random()*1.4)*FXS });
 }
 function puff(x, y, team, size) {
   if (G.fx.length > FX_CAP) return;
   const c = team === 0 ? "#bfe6ff" : "#ffc0a0";
   for (let i=0;i<(G.crowd?3:9);i++)
-    G.fx.push({ t:"p", x, y, vx:(Math.random()-.5)*140, vy:-Math.random()*130,
-                life:.5, max:.5, c, r:1.5+Math.random()*size*.3 });
+    G.fx.push({ t:"p", x, y, vx:(Math.random()-.5)*140*FXS, vy:-Math.random()*130*FXS,
+                life:.5, max:.5, c, r:1.5*FXS+Math.random()*size*.3 });
 }
 function boom(x, y, r) {
   if (G.fx.length > FX_CAP) return;
@@ -1553,7 +1561,8 @@ function draw() {
   ctx.save();
   let shx = 0, shy = 0;
   if (G.shake > .2) {
-    shx = (Math.random()-.5)*G.shake; shy = (Math.random()-.5)*G.shake;
+    const sk = G.shake * 0.5 / VIEW;   // shake in screen terms, not world units
+    shx = (Math.random()-.5)*sk; shy = (Math.random()-.5)*sk;
     ctx.translate(shx, shy);
   }
 

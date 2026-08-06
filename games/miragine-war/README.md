@@ -143,6 +143,27 @@ target. Every length now scales with the bodies, and all four sizes read identic
 standoff, 5-body splash, 28-body sight. The big battles play like the game they are supposed to be
 rather than like a shoving match.
 
+### One screen, one unit of measurement
+
+The whole world is always on screen, so the only meaningful unit is the **body-width** — and anything
+measured in world units instead silently changes meaning as the map grows. That has been the single
+most productive bug class in this project; six separate instances of it have turned up, each one
+invisible in code review and obvious the moment it was measured in body-widths or screen pixels:
+
+| What | At NORMAL | At MAELSTROM before | Now |
+|---|---|---|---|
+| Playfield top margin | 80 px | **3 px** — troops fought under the HUD | 80 px |
+| Shooter standoff | 11.1 bodies | 2.1 — i.e. melee | 11.1 |
+| Artillery splash | 5.0 bodies | 0.9 — single target | 5.0 |
+| Sight | 28 bodies | 5.1 | 28 |
+| Siege shot flight | 0.52 s | **2.84 s** of a 4 s life | 0.52 s |
+| Screen shake | 5 px | 0.2 px | 4.5 px |
+| Spark spread | 4.5 bodies | 0.82 | 4.5 |
+
+Two of these were not cosmetic at all. Ranged units had stopped being ranged, and artillery had
+stopped being artillery — the whole back half of the roster was doing a different job at the sizes
+people actually play. The related freeze bug (`u.size >= 30` on a scaled `size`) is described below.
+
 ### The price ladder
 
 Each tier costs roughly **two and a half times** the one below it and hits about that much harder:
