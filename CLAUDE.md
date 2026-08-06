@@ -60,6 +60,14 @@ only) and fast — they run on every matching tool call.
   `main` as published.
 - Keep `README.md` (user-facing) and this file (contributor-facing) in sync when the workflow changes.
 
+## Side build: `drawrace/`
+
+A from-scratch web rebuild of DrawRace 2, living in this repo for now (it is not part of the
+plugin and nothing in `skills/` or `hooks/` depends on it). TypeScript → a single self-contained
+HTML file, no runtime network. It has its own `README.md` and its own verification story: four
+harnesses, and the rule that has held throughout is **fix the harness or fix the game, never the
+assertion**. If it grows further it should move to its own repository.
+
 ## Status (2026-07-24)
 
 **Done & published:** v0.1.0 — plugin + marketplace manifests, `/setup` command, homebase-setup

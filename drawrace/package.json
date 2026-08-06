@@ -1,0 +1,32 @@
+{
+  "name": "drawrace",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --dev",
+    "tune": "esbuild tools/tune.ts --bundle --platform=node --format=esm --outfile=.tmp/tune.mjs --log-level=warning && node .tmp/tune.mjs",
+    "check": "tsc --noEmit",
+    "playtest": "node build.mjs && node tools/playtest.mjs",
+    "modes": "node build.mjs && node tools/modes.mjs",
+    "diag": "esbuild tools/diag.ts --bundle --platform=node --format=esm --outfile=.tmp/diag.mjs --log-level=warning && node .tmp/diag.mjs",
+    "atlas": "node build.mjs && node tools/atlas.mjs",
+    "circuit": "node build.mjs && node tools/circuit.mjs",
+    "slotfeel": "node build.mjs && node tools/slotfeel.mjs",
+    "slotplay": "node build.mjs && node tools/slotplay.mjs",
+    "slottune": "esbuild tools/slottune.ts --bundle --platform=node --format=esm --outfile=.tmp/slottune.mjs --log-level=warning && node .tmp/slottune.mjs",
+    "drawspeed": "esbuild tools/drawspeed.ts --bundle --platform=node --format=esm --outfile=.tmp/drawspeed.mjs --log-level=warning && node .tmp/drawspeed.mjs",
+    "where": "esbuild tools/where.ts --bundle --platform=node --format=esm --outfile=.tmp/where.mjs --log-level=warning && node .tmp/where.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "esbuild": "^0.28.1",
+    "playwright": "^1.62.1",
+    "typescript": "^7.0.2"
+  },
+  "private": true,
+  "type": "module"
+}
