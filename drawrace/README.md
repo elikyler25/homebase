@@ -209,59 +209,56 @@ within a couple of seconds, the ordering goes with the noise, and a decent human
 nothing to beat. Both the oval and the triangle failed on exactly this, and both were fixed by
 *tightening* their corners until skill had somewhere to show.
 
-## Folded circuits: the engine limit, and the fix
+## Folded kart circuits
 
-Real kart circuits fold the road back into the infield, which is how a small
-footprint holds a very long lap. This engine could not represent one, and the
-failure was silent rather than obvious: `Track.project` found the globally
-nearest centreline sample, so a car that ran wide at a hairpin snapped onto the
-*next fold over* — 60 m away in space, but hundreds of metres away along the
-track. Its lap position jumped, the lap counter fired, and a flat-out stroke
-posted **20 s on a 1086 m circuit** by teleporting across the folds.
+The circuits are kart layouts now: an outer loop with the road folded back into
+the infield once, twice or three times, the way a real kart track packs a long
+lap into a small field. Laps run 1000-1960 m over a single lap, and the returns
+are genuine concave corners — the only places the car turns the other way.
 
-That is now fixed. Projection and line re-acquisition are hinted by where the
-car already was, so two folds metres apart in space stay hundreds of metres
-apart along the track and can never be confused. `containLine` is hinted the
-same way, because the racing-line optimiser had the identical bug — it clamped
-points against the wrong fold and pushed the line through the grass. And
-`bestLine` will not accept an optimised line that is slower than simply driving
-down the middle, which the relaxation could produce on a tight circuit (an 84 s
-reference against a 73 s flat-out lap).
+Getting there needed an engine fix, and the failure had been silent rather than
+obvious. `Track.project` found the globally nearest centreline sample, so a car
+that ran wide at a hairpin snapped onto the *next fold over* — 60 m away in
+space, but hundreds of metres away along the track. Its lap position jumped, the
+lap counter fired, and a flat-out stroke posted **20 s on a 1086 m circuit** by
+teleporting across the folds. Projection and line re-acquisition are now hinted
+by where the car already was, so two folds metres apart in space stay far apart
+along the track and cannot be confused. `containLine` had the identical bug and
+got the identical fix. `bestLine` is new too: the racing-line relaxation fights
+the containment clamp through every tight corner and could return a line slower
+than the centreline it started from (an 84 s reference against a 73 s flat-out
+lap), so it now takes whichever actually wins.
 
-`tools/kart_layouts.py` generates thirty folded layouts on top of that, and they
-are not shipped yet. The remaining work is balance, not capability: folded
-circuits want a different AI configuration from rings, because the planner's
-safety margin costs it far more when most of the lap is corners. With the AI
-retuned for folds — and with path jitter cut from 0.45 to 0.12 of half-width,
-which is what stopped the finishing order being chaotic — 21 of the 30 passed
-`npm run tune`. The rest failed on greed not being punished hard enough, or on a
-realistic stroke finishing last. Both are tuning problems with a working engine
-underneath them now.
+Three things then had to change together, and none of them work alone:
 
-## Why the cars cannot have more grip
+**Path jitter, 0.45 → 0.12 of half-width.** The AI drivers differ by a lateral
+nudge so five cars do not share one line. On a folded circuit a nudge through a
+tight infield return is worth several seconds either way, and the field's
+finishing order became chaotic — a 0.92-skill driver routinely finished behind a
+0.72 one. Skill should express itself in the speeds a driver plans, not in where
+its line happens to land. That single change fixed ten circuits.
 
-Asked for more traction, I raised the grip budget — and broke six circuits immediately, at a 2%
-increase. Raised further it broke fourteen. The failure is always the same assertion: *a flat-out
-line is not faster than a planned one*. That property is the game. With enough grip a ring circuit
-can simply be driven flat out, and every reason to modulate the stroke evaporates.
+**The reference line got its own planning margin.** It was planning at 81% of
+grip, which on a corner-dense circuit is slow enough that a *sliding* flat-out
+lap beat it. Separating `REF_MARGIN` from `PLAN_MARGIN` sharpens the yardstick
+without also making the five cars you are racing faster.
 
-Softening the other levers does the same thing, because in this design **sliding and the
-punishment for greed are the same mechanism**. Easing the post-limit tyre falloff from 0.45 to
-0.40 broke two circuits; to 0.43, one. Reducing the speed scrubbed by a sliding tyre broke six.
-There is no headroom in the physics at all.
+**Grip is up 4%,** which is the whole point of folding the circuits. On a ring,
+more grip makes a flat-out stroke viable and the game evaporates; a 2% rise used
+to break six circuits. On a layout where hairpins make flat-out impossible
+*geometrically*, the grip budget stops being the only thing holding greed back,
+and there is finally headroom.
 
-What *is* free is the part that only changes how it looks: body slip is down about a third, so an
-understeering car reads as understeering rather than as a drift. The car does not slide less —
-it looks less like it is sliding, which was a good part of the complaint.
+The remaining tuning was per-circuit and mostly width: a wide road lets a
+sliding car stay on it, so the circuits where a flat-out stroke was not being
+punished got narrower, and the ones where a realistic stroke could not get home
+got wider. Two ice circuits could not be made to work with two returns at all —
+ice has 64% of asphalt's grip, and a late-braking stroke put 16.8 s into a
+single corner — so they took the shape of the one ice layout that does work.
 
-Real extra traction needs the circuits to stop being rings. On a folded kart layout, hairpins make
-flat-out impossible geometrically rather than through grip, and a prototype confirmed it — a
-806 m folded circuit passed "flat out is punished" at a grip level that broke fourteen rings. It
-is not shipped because folded layouts break two engine assumptions at once: the car's line
-re-acquisition and the lap counter both assume the centreline never comes near itself, so a car
-that misses a hairpin jumps to the adjacent fold. A flat-out lap posted 20 s on a 1086 m circuit
-by teleporting across the folds. Fixing that means making projection and lap counting
-locality-aware, which is the real next piece of work.
+`tools/kart_layouts.py` generates them. Its `min_self_gap` check is the one that
+matters: two folds must stay further apart than the road is wide, or the circuit
+is ambiguous however good the projection is.
 
 ## Circuits that fill the screen
 

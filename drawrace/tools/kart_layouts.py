@@ -59,7 +59,19 @@ def arcpoly(verts, radius, per_arc=7, edge_every=30):
         for k in range(1,m+1):
             u=k/(m+1)
             out.append((cur['b'][0]+(nxt['a'][0]-cur['b'][0])*u, cur['b'][1]+(nxt['a'][1]-cur['b'][1])*u))
-    return out
+    # Drop near-duplicate points. Where a corner's tangent length gets clamped by
+    # a short edge, the arc's end and the next arc's start coincide, and the
+    # straight-filling loop above still emits a point between them. Two samples
+    # in the same place give the track a zero-length tangent and therefore a
+    # garbage normal, which the renderer turns into a spike of kerb shooting
+    # across the road. Visible as red streaks at the tip of every infield return.
+    dedup=[out[0]]
+    for p in out[1:]:
+        if math.hypot(p[0]-dedup[-1][0], p[1]-dedup[-1][1]) > 0.75:
+            dedup.append(p)
+    while len(dedup) > 2 and math.hypot(dedup[0][0]-dedup[-1][0], dedup[0][1]-dedup[-1][1]) <= 0.75:
+        dedup.pop()
+    return dedup
 
 def length(pts):
     return sum(math.hypot(pts[(i+1)%len(pts)][0]-pts[i][0], pts[(i+1)%len(pts)][1]-pts[i][1]) for i in range(len(pts)))
@@ -94,7 +106,6 @@ def set_circuit(path, cid, pts, width=None, laps=None, comment=None, classes=Non
                    lambda m: m.group(1)+"".join("    // %s\n"%l if l else "    //\n" for l in comment.split("\n")),
                    blk, count=1, flags=re.S)
     open(path,'w').write(s[:i]+blk+s[j:])
-exec(open('.tmp/kart.py').read())
 
 def mirror(V): return [(-x, y) for x, y in V][::-1]
 def flip(V):   return [(x, -y) for x, y in V][::-1]
@@ -124,16 +135,16 @@ def add(cid, V, outer, ret, w, laps, cls=None):
 add('harbour',    one(92,150,-40,26),      52, 34, 17, 1)
 add('gravelpit',  one(90,146,-34,30),      50, 34, 18, 1)
 add('riverside',  one(94,152,-16,48),      54, 35, 17, 1)
-add('marina',     one(96,156,-30,34),       54, 44, 18, 1)
+add('marina',     one(96,156,-30,34),       54, 44, 20, 1)
 add('lakeside',   one(94,150,-28,38),      54, 35, 18, 1)
 add('fairground', one(86,138,-30,26),      48, 34, 17, 1)
-add('coast',      mirror(one(98,158,-26,38)), 54, 44, 18, 1, ['gt','rally'])
+add('coast',      mirror(one(98,158,-26,38)), 54, 44, 21, 1, ['gt','rally'])
 add('sandhills',  flip(one(90,144,-38,22)),   50, 34, 18, 1)
 add('frostring',  one(100,162,-44,20),      66, 60, 21, 1)
 add('snowfield',  one(96,156,-40,22),      64, 58, 21, 1)
 
 # ---- National Series: two infield returns -----------------------------------
-add('vantaa',     two(98,168,[-92,-34,28,88]),   56, 35, 19, 1)
+add('vantaa',     two(98,168,[-92,-34,28,88]),   56, 35, 21, 1)
 add('dustbowl',   two(96,164,[-88,-32,26,84]),   54, 35, 20, 1)
 add('nordic',     two(102,176,[-98,-38,32,94]),  58, 36, 21, 1)
 add('ridgeway',   two(100,172,[-94,-36,30,90]),  56, 36, 20, 1)
@@ -141,17 +152,17 @@ add('timber',     two(94,160,[-86,-30,24,82]),   54, 35, 20, 1)
 add('coppermine', mirror(two(96,162,[-88,-32,26,84])), 54, 35, 20, 1)
 add('highlands',  flip(two(94,158,[-84,-30,24,80])),   54, 35, 19, 1)
 add('autodrome',  two(98,186,[-108,-44,38,102]), 60, 38, 21, 1)
-add('glacier',    two(100,176,[-98,-36,32,94]),   62, 52, 23, 1)
+add('glacier',    two(104,184,[-104,-38,34,100]), 76, 70, 21, 1)
 add('fjord',      one(100,174,-36,38),     70, 64, 23, 1)
 
 # ---- World League: two returns, bigger and faster ---------------------------
 add('oldtown',    two(102,196,[-120,-64,-30,26,60,116]), 58, 36, 20, 1)
-add('quarry',     two(106,192,[-110,-44,38,104]), 58, 48, 24, 1)
+add('quarry',     two(106,192,[-110,-44,38,104]), 58, 48, 21, 1)
 add('cathedral',  two(110,208,[-130,-70,-34,30,66,126]), 64, 41, 23, 1)
-add('blackrock',  mirror(two(104,188,[-106,-42,36,100])), 58, 48, 25, 1)
+add('blackrock',  mirror(two(104,188,[-106,-42,36,100])), 58, 48, 20, 1)
 add('spire',      two(112,214,[-134,-72,-36,32,68,130]), 66, 43, 24, 1)
 add('grand',      two(114,218,[-138,-74,-36,32,70,134]), 68, 44, 25, 1)
 add('crucible',   two(100,188,[-110,-44,38,104], -34), 56, 46, 21, 1)
-add('aurora',     two(106,186,[-104,-38,34,100]), 64, 54, 26, 1)
-add('whiteout',   two(102,180,[-100,-36,32,96]),  62, 52, 25, 1)
+add('aurora',     one(114,198,-40,44),     80, 74, 28, 1)
+add('whiteout',   two(102,180,[-100,-36,32,96]),  62, 52, 20, 1)
 add('midnight',   flip(one(106,190,-32,44)), 74, 68, 25, 1)

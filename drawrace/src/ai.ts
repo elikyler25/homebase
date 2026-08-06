@@ -15,6 +15,8 @@ const G = 9.81;
 
 /** Headroom left to the path-follower when planning a speed profile. */
 const PLAN_MARGIN = 0.85;
+/** The reference line plans closer to the limit than the field does. */
+const REF_MARGIN = 0.95;
 
 export interface AiDriver {
   name: string;
@@ -23,12 +25,12 @@ export interface AiDriver {
 }
 
 export const DRIVER_POOL: AiDriver[] = [
-  { name: "Aalto", skill: 0.75, colour: "#c084fc" },
-  { name: "Bergman", skill: 0.70, colour: "#34d399" },
-  { name: "Costa", skill: 0.65, colour: "#fb923c" },
-  { name: "Duval", skill: 0.60, colour: "#60a5fa" },
-  { name: "Eskola", skill: 0.55, colour: "#f472b6" },
-  { name: "Falk", skill: 0.50, colour: "#a3e635" },
+  { name: "Aalto", skill: 0.7, colour: "#c084fc" },
+  { name: "Bergman", skill: 0.65, colour: "#34d399" },
+  { name: "Costa", skill: 0.6, colour: "#fb923c" },
+  { name: "Duval", skill: 0.55, colour: "#60a5fa" },
+  { name: "Eskola", skill: 0.5, colour: "#f472b6" },
+  { name: "Falk", skill: 0.45, colour: "#a3e635" },
 ];
 
 /**
@@ -200,6 +202,7 @@ export function speedProfile(
   car: CarClass,
   surfaceGrip: number,
   skill: number,
+  margin = PLAN_MARGIN,
 ): number[] {
   const n = pts.length;
   const curv = curvatureOf(pts);
@@ -208,7 +211,7 @@ export function speedProfile(
   // instantaneous curvature is always a little higher. Planning at 100% makes
   // the follower understeer for the whole lap — and inverts the skill ordering,
   // because the highest-skill line becomes the least drivable one.
-  const aMax = car.grip * surfaceGrip * G * skill * PLAN_MARGIN;
+  const aMax = car.grip * surfaceGrip * G * skill * margin;
 
   const ds = new Array<number>(n);
   for (let i = 0; i < n; i++) ds[i] = vdist(pts[i], pts[(i + 1) % n]) || 0.01;
@@ -272,11 +275,12 @@ function bestLine(
   seed: number,
   jitter: number,
   skill: number,
+  plan = PLAN_MARGIN,
 ): { pts: Vec2[]; speeds: number[] } {
   const opt = optimiseLine(track, margin, iterations, seed, jitter);
-  const optSpeeds = speedProfile(opt, car, track.surface.grip, skill);
+  const optSpeeds = speedProfile(opt, car, track.surface.grip, skill, plan);
   const mid = track.samples.map((s) => ({ ...s.pos }));
-  const midSpeeds = speedProfile(mid, car, track.surface.grip, skill);
+  const midSpeeds = speedProfile(mid, car, track.surface.grip, skill, plan);
   // The estimate ignores acceleration limits, so it is only trustworthy about
   // large differences. Fall back only when the centreline is *clearly* better,
   // or the guard flips on noise and costs a tenth on circuits it should leave
@@ -292,7 +296,7 @@ export function buildAiLine(
   skill: number,
   seed: number,
 ): RacingLine {
-  const jitter = (1 - skill) * track.halfWidth * 0.45;
+  const jitter = (1 - skill) * track.halfWidth * 0.12;
   const { pts, speeds } = bestLine(track, car, car.radius + 2.0, 900, seed, jitter, skill);
   return RacingLine.fromNodes(pts, speeds, true);
 }
@@ -306,6 +310,6 @@ export function buildReferenceLine(track: Track, car: CarClass): RacingLine {
   // Plan at slightly under the limit. A line planned at exactly 100% of grip
   // leaves the path-follower no margin for its own tracking error, so the
   // "ideal" car spends the lap understeering and sets a poor reference.
-  const { pts, speeds } = bestLine(track, car, car.radius + 2.0, 1200, 0, 0, 0.95);
+  const { pts, speeds } = bestLine(track, car, car.radius + 2.0, 1200, 0, 0, 0.95, REF_MARGIN);
   return RacingLine.fromNodes(pts, speeds, true);
 }

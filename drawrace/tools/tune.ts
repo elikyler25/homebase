@@ -401,7 +401,7 @@ console.log("Ghost and hot seat");
   // that is the one stroke parameter where better is unambiguous. (Pace is not:
   // drawing closer to the theoretical limit makes you slower, which is the
   // lesson the whole game is built on.)
-  const rivals = [18, 9, 2].map((lag, i) => {
+  const rivals = [34, 16, 2].map((lag, i) => {
     const s = realisticStroke(track, car, { lag, wobble: 1.2, pace: 0.92 });
     return {
       line: RacingLine.fromInput(synthDraw(s.pts, s.speeds), car.maxSpeed, car.brake),
