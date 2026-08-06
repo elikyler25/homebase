@@ -24,7 +24,7 @@ import { Lane, laneCurv } from "./lane";
 const G = 9.81;
 
 /** How much of the tyre budget the guide pin adds. Flat, like a real magnet. */
-export const MAGNETS: Record<string, number> = { rally: 55, gt: 44, formula: 30 };
+export const MAGNETS: Record<string, number> = { rally: 57, gt: 50, formula: 67 };
 
 /**
  * Slot cars are not scale models of the road cars, and should not drive like
@@ -100,16 +100,20 @@ const REACTION = 0.55;
 /**
  * Where the DANGER part of the tail-out starts, as a fraction of the budget.
  *
- * High on purpose, so the two terms do not overlap. The base says "this car is
+ * High on purpose, so the two terms do not overlap. It went higher again when
+ * the base grew: with a 22 deg lean present through every bend, the danger term
+ * has to be both later and larger or it disappears underneath -- a clean lap
+ * reached 24 deg against 33 for one that came off, which is not enough of a
+ * difference to steer by. The base says "this car is
  * cornering" and covers the whole safe range; the danger term says "and it is
  * nearly gone" and only exists at the top. Starting it at 0.3 meant both were
  * growing together through every ordinary corner, and a clean lap reached 29
  * deg against 34 for one that came off -- barely a distinction, on the one
  * reading the player is supposed to steer by.
  */
-const TAIL_START = 0.7;
+const TAIL_START = 0.8;
 /** How far the danger part throws it at the point the pin lets go, radians. */
-const TAIL_MAX = 0.66;
+const TAIL_MAX = 0.9;
 /**
  * Tail-out present in any corner at all, at full load, radians.
  *
@@ -118,8 +122,14 @@ const TAIL_MAX = 0.66;
  * its tail out the whole way round a bend -- that is what the back wheels do
  * when the pin is dragging the nose through an arc -- so there is a plain
  * linear component underneath, and the squared one on top of it for the edge.
+ *
+ * Big -- about 22 deg at full lean, where it was 11. Screenshots of the game
+ * this is chasing show the tail hung right out on an ordinary bend, nowhere
+ * near the limit, and that is the look: the pin drags the nose round and the
+ * back follows late. Half of what was there before read as the car being
+ * slightly crooked rather than as the back stepping out.
  */
-const TAIL_BASE = 0.2;
+const TAIL_BASE = 0.38;
 /** Aim to arrive at a corner a little under its limit, not exactly on it. */
 const CORNER_SAFE = 0.9;
 
@@ -160,6 +170,14 @@ export interface SlotTelemetry {
  * would be. At full strength on ice it swamped the tyres and every surface
  * drove the same, so it is scaled back where the grip is low and the circuits
  * keep their character.
+ *
+ * Formula gets the STRONGEST magnet, which looks backwards next to its tyres
+ * and is not. Magnet is the forgiving part of the budget, and giving the
+ * fastest car the least of it made it savage: flat out, a Formula circuit
+ * deslotted 14.3 times a lap against Rally's 5.2, and its magnet was only 38%
+ * of its budget against Rally's 64%. Highest speed and thinnest margin is a
+ * double penalty on the class that can least afford it. Evened up by share
+ * rather than by absolute value, the three now sit at 55-63%.
  */
 export function gripBudgetFor(car: CarClass, surfaceGrip: number): number {
   const magnet = (MAGNETS[car.id] ?? 30) * (0.6 + 0.4 * surfaceGrip);

@@ -327,39 +327,30 @@ export class SlotGame {
     r.beginFrame();
     if (this.phase === "race" && this.race) {
       const me = this.player.cara;
-      // Show the layout, do not make them learn it a corner at a time.
+      // Close, and fixed. Both halves matter and I got each wrong once.
       //
-      // This started as a close chase camera, then a rotating one. Both are
-      // wrong for a car on rails. Groove Racer -- the slot game this is chasing
-      // -- used a fixed view and blocky cars precisely so the tight stuff was
-      // easy to follow, and that is the structural answer: with no steering,
-      // every decision is about a corner you have not reached, so the fix is to
-      // put that corner on screen rather than to caption it.
+      // A rotating chase cam was wrong -- with no steering, "up is where you are
+      // going" turned out to be disorienting rather than useful. But framing the
+      // WHOLE circuit was wrong too: at 1.5 px/m the car covers 58 px a second
+      // and the whole thing crawls, however fast the physics says it is going.
+      // Screenshots of the reference show maybe 60-80 m of road across a phone
+      // with the cars big enough to read at a glance -- far closer than I had
+      // assumed from a review calling the view "fixed".
       //
-      // Fixed orientation, wide enough that several corners are in frame at
-      // once, and biased along the direction of travel so the road ahead gets
-      // the space rather than the road behind.
-      const bounds = this.track.bounds;
-      const w = bounds.max.x - bounds.min.x;
-      const h = bounds.max.y - bounds.min.y;
-      const whole = Math.min(
-        this.renderer.cssWidth / (w + 60),
-        this.renderer.cssHeight / (h + 60),
-      );
-      // Small circuits get framed entirely, the way a slot layout sits on a
-      // table. Big ones get the widest view that still leaves the car readable.
-      const scale = clamp(whole, 0.95, 2.0);
-      const framedWhole = whole >= 0.95;
-      const lead = framedWhole ? 0 : clamp(me.speed * 1.6, 0, 90);
-      r.camera.targetCenter = framedWhole
-        ? { x: (bounds.min.x + bounds.max.x) / 2, y: (bounds.min.y + bounds.max.y) / 2 }
-        : {
-            x: me.pos.x + Math.cos(me.heading) * lead,
-            y: me.pos.y + Math.sin(me.heading) * lead,
-          };
+      // So: fixed orientation, close enough that speed reads, biased along the
+      // direction of travel so most of the view is road ahead. Anticipation is
+      // carried by the lift cue and the tail-out, which both do that job
+      // properly now and did not when the camera was asked to do it.
+      // Modest. At this zoom a 70 m lead is 200 px, which shoves the car into a
+      // corner of the screen and leaves the space it bought looking empty.
+      const lead = clamp(me.speed * 0.45, 6, 32);
+      r.camera.targetCenter = {
+        x: me.pos.x + Math.cos(me.heading) * lead,
+        y: me.pos.y + Math.sin(me.heading) * lead,
+      };
       r.camera.targetRotation = 0;
       r.camera.anchorY = 0.5;
-      r.camera.targetScale = scale;
+      r.camera.targetScale = clamp(3.6 - me.speed * 0.008, 2.9, 3.6);
       r.camera.update(dt, this.race.time < 0.05);
       r.drawTrackLayer();
       r.stepParticles(dt);

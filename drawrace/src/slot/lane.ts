@@ -41,7 +41,13 @@ export interface Lane {
  */
 export function makeLanes(track: Track, count: number): Lane[] {
   const usable = Math.max(0, track.halfWidth - EDGE_MARGIN);
-  const spacing = Math.min((usable * 2) / Math.max(1, count - 1), 5.5);
+  // Capped tighter than the road allows. Lane length differs by 2*pi times the
+  // offset spread over a closed lap -- about 104 m across Ridgeway's four slots
+  // at the old 5.5 m spacing -- and once the magnet went up, lap time started
+  // tracking distance more closely than cornering, so that spread showed up as
+  // a 7.5% advantage for the inside slot. Which lane you draw should not be the
+  // race. At 4 m the spread is about 75 m and the gap is back under 6%.
+  const spacing = Math.min((usable * 2) / Math.max(1, count - 1), 4.0);
   const first = -((count - 1) / 2) * spacing;
   const lanes: Lane[] = [];
   for (let i = 0; i < count; i++) {

@@ -184,6 +184,47 @@ past a point flat out simply works and the game is gone.
 The magnet is scaled back on low-grip surfaces. At full strength on ice it
 swamped the tyres and every surface drove the same.
 
+## Faster still, and the F1 cars were being bullied
+
+Reported: the racing needs to be quicker in general, the Formula cars deslot
+unreasonably easily, and the tail still is not swinging out like the reference.
+
+**Formula was genuinely being punished.** Flat out, a Formula circuit deslotted
+**14.3 times a lap against Rally's 5.2** -- and its magnet was only 38% of its
+grip budget where Rally's was 64%. Highest speed and thinnest margin, on the
+class that can least afford it. The magnets are now set by *share* rather than
+absolute value, so Formula gets the strongest one of the three. That looks
+backwards next to its tyres and is not: the magnet is the forgiving part of the
+budget. All three now sit at 55-63%, and Formula is down to 10.6.
+
+**Speed came from three places, and only one of them was the physics.** The
+magnet went as high as the ceiling allows -- past about 50 for a GT, flat out
+starts working on the gentlest circuits and the game is gone. That is worth a
+few seconds a lap. What was worth far more was the camera: at 1.5 px/m the car
+covers 58 px a second and the whole thing crawls however fast the number in the
+corner says it is going. Screenshots of the reference show maybe 60-80 m of road
+across a phone with the cars big enough to read at a glance, which is much
+closer than I had assumed from a review calling the view "fixed". Nordic went
+from 56 s a lap to 37.5.
+
+The trade is honest and worth stating: visible track ahead is down from 7.2 s to
+2.6 s. That is affordable now only because the lift cue gives 2.2 s of warning
+and the tail-out reads at a glance -- neither was true when the camera was being
+asked to do the anticipating.
+
+**The tail is twice the size.** 22 deg of lean through an ordinary bend where it
+was 11, because half of that read as the car being slightly crooked rather than
+as the back stepping out. The danger term had to move up and grow with it -- at
+22 deg of base, a clean lap was reaching 24 deg against 33 for one that came
+off, which is not a difference you can steer by. It now starts at 80% of the
+budget and throws to 50 deg, so clean laps sit at 22-23 and laps that come off
+reach 36-40.
+
+Lane spacing came down from 5.5 m to 4 m as a consequence of the bigger magnet.
+Lane length differs by 2*pi times the offset spread over a closed lap, and once
+lap time started tracking distance more than cornering, Ridgeway's inside slot
+was worth 7.5%. Which lane you draw should not be the race.
+
 ## What was tried and removed
 
 **Reaction lag as a skill knob.** The obvious second dial after planning margin,
