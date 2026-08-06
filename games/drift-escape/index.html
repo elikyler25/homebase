@@ -1,0 +1,1120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Drift Escape</title>
+<style>
+  :root {
+    --ink: #e8edf5;
+    --dim: #8b97ab;
+    --hot: #ff5a3c;
+    --cool: #43e0ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; overflow: hidden;
+    background: #0a0d14;
+    color: var(--ink);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  #c { display: block; width: 100%; height: 100%; }
+
+  .veil {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 22px; padding: 24px;
+    background: radial-gradient(ellipse at 50% 45%, rgba(16,22,34,.82), rgba(6,8,13,.96));
+    backdrop-filter: blur(3px);
+    text-align: center;
+    z-index: 10;
+  }
+  .veil.gone { display: none; }
+
+  h1 {
+    font-size: clamp(34px, 9vw, 68px);
+    letter-spacing: -.04em; font-weight: 800; line-height: .92;
+  }
+  h1 em { font-style: normal; color: var(--hot); }
+  .tag { color: var(--dim); font-size: 13px; letter-spacing: .18em; text-transform: uppercase; }
+
+  .keys {
+    display: grid; grid-template-columns: auto 1fr; gap: 6px 16px;
+    font-size: 13px; color: var(--dim); text-align: left;
+  }
+  .keys b { color: var(--ink); font-weight: 600; }
+
+  button {
+    font: inherit; font-weight: 700; letter-spacing: .1em;
+    padding: 14px 34px; border: 0; border-radius: 999px;
+    background: var(--hot); color: #14060a; cursor: pointer;
+    text-transform: uppercase;
+  }
+  button:active { transform: translateY(1px); }
+
+  .stats { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; }
+  .stat .k { font-size: 11px; color: var(--dim); letter-spacing: .16em; text-transform: uppercase; }
+  .stat .v { font-size: 28px; font-weight: 800; }
+  .best { color: var(--cool); font-size: 13px; }
+
+  /* touch controls */
+  #touch { position: fixed; inset: 0; z-index: 5; display: none; }
+  #touch.on { display: block; }
+  /* Four pads have to clear each other on a 320px phone, so size and
+     spacing step up with the viewport rather than being fixed. */
+  .pad {
+    position: absolute; bottom: calc(16px + env(safe-area-inset-bottom));
+    width: var(--pad); height: var(--pad); border-radius: 50%;
+    border: 2px solid rgba(232,237,245,.28);
+    background: rgba(232,237,245,.07);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 800; color: rgba(232,237,245,.82);
+    overflow: hidden;
+  }
+  .pad.hit { background: rgba(255,90,60,.32); border-color: var(--hot); }
+  #touch { --pad: 66px; --edge: 10px; }
+  #pL { left: var(--edge); }
+  #pR { left: calc(var(--edge) + var(--pad) + 16px); }
+  #pB { right: var(--edge); }
+  #pN { right: calc(var(--edge) + var(--pad) + 16px); }
+  #pB, #pN { font-size: 11px; letter-spacing: 0; }
+  @media (min-width: 420px) { #touch { --pad: 76px; --edge: 14px; } }
+  @media (min-width: 560px) {
+    #touch { --pad: 88px; --edge: 20px; }
+    .pad { bottom: calc(22px + env(safe-area-inset-bottom)); font-size: 24px; }
+    #pB, #pN { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="touch">
+  <div class="pad" id="pL">&#9664;</div>
+  <div class="pad" id="pR">&#9654;</div>
+  <div class="pad" id="pN">BOOST</div>
+  <div class="pad" id="pB">DRIFT</div>
+</div>
+
+<div class="veil" id="menu">
+  <div>
+    <h1>DRIFT<br><em>ESCAPE</em></h1>
+    <p class="tag" style="margin-top:10px">outrun the city</p>
+  </div>
+  <div class="keys">
+    <b>W / &uarr;</b><span>throttle</span>
+    <b>S / &darr;</b><span>brake &amp; reverse</span>
+    <b>A D / &larr; &rarr;</b><span>steer</span>
+    <b>SPACE</b><span>handbrake &mdash; break traction, drift</span>
+    <b>SHIFT</b><span>boost (drifting refills it)</span>
+    <b>R</b><span>restart</span><b>M</b><span>mute</span>
+  </div>
+  <button id="go">Start engine</button>
+  <p class="best" id="bestMenu"></p>
+</div>
+
+<div class="veil gone" id="over">
+  <h1><em>BUSTED</em></h1>
+  <div class="stats">
+    <div class="stat"><div class="k">Score</div><div class="v" id="oScore">0</div></div>
+    <div class="stat"><div class="k">Survived</div><div class="v" id="oTime">0s</div></div>
+    <div class="stat"><div class="k">Wrecked</div><div class="v" id="oWreck">0</div></div>
+    <div class="stat"><div class="k">Heat</div><div class="v" id="oHeat">1</div></div>
+  </div>
+  <p class="best" id="bestOver"></p>
+  <button id="again">Run it back</button>
+</div>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ *
+ * Drift Escape — top-down arcade police chase.
+ * Single file, no deps. Physics is the classic arcade model: velocity
+ * is split into forward/lateral components in car space, and "drift"
+ * is simply lateral grip dropping so the sideways component survives.
+ * ------------------------------------------------------------------ */
+
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp  = (a, b, t) => a + (b - a) * t;
+const rand  = (a, b) => a + Math.random() * (b - a);
+const angDelta = a => Math.atan2(Math.sin(a), Math.cos(a));
+
+/* ---------------------------- world ------------------------------- */
+
+const TILE = 340;          // city block pitch
+const ROAD = 118;          // road width carved out of each block
+const GRID = 18;           // blocks per side
+const WORLD = TILE * GRID;
+
+const cells = [];          // cells[j * GRID + i] = array of building rects
+const decals = [];         // ground paint (parking lots, plazas)
+
+function buildCity() {
+  cells.length = 0;
+  decals.length = 0;
+  for (let j = 0; j < GRID; j++) {
+    for (let i = 0; i < GRID; i++) {
+      const bx = i * TILE + ROAD, by = j * TILE + ROAD;
+      const bs = TILE - ROAD;
+      const list = [];
+      const roll = Math.random();
+
+      if (roll < 0.13) {
+        // open lot — breathing room, and the best place to hold a drift
+        decals.push({ x: bx + 6, y: by + 6, w: bs - 12, h: bs - 12 });
+      } else if (roll < 0.5) {
+        list.push(mkBuilding(bx + 10, by + 10, bs - 20, bs - 20));
+      } else if (roll < 0.78) {
+        // split into two slabs with an alley between
+        const g = rand(22, 40);
+        if (Math.random() < 0.5) {
+          const w = (bs - 20 - g) / 2;
+          list.push(mkBuilding(bx + 10, by + 10, w, bs - 20));
+          list.push(mkBuilding(bx + 10 + w + g, by + 10, w, bs - 20));
+        } else {
+          const h = (bs - 20 - g) / 2;
+          list.push(mkBuilding(bx + 10, by + 10, bs - 20, h));
+          list.push(mkBuilding(bx + 10, by + 10 + h + g, bs - 20, h));
+        }
+      } else {
+        // four towers around a courtyard
+        const g = rand(26, 44);
+        const w = (bs - 20 - g) / 2, h = (bs - 20 - g) / 2;
+        for (let k = 0; k < 4; k++) {
+          const ox = (k & 1) ? bx + 10 + w + g : bx + 10;
+          const oy = (k & 2) ? by + 10 + h + g : by + 10;
+          if (Math.random() < 0.86) list.push(mkBuilding(ox, oy, w, h));
+        }
+      }
+      cells[j * GRID + i] = list;
+    }
+  }
+}
+
+function mkBuilding(x, y, w, h) {
+  const tone = rand(0, 1);
+  return {
+    x, y, w, h,
+    // taller buildings cast a longer fake-3D extrusion
+    lift: rand(0.035, 0.085),
+    face: tone < 0.33 ? "#252c3b" : tone < 0.66 ? "#2b3346" : "#1f2634",
+    roof: tone < 0.33 ? "#39435a" : tone < 0.66 ? "#414d68" : "#313a50",
+    lit: Math.random() < 0.55
+  };
+}
+
+function cellsNear(x, y, r) {
+  const i0 = clamp(Math.floor((x - r) / TILE), 0, GRID - 1);
+  const i1 = clamp(Math.floor((x + r) / TILE), 0, GRID - 1);
+  const j0 = clamp(Math.floor((y - r) / TILE), 0, GRID - 1);
+  const j1 = clamp(Math.floor((y + r) / TILE), 0, GRID - 1);
+  const out = [];
+  for (let j = j0; j <= j1; j++)
+    for (let i = i0; i <= i1; i++) out.push(cells[j * GRID + i]);
+  return out;
+}
+
+function solidAt(x, y) {
+  if (x < 0 || y < 0 || x > WORLD || y > WORLD) return true;
+  const i = Math.floor(x / TILE), j = Math.floor(y / TILE);
+  const list = cells[j * GRID + i];
+  if (!list) return true;
+  for (const b of list)
+    if (x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h) return true;
+  return false;
+}
+
+/* road centres — used for spawning so nobody wakes up inside a wall */
+function nearestRoadPoint(x, y) {
+  const half = ROAD / 2;
+  const sx = Math.round(x / TILE) * TILE + half;
+  const sy = Math.round(y / TILE) * TILE + half;
+  // snap to whichever axis is closer, keep the other free
+  return Math.abs(sx - x) < Math.abs(sy - y)
+    ? { x: clamp(sx, half, WORLD - half), y: clamp(y, half, WORLD - half) }
+    : { x: clamp(x, half, WORLD - half), y: clamp(sy, half, WORLD - half) };
+}
+
+/* ---------------------------- cars -------------------------------- */
+
+const CAR_R = 15;          // collision radius
+const MAX_SPEED = 720;
+const ACCEL = 1180;
+const REVERSE = 240;
+const MAX_TURN = 3.5;
+
+function mkCar(x, y, a) {
+  return {
+    x, y, a,
+    vx: 0, vy: 0,
+    steer: 0, throttle: 0, brake: 0, hand: false, boost: false,
+    hp: 100, dead: false, inv: 0,
+    slip: 0, speed: 0,
+    stuck: 0, backing: 0,
+    flash: 0
+  };
+}
+
+function driveCar(c, dt, topSpeed, accel) {
+  const cos = Math.cos(c.a), sin = Math.sin(c.a);
+  // decompose world velocity into car space
+  let vF =  c.vx * cos + c.vy * sin;
+  let vL = -c.vx * sin + c.vy * cos;
+
+  if (c.throttle > 0) {
+    const head = clamp(1 - vF / topSpeed, 0, 1);
+    vF += c.throttle * accel * head * dt;
+  } else if (c.throttle < 0) {
+    if (vF > 20) vF -= 1500 * dt;                       // that's the brake
+    else vF = Math.max(vF - accel * 0.6 * dt, -REVERSE);
+  }
+  if (c.brake) vF -= Math.sign(vF) * Math.min(Math.abs(vF), 1900 * dt);
+
+  const frames = dt * 60;
+  vF *= Math.pow(0.994, frames);                        // rolling drag
+
+  // the whole game lives on this line: less grip => the tail steps out
+  const grip = c.hand ? 0.968 : 0.802;
+  vL *= Math.pow(grip, frames);
+
+  c.vx = cos * vF - sin * vL;
+  c.vy = sin * vF + cos * vL;
+
+  c.speed = Math.hypot(c.vx, c.vy);
+  c.slip = Math.abs(vL);
+
+  // steering authority ramps in with speed, then eases off at the top end
+  const grow = clamp(Math.abs(vF) / 190, 0, 1);
+  const calm = 1 - 0.34 * clamp((Math.abs(vF) - 430) / 320, 0, 1);
+  const rate = MAX_TURN * grow * calm * (vF < -8 ? -1 : 1);
+  c.a += c.steer * rate * dt;
+
+  c.x += c.vx * dt;
+  c.y += c.vy * dt;
+}
+
+const WALLS = [
+  { x: -200, y: -200, w: WORLD + 400, h: 200 },
+  { x: -200, y: WORLD, w: WORLD + 400, h: 200 },
+  { x: -200, y: -200, w: 200, h: WORLD + 400 },
+  { x: WORLD, y: -200, w: 200, h: WORLD + 400 }
+];
+
+/* circle-vs-city. Returns impact speed along the normal, 0 if clear. */
+function collideCity(c) {
+  let worst = 0;
+  for (const list of cellsNear(c.x, c.y, CAR_R + 4)) {
+    for (const b of list) worst = Math.max(worst, pushOut(c, b));
+  }
+  for (const b of WALLS) worst = Math.max(worst, pushOut(c, b));
+  return worst;
+}
+
+function pushOut(c, b) {
+  const nx = clamp(c.x, b.x, b.x + b.w);
+  const ny = clamp(c.y, b.y, b.y + b.h);
+  let dx = c.x - nx, dy = c.y - ny;
+  let d2 = dx * dx + dy * dy;
+
+  if (d2 > CAR_R * CAR_R) return 0;
+
+  if (d2 < 1e-6) {
+    // dead centre inside the rect — eject via the closest face
+    const l = c.x - b.x, r = b.x + b.w - c.x;
+    const t = c.y - b.y, o = b.y + b.h - c.y;
+    const m = Math.min(l, r, t, o);
+    dx = m === l ? -1 : m === r ? 1 : 0;
+    dy = m === t ? -1 : m === o ? 1 : 0;
+    d2 = 1;
+  }
+  const d = Math.sqrt(d2) || 1;
+  const ux = dx / d, uy = dy / d;
+  c.x = nx + ux * CAR_R;
+  c.y = ny + uy * CAR_R;
+
+  const vn = c.vx * ux + c.vy * uy;
+  if (vn >= 0) return 0;
+  c.vx -= ux * vn * 1.35;                                // a little bounce
+  c.vy -= uy * vn * 1.35;
+  c.vx *= 0.80; c.vy *= 0.80;                            // and a lot of scrape
+  return -vn;
+}
+
+/* ---------------------------- state ------------------------------- */
+
+const S = { MENU: 0, PLAY: 1, OVER: 2 };
+let state = S.MENU;
+
+let player, cops = [], parts = [], skids = [], pops = [];
+let heat, heatT, calmT, score, driftBank, driftChain, chainT, boost, elapsed, wrecked;
+let cam = { x: 0, y: 0, z: 1, sh: 0 };
+let best = 0;
+try { best = +(localStorage.getItem("driftEscapeBest") || 0) || 0; } catch (e) {}
+
+function reset() {
+  buildCity();
+  const s = nearestRoadPoint(WORLD / 2, WORLD / 2);
+  player = mkCar(s.x, s.y, 0);
+  cops = []; parts = []; skids = []; pops = [];
+  heat = 1; heatT = 0; calmT = 0;
+  score = 0; driftBank = 0; driftChain = 0; chainT = 0;
+  boost = 100; elapsed = 0; wrecked = 0;
+  cam.x = player.x; cam.y = player.y; cam.z = 1; cam.sh = 0;
+  spawnWave();
+}
+
+function copTarget() { return [2, 2, 3, 5, 7, 9, 11][Math.min(heat, 6)]; }
+
+function spawnWave() {
+  // bounded: a failed spawn must never spin the frame
+  let budget = 4;
+  while (cops.length < copTarget() && budget-- > 0) {
+    if (!spawnCop(rand(760, 1000))) break;
+  }
+}
+
+function spawnCop(dist) {
+  for (let tries = 0; tries < 14; tries++) {
+    const a = rand(0, TAU);
+    const p = nearestRoadPoint(player.x + Math.cos(a) * dist, player.y + Math.sin(a) * dist);
+    if (solidAt(p.x, p.y)) continue;
+    const c = mkCar(p.x, p.y, a + Math.PI);
+    c.top = 640 + heat * 20;
+    c.acc = 980 + heat * 30;
+    cops.push(c);
+    return true;
+  }
+  return false;
+}
+
+/* --------------------------- effects ------------------------------ */
+
+function puff(x, y, n, opt) {
+  for (let i = 0; i < n; i++) {
+    const a = opt.a !== undefined ? opt.a + rand(-opt.spread, opt.spread) : rand(0, TAU);
+    const s = rand(opt.sMin, opt.sMax);
+    parts.push({
+      x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+      life: 0, max: rand(opt.lMin, opt.lMax),
+      r: rand(opt.rMin, opt.rMax), grow: opt.grow || 0,
+      col: opt.col, glow: !!opt.glow
+    });
+  }
+}
+
+function popText(x, y, txt, col) {
+  pops.push({ x, y, txt, col, life: 0, max: 1.0 });
+}
+
+/* --------------------------- update ------------------------------- */
+
+function update(dt) {
+  elapsed += dt;
+
+  /* ---- player input ---- */
+  const p = player;
+  const want = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  // ease the wheel rather than snapping it — digital keys, analogue feel
+  p.steer = lerp(p.steer, want, 1 - Math.pow(0.0008, dt));
+  p.throttle = keys.up ? 1 : keys.down ? -1 : (touchMode ? 1 : 0);
+  p.hand = keys.space;
+  const wantBoost = keys.shift && boost > 1 && p.throttle > 0;
+  p.boost = wantBoost;
+
+  const top = MAX_SPEED * (wantBoost ? 1.34 : 1);
+  const acc = ACCEL * (wantBoost ? 1.55 : 1);
+  if (wantBoost) {
+    boost = Math.max(0, boost - 34 * dt);
+    puff(p.x - Math.cos(p.a) * 20, p.y - Math.sin(p.a) * 20, 2, {
+      a: p.a + Math.PI, spread: 0.4, sMin: 60, sMax: 190,
+      lMin: 0.18, lMax: 0.36, rMin: 3, rMax: 7, grow: 22,
+      col: [255, 150, 60], glow: true
+    });
+  }
+
+  driveCar(p, dt, top, acc);
+  p.inv -= dt;
+
+  // Walls cost you speed and your drift chain far more than health —
+  // the cops are supposed to be what kills you, not the scenery.
+  const hit = collideCity(p);
+  if (hit > 90) {
+    if (p.inv <= 0 && hit > 190) {
+      damage(p, (hit - 190) * 0.036);
+      p.inv = 0.35;                       // one crash, one charge
+    }
+    cam.sh = Math.min(22, cam.sh + hit * 0.022);
+    puff(p.x, p.y, 7, { sMin: 40, sMax: 190, lMin: .18, lMax: .4, rMin: 1, rMax: 2.6, col: [255, 214, 130], glow: true });
+    breakChain();
+  }
+
+  /* ---- drift scoring ---- */
+  const drifting = p.slip > 62 && p.speed > 170;
+  if (drifting) {
+    const gain = p.speed * p.slip * dt / 5200;
+    driftChain += gain;
+    driftBank += gain;
+    boost = Math.min(100, boost + gain * 0.9 + 4 * dt);
+    chainT = 0;
+    layRubber(p);
+    puff(p.x - Math.cos(p.a) * 14, p.y - Math.sin(p.a) * 14, 1, {
+      sMin: 5, sMax: 40, lMin: .5, lMax: 1.1, rMin: 5, rMax: 10, grow: 26,
+      col: [188, 196, 214]
+    });
+  } else {
+    chainT += dt;
+    if (chainT > 0.7 && driftChain > 0) {
+      if (driftChain > 25) popText(p.x, p.y - 34, "+" + Math.round(driftChain * 10), "#43e0ff");
+      score += driftChain * 10;
+      driftChain = 0;
+    }
+  }
+
+  /* ---- cops ---- */
+  let nearest = Infinity;
+  for (const c of cops) {
+    if (c.dead) continue;
+    c.hitCd = Math.max(0, (c.hitCd || 0) - dt);
+    driveCop(c, dt);
+    const d = Math.hypot(c.x - p.x, c.y - p.y);
+    nearest = Math.min(nearest, d);
+
+    // cop vs player
+    if (d < CAR_R * 2) {
+      const ux = (p.x - c.x) / (d || 1), uy = (p.y - c.y) / (d || 1);
+      const rel = Math.hypot(p.vx - c.vx, p.vy - c.vy);
+      const overlap = CAR_R * 2 - d;
+      p.x += ux * overlap * 0.5; p.y += uy * overlap * 0.5;
+      c.x -= ux * overlap * 0.5; c.y -= uy * overlap * 0.5;
+      const j = rel * 0.5;
+      p.vx += ux * j; p.vy += uy * j;
+      c.vx -= ux * j; c.vy -= uy * j;
+
+      if (rel > 130 && c.hitCd <= 0) {
+        c.hitCd = 0.3;                    // charge the impact once, not per frame
+        damage(p, (rel - 130) * 0.055);
+        damage(c, (rel - 130) * 0.125);
+        cam.sh = Math.min(26, cam.sh + rel * 0.03);
+        puff(( p.x + c.x) / 2, (p.y + c.y) / 2, 10, {
+          sMin: 60, sMax: 260, lMin: .16, lMax: .4, rMin: 1, rMax: 3,
+          col: [255, 226, 150], glow: true
+        });
+        breakChain();
+      }
+    }
+
+    // cop vs city
+    const ch = collideCity(c);
+    if (ch > 150) damage(c, (ch - 150) * 0.06);
+
+    if (c.hp <= 0 && !c.dead) {
+      c.dead = true;
+      wrecked++;
+      score += 400;
+      popText(c.x, c.y, "WRECKED +400", "#ff5a3c");
+      puff(c.x, c.y, 26, { sMin: 40, sMax: 340, lMin: .25, lMax: .8, rMin: 2, rMax: 6, grow: 14, col: [255, 160, 60], glow: true });
+      puff(c.x, c.y, 16, { sMin: 10, sMax: 110, lMin: .8, lMax: 1.8, rMin: 8, rMax: 16, grow: 30, col: [70, 74, 86] });
+      cam.sh = Math.min(30, cam.sh + 14);
+    }
+  }
+  cops = cops.filter(c => !c.dead);
+
+  /* ---- heat ---- */
+  heatT += dt;
+  const bar = 16 + heat * 4;   // ~2 min of clean driving to reach heat 6
+  if (heatT > bar && heat < 6) {
+    heat++; heatT = 0;
+    popText(p.x, p.y - 50, "HEAT " + heat, "#ff5a3c");
+  }
+  if (nearest > 1000) {
+    calmT += dt;
+    if (calmT > 7 && heat > 1) {
+      heat--; calmT = 0; heatT = 0;
+      popText(p.x, p.y - 50, "LOST THEM", "#43e0ff");
+      score += 300;
+    }
+  } else calmT = 0;
+
+  spawnWave();
+  score += dt * (18 + heat * 14) + p.speed * dt * 0.05;
+
+  if (p.hp <= 0) gameOver();
+
+  /* ---- effects ---- */
+  for (const q of parts) {
+    q.life += dt;
+    q.x += q.vx * dt; q.y += q.vy * dt;
+    q.vx *= Math.pow(0.94, dt * 60); q.vy *= Math.pow(0.94, dt * 60);
+    q.r += q.grow * dt;
+  }
+  parts = parts.filter(q => q.life < q.max);
+  for (const s of skids) s.life += dt;
+  if (skids.length > 1500) skids.splice(0, skids.length - 1500);
+  for (const t of pops) { t.life += dt; t.y -= 26 * dt; }
+  pops = pops.filter(t => t.life < t.max);
+
+  /* ---- camera ---- */
+  const lead = clamp(p.speed / MAX_SPEED, 0, 1);
+  const tx = p.x + p.vx * 0.20 * lead;
+  const ty = p.y + p.vy * 0.20 * lead;
+  cam.x = lerp(cam.x, tx, 1 - Math.pow(0.0012, dt));
+  cam.y = lerp(cam.y, ty, 1 - Math.pow(0.0012, dt));
+  cam.z = lerp(cam.z, 1 - 0.16 * lead, 1 - Math.pow(0.05, dt));
+  cam.sh *= Math.pow(0.02, dt);
+
+  audioTick(dt, nearest);
+}
+
+function damage(c, amt) {
+  c.hp -= amt;
+  c.flash = 1;
+}
+
+function breakChain() {
+  if (driftChain > 8) popText(player.x, player.y - 30, "CHAIN LOST", "#8b97ab");
+  driftChain = 0;
+}
+
+function layRubber(c) {
+  const cos = Math.cos(c.a), sin = Math.sin(c.a);
+  for (const off of [[-13, -9], [-13, 9]]) {
+    skids.push({
+      x: c.x + cos * off[0] - sin * off[1],
+      y: c.y + sin * off[0] + cos * off[1],
+      a: c.a, life: 0,
+      w: clamp(c.slip / 90, 0.5, 1.6)
+    });
+  }
+}
+
+function driveCop(c, dt) {
+  const p = player;
+  const dx = p.x - c.x, dy = p.y - c.y;
+  const dist = Math.hypot(dx, dy) || 1;
+
+  // aim where the player will be, not where they are
+  const lead = clamp(dist / 900, 0, 1) * 0.42;
+  const want = Math.atan2(dy + p.vy * lead, dx + p.vx * lead);
+  let diff = angDelta(want - c.a);
+  let steer = clamp(diff * 2.1, -1, 1);
+
+  // cheap whisker avoidance — enough to keep them off the corners
+  const probe = 70 + c.speed * 0.22;
+  const L = solidAt(c.x + Math.cos(c.a - 0.5) * probe, c.y + Math.sin(c.a - 0.5) * probe);
+  const R = solidAt(c.x + Math.cos(c.a + 0.5) * probe, c.y + Math.sin(c.a + 0.5) * probe);
+  const C = solidAt(c.x + Math.cos(c.a) * probe * 1.25, c.y + Math.sin(c.a) * probe * 1.25);
+  if (L && !R) steer = 1;
+  else if (R && !L) steer = -1;
+  else if (C) steer = steer >= 0 ? 1 : -1;
+
+  c.steer = steer;
+  c.throttle = 1;
+  c.hand = Math.abs(diff) > 1.5 && c.speed > 340;
+
+  // unstick: reverse out of whatever they wedged themselves into
+  if (c.speed < 45) c.stuck += dt; else c.stuck = 0;
+  if (c.stuck > 1.2) { c.backing = 0.9; c.stuck = 0; }
+  if (c.backing > 0) {
+    c.backing -= dt;
+    c.throttle = -1;
+    c.steer = -steer;
+    c.hand = false;
+  }
+
+  driveCar(c, dt, c.top, c.acc);
+  if (c.hand && c.slip > 70 && c.speed > 200) layRubber(c);
+  c.flash *= Math.pow(0.02, dt);
+}
+
+/* --------------------------- render ------------------------------- */
+
+const cv = document.getElementById("c");
+const ctx = cv.getContext("2d");
+let VW = 0, VH = 0, DPR = 1;
+
+function resize() {
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  VW = innerWidth; VH = innerHeight;
+  cv.width = Math.floor(VW * DPR);
+  cv.height = Math.floor(VH * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener("resize", resize);
+resize();
+
+function render() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = "#12151d";
+  ctx.fillRect(0, 0, VW, VH);
+
+  const z = cam.z;
+  const shx = cam.sh ? rand(-cam.sh, cam.sh) : 0;
+  const shy = cam.sh ? rand(-cam.sh, cam.sh) : 0;
+
+  ctx.save();
+  ctx.translate(VW / 2 + shx, VH / 2 + shy);
+  ctx.scale(z, z);
+  ctx.translate(-cam.x, -cam.y);
+
+  const halfW = VW / 2 / z + 90, halfH = VH / 2 / z + 90;
+  const view = { x0: cam.x - halfW, x1: cam.x + halfW, y0: cam.y - halfH, y1: cam.y + halfH };
+
+  drawGround(view);
+  drawSkids(view);
+  drawBuildings(view);
+  drawParticles(false);
+  for (const c of cops) drawCar(c, true);
+  drawCar(player, false);
+  drawParticles(true);
+  drawPops();
+
+  ctx.restore();
+  if (state === S.PLAY) drawHUD();
+}
+
+function drawGround(v) {
+  ctx.fillStyle = "#181c26";
+  ctx.fillRect(v.x0, v.y0, v.x1 - v.x0, v.y1 - v.y0);
+
+  // open lots read lighter than the roads
+  ctx.fillStyle = "#1e2330";
+  for (const d of decals) {
+    if (d.x > v.x1 || d.x + d.w < v.x0 || d.y > v.y1 || d.y + d.h < v.y0) continue;
+    ctx.fillRect(d.x, d.y, d.w, d.h);
+  }
+
+  // lane dashes down the middle of every road
+  ctx.strokeStyle = "rgba(226,214,140,.16)";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([26, 30]);
+  const i0 = clamp(Math.floor(v.x0 / TILE), 0, GRID), i1 = clamp(Math.ceil(v.x1 / TILE), 0, GRID);
+  const j0 = clamp(Math.floor(v.y0 / TILE), 0, GRID), j1 = clamp(Math.ceil(v.y1 / TILE), 0, GRID);
+  ctx.beginPath();
+  for (let i = i0; i <= i1; i++) {
+    const x = i * TILE + ROAD / 2;
+    ctx.moveTo(x, v.y0); ctx.lineTo(x, v.y1);
+  }
+  for (let j = j0; j <= j1; j++) {
+    const y = j * TILE + ROAD / 2;
+    ctx.moveTo(v.x0, y); ctx.lineTo(v.x1, y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawSkids(v) {
+  ctx.fillStyle = "#000";
+  for (const s of skids) {
+    if (s.x < v.x0 || s.x > v.x1 || s.y < v.y0 || s.y > v.y1) continue;
+    const a = clamp(0.34 - s.life * 0.012, 0, 0.34);
+    if (a <= 0.01) continue;
+    ctx.globalAlpha = a;
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.a);
+    ctx.fillRect(-4, -s.w, 8, s.w * 2);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function wall(a, b, ox, oy) {
+  ctx.beginPath();
+  ctx.moveTo(a[0], a[1]);
+  ctx.lineTo(b[0], b[1]);
+  ctx.lineTo(b[0] + ox, b[1] + oy);
+  ctx.lineTo(a[0] + ox, a[1] + oy);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawBuildings(v) {
+  const i0 = clamp(Math.floor(v.x0 / TILE), 0, GRID - 1), i1 = clamp(Math.floor(v.x1 / TILE), 0, GRID - 1);
+  const j0 = clamp(Math.floor(v.y0 / TILE), 0, GRID - 1), j1 = clamp(Math.floor(v.y1 / TILE), 0, GRID - 1);
+
+  // pass 1: fake extrusion — walls lean away from screen centre.
+  // The swept volume of a rect translated by (ox,oy) is the rect, the
+  // offset rect, and the four quads joining their edges. Overlaps are
+  // harmless: one opaque fill, nonzero winding.
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    for (const b of cells[j * GRID + i]) {
+      const ox = (b.x + b.w / 2 - cam.x) * b.lift;
+      const oy = (b.y + b.h / 2 - cam.y) * b.lift;
+      const TL = [b.x, b.y], TR = [b.x + b.w, b.y];
+      const BR = [b.x + b.w, b.y + b.h], BL = [b.x, b.y + b.h];
+      ctx.fillStyle = b.face;
+      ctx.fillRect(b.x + ox, b.y + oy, b.w, b.h);
+      // only the two edges facing the lean can show a gap
+      wall(ox > 0 ? TR : BL, ox > 0 ? BR : TL, ox, oy);
+      wall(oy > 0 ? BR : TL, oy > 0 ? BL : TR, ox, oy);
+    }
+  }
+  // pass 2: roofs
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    for (const b of cells[j * GRID + i]) {
+      ctx.fillStyle = b.roof;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      if (b.lit) {
+        ctx.fillStyle = "rgba(255,238,190,.07)";
+        ctx.fillRect(b.x + 8, b.y + 8, b.w - 16, Math.max(4, b.h * 0.22));
+      }
+      ctx.strokeStyle = "rgba(10,13,20,.55)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+    }
+  }
+}
+
+function drawParticles(glowPass) {
+  ctx.globalCompositeOperation = glowPass ? "lighter" : "source-over";
+  for (const q of parts) {
+    if (!!q.glow !== glowPass) continue;
+    const t = q.life / q.max;
+    ctx.globalAlpha = (1 - t) * (q.glow ? 0.9 : 0.28);
+    ctx.fillStyle = `rgb(${q.col[0]},${q.col[1]},${q.col[2]})`;
+    ctx.beginPath();
+    ctx.arc(q.x, q.y, q.r, 0, TAU);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+}
+
+function drawPops() {
+  ctx.textAlign = "center";
+  for (const t of pops) {
+    const k = t.life / t.max;
+    ctx.globalAlpha = 1 - k * k;
+    ctx.font = "700 20px ui-monospace, Menlo, monospace";
+    ctx.fillStyle = t.col;
+    ctx.fillText(t.txt, t.x, t.y);
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = "left";
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawCar(c, isCop) {
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.rotate(c.a);
+
+  // shadow
+  ctx.fillStyle = "rgba(0,0,0,.42)";
+  roundRect(-19, -12, 38, 24, 5);
+  ctx.fill();
+
+  ctx.translate(-2, -2);
+  // the hit flash must never make your car read as a cruiser
+  const body = isCop ? "#e9edf4" : "#ff5a3c";
+  ctx.fillStyle = c.flash > 0.05 ? (isCop ? "#ffffff" : "#ffd39a") : body;
+  roundRect(-19, -11, 38, 22, 5);
+  ctx.fill();
+
+  if (isCop) {                     // black doors, so they read as cruisers
+    ctx.fillStyle = "#181c26";
+    ctx.fillRect(-6, -11, 13, 22);
+  } else {
+    ctx.fillStyle = "rgba(0,0,0,.22)";
+    ctx.fillRect(-19, -11, 6, 22);
+  }
+
+  ctx.fillStyle = "#0e1119";       // greenhouse
+  roundRect(-6, -8, 14, 16, 3);
+  ctx.fill();
+  ctx.fillStyle = "rgba(120,180,230,.35)";
+  roundRect(4, -7, 5, 14, 2);
+  ctx.fill();
+
+  if (isCop) {                     // lightbar
+    const t = (elapsed * 9) % 2 | 0;
+    ctx.fillStyle = t ? "#ff2e4d" : "#1b1f2b";
+    ctx.fillRect(-3, -9, 6, 8);
+    ctx.fillStyle = t ? "#1b1f2b" : "#2e7bff";
+    ctx.fillRect(-3, 1, 6, 8);
+  } else {
+    ctx.fillStyle = "#ffe9b0";     // headlights
+    ctx.fillRect(17, -8, 3, 5);
+    ctx.fillRect(17, 3, 3, 5);
+  }
+  ctx.restore();
+
+  // cop light wash on the road — soft falloff, not a flat disc
+  if (isCop) {
+    const t = (elapsed * 9) % 2 | 0;
+    const g = ctx.createRadialGradient(c.x, c.y, 6, c.x, c.y, 78);
+    g.addColorStop(0, t ? "rgba(255,46,77,.30)" : "rgba(46,123,255,.30)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(c.x, c.y, 78, 0, TAU); ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
+  }
+  c.flash *= 0.86;
+}
+
+/* ----------------------------- HUD -------------------------------- */
+
+function drawHUD() {
+  const pad = 18;
+  ctx.font = "700 12px ui-monospace, Menlo, monospace";
+
+  // score
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#8b97ab";
+  ctx.fillText("SCORE", pad, pad + 12);
+  ctx.font = "800 30px ui-monospace, Menlo, monospace";
+  ctx.fillStyle = "#e8edf5";
+  ctx.fillText(String(Math.floor(score)).padStart(6, "0"), pad, pad + 44);
+
+  // heat stars
+  ctx.font = "700 12px ui-monospace, Menlo, monospace";
+  ctx.fillStyle = "#8b97ab";
+  ctx.fillText("HEAT", pad, pad + 70);
+  for (let i = 0; i < 6; i++) {
+    ctx.fillStyle = i < heat ? "#ff5a3c" : "rgba(139,151,171,.24)";
+    ctx.fillRect(pad + 44 + i * 14, pad + 61, 10, 10);
+  }
+
+  // drift chain
+  if (driftChain > 3) {
+    ctx.textAlign = "center";
+    ctx.font = "800 34px ui-monospace, Menlo, monospace";
+    ctx.fillStyle = "#43e0ff";
+    ctx.fillText("+" + Math.round(driftChain * 10), VW / 2, 72);
+    ctx.font = "700 12px ui-monospace, Menlo, monospace";
+    ctx.fillStyle = "rgba(67,224,255,.7)";
+    ctx.fillText("DRIFT", VW / 2, 90);
+  }
+
+  // speed
+  ctx.textAlign = "right";
+  ctx.font = "800 30px ui-monospace, Menlo, monospace";
+  ctx.fillStyle = "#e8edf5";
+  ctx.fillText(String(Math.round(player.speed * 0.22)), VW - pad, pad + 30);
+  ctx.font = "700 12px ui-monospace, Menlo, monospace";
+  ctx.fillStyle = "#8b97ab";
+  ctx.fillText("MPH", VW - pad, pad + 46);
+
+  // integrity + boost bars
+  const bw = Math.min(150, VW * 0.34);
+  bar(VW - pad - bw, pad + 72, bw, 8, clamp(player.hp / 100, 0, 1), "#ff5a3c", "INTEGRITY");
+  bar(VW - pad - bw, pad + 102, bw, 8, clamp(boost / 100, 0, 1), "#43e0ff", "BOOST");
+
+  drawMinimap();
+}
+
+function bar(x, y, w, h, t, col, label) {
+  ctx.fillStyle = "rgba(139,151,171,.2)";
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = col;
+  ctx.fillRect(x, y, w * t, h);
+  ctx.textAlign = "right";
+  ctx.font = "700 10px ui-monospace, Menlo, monospace";
+  ctx.fillStyle = "#8b97ab";
+  ctx.fillText(label, x + w, y - 5);
+}
+
+function drawMinimap() {
+  // on touch the bottom strip belongs to the pads — sit above them
+  const M = VW < 560 ? 90 : 116;
+  const x = 18;
+  const y = VH - M - 18 - (touchMode ? 104 : 0);
+  ctx.save();
+  ctx.globalAlpha = 0.86;
+  ctx.fillStyle = "#0c0f16";
+  ctx.fillRect(x, y, M, M);
+  ctx.strokeStyle = "rgba(139,151,171,.3)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + .5, y + .5, M - 1, M - 1);
+
+  const k = M / WORLD;
+  ctx.strokeStyle = "rgba(139,151,171,.13)";
+  ctx.beginPath();
+  for (let i = 0; i <= GRID; i += 3) {
+    ctx.moveTo(x + i * TILE * k, y); ctx.lineTo(x + i * TILE * k, y + M);
+    ctx.moveTo(x, y + i * TILE * k); ctx.lineTo(x + M, y + i * TILE * k);
+  }
+  ctx.stroke();
+
+  for (const c of cops) {
+    ctx.fillStyle = "#2e7bff";
+    ctx.fillRect(x + c.x * k - 1.5, y + c.y * k - 1.5, 3, 3);
+  }
+  ctx.fillStyle = "#ff5a3c";
+  ctx.fillRect(x + player.x * k - 2, y + player.y * k - 2, 4, 4);
+  ctx.restore();
+}
+
+/* ---------------------------- input ------------------------------- */
+
+const keys = { up: 0, down: 0, left: 0, right: 0, space: 0, shift: 0 };
+let touchMode = false;
+
+const KEYMAP = {
+  ArrowUp: "up", KeyW: "up",
+  ArrowDown: "down", KeyS: "down",
+  ArrowLeft: "left", KeyA: "left",
+  ArrowRight: "right", KeyD: "right",
+  Space: "space",
+  ShiftLeft: "shift", ShiftRight: "shift"
+};
+
+addEventListener("keydown", e => {
+  const k = KEYMAP[e.code];
+  if (k) { keys[k] = 1; e.preventDefault(); }
+  if (e.code === "KeyR" && state !== S.MENU) start();
+  if (e.code === "KeyM") toggleMute();
+  if (e.code === "Enter" && state !== S.PLAY) start();
+});
+addEventListener("keyup", e => {
+  const k = KEYMAP[e.code];
+  if (k) { keys[k] = 0; e.preventDefault(); }
+});
+addEventListener("blur", () => { for (const k in keys) keys[k] = 0; });
+
+// touch pads
+const padEls = { pL: "left", pR: "right", pB: "space", pN: "shift" };
+for (const id in padEls) {
+  const el = document.getElementById(id);
+  const key = padEls[id];
+  const on  = e => { e.preventDefault(); keys[key] = 1; el.classList.add("hit"); };
+  const off = e => { e.preventDefault(); keys[key] = 0; el.classList.remove("hit"); };
+  el.addEventListener("touchstart", on, { passive: false });
+  el.addEventListener("touchend", off, { passive: false });
+  el.addEventListener("touchcancel", off, { passive: false });
+  el.addEventListener("mousedown", on);
+  addEventListener("mouseup", off);
+}
+addEventListener("touchstart", () => {
+  if (!touchMode) { touchMode = true; document.getElementById("touch").classList.add("on"); }
+}, { passive: true, once: false });
+
+/* ---------------------------- audio ------------------------------- */
+/* ponytail: hand-rolled WebAudio, no samples. Ceiling is "it hums and
+   wails"; upgrade path is real engine samples if this ever needs polish. */
+
+let AC = null, engOsc = null, engGain = null, sirOsc = null, sirGain = null, muted = false;
+
+function audioStart() {
+  if (AC || muted) return;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    engOsc = AC.createOscillator(); engOsc.type = "sawtooth";
+    engGain = AC.createGain(); engGain.gain.value = 0;
+    const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 620;
+    engOsc.connect(lp).connect(engGain).connect(AC.destination);
+    engOsc.start();
+
+    sirOsc = AC.createOscillator(); sirOsc.type = "triangle";
+    sirGain = AC.createGain(); sirGain.gain.value = 0;
+    sirOsc.connect(sirGain).connect(AC.destination);
+    sirOsc.start();
+  } catch (e) { AC = null; }
+}
+
+function audioTick(dt, nearest) {
+  if (!AC || muted) return;
+  const t = AC.currentTime;
+  const rev = clamp(player.speed / MAX_SPEED, 0, 1.3);
+  engOsc.frequency.setTargetAtTime(58 + rev * 190, t, 0.05);
+  engGain.gain.setTargetAtTime(0.035 + rev * 0.05, t, 0.08);
+
+  const close = clamp(1 - (nearest - 200) / 800, 0, 1);
+  sirOsc.frequency.setTargetAtTime(680 + Math.sin(elapsed * 6) * 250, t, 0.02);
+  sirGain.gain.setTargetAtTime(close * 0.03, t, 0.15);
+}
+
+function audioStop() {
+  if (!AC) return;
+  try { engGain.gain.setTargetAtTime(0, AC.currentTime, 0.1);
+        sirGain.gain.setTargetAtTime(0, AC.currentTime, 0.1); } catch (e) {}
+}
+
+function toggleMute() {
+  muted = !muted;
+  if (muted) audioStop();
+  else if (state === S.PLAY) audioStart();
+}
+
+/* ---------------------------- flow -------------------------------- */
+
+const menuEl = document.getElementById("menu");
+const overEl = document.getElementById("over");
+
+function showBest() {
+  const txt = best > 0 ? "BEST " + Math.floor(best).toLocaleString() : "";
+  document.getElementById("bestMenu").textContent = txt;
+  document.getElementById("bestOver").textContent = txt;
+}
+showBest();
+
+function start() {
+  reset();
+  state = S.PLAY;
+  menuEl.classList.add("gone");
+  overEl.classList.add("gone");
+  audioStart();
+}
+
+function gameOver() {
+  state = S.OVER;
+  score += driftChain * 10;
+  driftChain = 0;
+  if (score > best) {
+    best = score;
+    try { localStorage.setItem("driftEscapeBest", String(Math.floor(best))); } catch (e) {}
+  }
+  showBest();
+  document.getElementById("oScore").textContent = Math.floor(score).toLocaleString();
+  document.getElementById("oTime").textContent = Math.floor(elapsed) + "s";
+  document.getElementById("oWreck").textContent = wrecked;
+  document.getElementById("oHeat").textContent = heat;
+  overEl.classList.remove("gone");
+  puff(player.x, player.y, 40, { sMin: 40, sMax: 420, lMin: .3, lMax: 1.1, rMin: 3, rMax: 8, grow: 16, col: [255, 140, 50], glow: true });
+  cam.sh = 30;
+  audioStop();
+}
+
+document.getElementById("go").addEventListener("click", start);
+document.getElementById("again").addEventListener("click", start);
+
+/* ---------------------------- loop -------------------------------- */
+
+reset();                      // build a city to show behind the menu
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 1 / 30);
+  last = now;
+
+  if (state === S.PLAY) update(dt);
+  else {
+    // keep the world breathing behind the menus
+    for (const q of parts) { q.life += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.r += q.grow * dt; }
+    parts = parts.filter(q => q.life < q.max);
+    cam.sh *= Math.pow(0.02, dt);
+    if (state === S.MENU) cam.x += 34 * dt;
+  }
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
