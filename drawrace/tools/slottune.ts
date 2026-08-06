@@ -161,6 +161,23 @@ for (const def of sweep) {
       `${f(cueOnly.warnedFraction * 100, 0)}% of it in total`,
   );
 
+  // --- 5c. the car itself has to be the instrument ----------------------
+  // The tail steps out as the corner loads up, and how far it is thrown is how
+  // close the guide pin is to leaving the groove. That only works as a readback
+  // if the angle actually tracks the danger: barely leaning on a lap that was
+  // never in trouble, thrown right out at the moment one goes.
+  const deg = (r: number) => (r * 180) / Math.PI;
+  check(
+    "the tail leans on a clean lap without being thrown out",
+    deg(clean.tailPeak) > 4 && deg(clean.tailPeak) < 28,
+    `peak ${f(deg(clean.tailPeak), 0)} deg`,
+  );
+  check(
+    "the tail is thrown much further on a lap that comes off",
+    deg(greedy.tailPeak) > deg(clean.tailPeak) * 1.4,
+    `${f(deg(greedy.tailPeak), 0)} deg when deslotting vs ${f(deg(clean.tailPeak), 0)} clean`,
+  );
+
   // --- 6. medals are reachable ------------------------------------------
   const medals = slotMedals(ref);
   check(

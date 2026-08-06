@@ -74,6 +74,10 @@ const OUTLOOK_HORIZON = 320;
  * rather than the convenient one.
  */
 const REACTION = 0.55;
+/** Where the tail starts to step out, as a fraction of the budget. */
+const TAIL_START = 0.3;
+/** How far it is thrown at the point the pin lets go, radians. */
+const TAIL_MAX = 0.62;
 /** Aim to arrive at a corner a little under its limit, not exactly on it. */
 const CORNER_SAFE = 0.9;
 
@@ -115,7 +119,10 @@ export class SlotCar {
   freeVel = { x: 0, y: 0 };
 
   heading = 0;
-  /** Tail-out angle. Cosmetic, but driven by the same load as the deslot. */
+  /**
+   * Body yaw about the guide pin, radians. NOT folded into `heading` -- heading
+   * is where the slot points, and the pin follows it whatever the body does.
+   */
   slip = 0;
   private debt = 0;
   /** Latched cue state, so it cannot flicker. Updated on a slow tick. */
@@ -312,11 +319,26 @@ export class SlotCar {
 
     const tan = this.track.lerpAt(this.s).tan;
     this.heading = Math.atan2(tan.y, tan.x);
-    // The tail steps out as the budget runs down. Same number as the danger
-    // meter, so what the car looks like and what the HUD says cannot disagree.
-    const target = -Math.sign(k || 1) * clamp(load - 0.55, 0, 0.6) * 0.34;
-    this.slip += (target - this.slip) * Math.min(1, dt * 9);
-    this.heading += this.slip;
+    // THE readback. A slot car is held by a guide pin at its nose, so as the
+    // corner loads up the tail is what steps out -- and how far it is thrown is
+    // exactly how close the pin is to leaving the groove. That makes the car
+    // itself the instrument, which beats any bar at the top of the screen: it is
+    // where the player is already looking, it is diegetic, and it degrades
+    // smoothly instead of being a light that comes on.
+    //
+    // Scaled across the whole usable range rather than the top of it. The first
+    // version started at 55% of the budget and peaked at 12 deg, which at the
+    // zoom this game plays at was a couple of pixels -- information nobody could
+    // read. It now spans from a gentle lean well before the limit to a genuinely
+    // alarming angle at the point the pin lets go.
+    const edge = clamp((load - TAIL_START) / (HARD_DESLOT - TAIL_START), 0, 1);
+    // Squared, so the tail stays calm through the range where nothing is going
+    // to happen and only gets dramatic near the edge. Linear was measurably a
+    // bad instrument: a lap that was never in trouble peaked at 19 deg against
+    // 23 deg for one that actually came off, so "thrown right out" and "fine"
+    // looked the same. The point of the pose is the difference between them.
+    const target = -Math.sign(k || 1) * edge * edge * TAIL_MAX;
+    this.slip += (target - this.slip) * Math.min(1, dt * 7);
 
     // The outlook scan is the most expensive thing here and a person cannot
     // react faster than this anyway, so it runs at 30 Hz rather than 120.

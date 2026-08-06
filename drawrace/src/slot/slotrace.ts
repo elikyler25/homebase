@@ -243,6 +243,8 @@ export function simulateSlot(
   let dangerSum = 0;
   let loadSum = 0;
   let loadPeak = 0;
+  let tailPeak = 0;
+  let tailAtDeslot = 0;
   let loaded = 0;
   let warned = 0;
   let episodes = 0;
@@ -258,6 +260,8 @@ export function simulateSlot(
     dangerSum += c.telemetry.danger;
     loadSum += c.telemetry.load;
     loadPeak = Math.max(loadPeak, c.telemetry.load);
+    if (!c.deslotted) tailPeak = Math.max(tailPeak, Math.abs(c.slip));
+    if (c.deslotCount > 0 && tailAtDeslot === 0) tailAtDeslot = tailPeak;
     if (c.telemetry.load > 0.6) loaded++;
     if (c.telemetry.lift) warned++;
     if (c.telemetry.lift && !wasLit) episodes++;
@@ -276,6 +280,8 @@ export function simulateSlot(
     load: loadSum / d,
     loadPeak,
     loadedFraction: loaded / d,
+    tailPeak,
+    tailAtDeslot,
     warnedFraction: warned / d,
     cueEpisodes: episodes,
   };
@@ -299,6 +305,10 @@ export interface SlotRun {
    * having a dead grip meter when what they have is a long straight.
    */
   loadedFraction: number;
+  /** Biggest tail-out angle reached while slotted, radians. */
+  tailPeak: number;
+  /** Tail-out at the moment of the first deslot, radians. */
+  tailAtDeslot: number;
   /** Share of the lap the "lift" cue was showing. */
   warnedFraction: number;
   /**

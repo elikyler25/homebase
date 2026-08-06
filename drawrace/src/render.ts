@@ -751,30 +751,47 @@ export class Renderer {
     heading: number,
     colour: string,
     car: { id: string },
-    opts: { isPlayer?: boolean; faded?: boolean } = {},
+    opts: { isPlayer?: boolean; faded?: boolean; slip?: number } = {},
   ): void {
     const ctx = this.ctx;
     const spr = carSprite(car.id, colour);
-    ctx.save();
-    ctx.globalAlpha = opts.faded ? 0.42 : 0.36;
-    ctx.translate(pos.x + 0.5, pos.y + 0.72);
-    ctx.rotate(heading);
-    ctx.drawImage(spr.shadow, -SPRITE_L / 2, -SPRITE_W / 2, SPRITE_L, SPRITE_W);
-    ctx.restore();
+    const slip = opts.slip ?? 0;
+    // The guide pin sits near the nose. Yawing the body about THAT rather than
+    // about the car's centre is what makes the tail step out instead of the
+    // whole car twirling -- which is both what a slot car does and the only way
+    // the angle reads as "the back is coming round" rather than "it is wonky".
+    const pin = SPRITE_L * 0.42;
+    // Cars are drawn no smaller than this on screen. The camera is deliberately
+    // wide so the layout is readable, which leaves a 5.6 m car about eight
+    // pixels long -- too small to read a tail angle off, and the tail angle is
+    // the instrument.
+    const boost = Math.max(1, 19 / (SPRITE_L * this.camera.scale));
+    const L = SPRITE_L * boost;
+    const W = SPRITE_W * boost;
+    const p = pin * boost;
 
-    ctx.save();
+    const body = (target: CanvasImageSource, dx: number, dy: number): void => {
+      ctx.save();
+      ctx.translate(pos.x + dx, pos.y + dy);
+      ctx.rotate(heading);
+      ctx.translate(p, 0);
+      ctx.rotate(slip);
+      ctx.drawImage(target, -L / 2 - p, -W / 2, L, W);
+      ctx.restore();
+    };
+
+    ctx.globalAlpha = opts.faded ? 0.42 : 0.36;
+    body(spr.shadow, 0.5 * boost, 0.72 * boost);
     ctx.globalAlpha = opts.faded ? 0.6 : 1;
-    ctx.translate(pos.x, pos.y);
-    ctx.rotate(heading);
-    ctx.drawImage(spr.body, -SPRITE_L / 2, -SPRITE_W / 2, SPRITE_L, SPRITE_W);
-    ctx.restore();
+    body(spr.body, 0, 0);
+    ctx.globalAlpha = 1;
 
     if (opts.isPlayer) {
       ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.55)";
-      ctx.lineWidth = 0.22;
+      ctx.strokeStyle = "rgba(255,255,255,0.6)";
+      ctx.lineWidth = 0.22 / this.camera.scale * 2;
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, SPRITE_L * 0.62, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, L * 0.72, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }

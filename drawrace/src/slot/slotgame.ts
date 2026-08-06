@@ -364,6 +364,7 @@ export class SlotGame {
         r.drawSlotCar(e.cara.pos, e.cara.heading, e.opts.colour, e.opts.car, {
           isPlayer: e.isPlayer,
           faded: e.cara.deslotted,
+          slip: e.cara.slip,
         });
       }
     }

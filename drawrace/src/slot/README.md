@@ -103,6 +103,29 @@ and then it jumped a whole metre. `Track.lerpAt` interpolates between the two
 nearest samples, and that goes to 0% stationary frames with the frame-to-frame
 roughness dropping from 1.03 to 0.01.
 
+## The car is the instrument
+
+The best readback here is not on the HUD at all, and it came from the player who
+remembered how Groove Racer did it: **the back of the car swings out, and how far
+it is thrown is how close you are to deslotting.**
+
+That is what a slot car physically does. The guide pin holds the nose in the
+groove, so as a corner loads up it is the tail that steps out, and when it comes
+round too far the pin leaves. So the body yaws about the pin near the nose, not
+about the car's centre — rotating about the centre reads as "wonky", rotating
+about the pin reads as "the back is coming round".
+
+Two things make it an instrument rather than decoration, and `slottune` asserts
+both:
+
+- **It is squared, not linear.** Linear was measurably useless: a lap that was
+  never in trouble peaked at 19° against 23° for one that actually came off, so
+  fine and nearly-off looked the same. Squared, a clean lap sits at 10° and a lap
+  that deslots reaches 17–23°.
+- **The cars are drawn at a minimum screen size.** The camera is deliberately
+  wide, which leaves a 5.6 m car about eight pixels long — too small to read an
+  angle off. Sprites now have a floor independent of the zoom.
+
 ## Show the layout, do not make them learn it
 
 The other half of "difficult to drive", and the fix came from the game this one
